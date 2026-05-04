@@ -4,81 +4,73 @@
     "Tenant": {
       "title": "Tenant",
       "type": "object",
-      "description": "Represents a single business or store instance.",
+      "description": "Represents a single business or store instance in the SaaS platform.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "subscriptionPlan": { "type": "string", "enum": ["basic", "pro", "enterprise"] },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "ownerEmail": { "type": "string", "format": "email" },
         "currency": { "type": "string", "default": "PHP" },
-        "taxRate": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "name", "currency", "createdAt", "updatedAt"]
+      "required": ["id", "name", "status", "subscriptionPlan", "expiryDate"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "type": "object",
+      "description": "User account details including SaaS role and tenant association.",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["super_admin", "owner", "staff"] },
+        "tenantId": { "type": "string", "description": "Null if super_admin" },
+        "name": { "type": "string" }
+      },
+      "required": ["uid", "role", "email"]
     },
     "B2BClient": {
       "title": "B2BClient",
       "type": "object",
-      "description": "Business clients who can purchase on credit.",
       "properties": {
         "id": { "type": "string" },
         "tenantId": { "type": "string" },
         "name": { "type": "string" },
-        "outstandingBalance": { "type": "number", "default": 0 },
-        "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" }
-      },
-      "required": ["id", "tenantId", "name", "outstandingBalance"]
+        "outstandingBalance": { "type": "number" }
+      }
     },
     "Reconciliation": {
       "title": "Reconciliation",
       "type": "object",
-      "description": "Logs of credit payments made by B2B clients.",
       "properties": {
         "id": { "type": "string" },
         "tenantId": { "type": "string" },
         "clientId": { "type": "string" },
         "amountPaid": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" },
-        "notes": { "type": "string" }
-      },
-      "required": ["id", "tenantId", "clientId", "amountPaid", "date"]
-    },
-    "Transaction": {
-      "title": "Transaction",
-      "type": "object",
-      "description": "A POS transaction record.",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "transactionDate": { "type": "string", "format": "date-time" },
-        "totalAmount": { "type": "number" },
-        "paymentMethod": { "type": "string", "enum": ["cash", "card", "credit"] },
-        "clientId": { "type": "string", "description": "Required if paymentMethod is 'credit'" },
-        "status": { "type": "string" },
-        "cashierId": { "type": "string" }
-      },
-      "required": ["id", "tenantId", "transactionDate", "totalAmount", "paymentMethod", "status", "cashierId"]
+        "date": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": ["password", "google.com"]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/tenants/{tenantId}/b2bClients/{clientId}",
+        "path": "/tenants/{tenantId}",
         "definition": {
-          "entityName": "B2BClient",
-          "schema": { "$ref": "#/backend/entities/B2BClient" },
-          "description": "Business clients for a specific tenant."
+          "entityName": "Tenant",
+          "schema": { "$ref": "#/backend/entities/Tenant" },
+          "description": "Root tenant configuration."
         }
       },
       {
-        "path": "/tenants/{tenantId}/reconciliations/{reconciliationId}",
+        "path": "/userProfiles/{uid}",
         "definition": {
-          "entityName": "Reconciliation",
-          "schema": { "$ref": "#/backend/entities/Reconciliation" },
-          "description": "Payment logs for B2B client account settlement."
+          "entityName": "UserProfile",
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "Global user profiles."
         }
       }
     ]

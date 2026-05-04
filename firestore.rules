@@ -4,42 +4,39 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
     function getUserProfile() { return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data; }
+    function isSuperAdmin() { return isSignedIn() && getUserProfile().role == 'super_admin'; }
     function isMemberOf(tenantId) { return isSignedIn() && getUserProfile().tenantId == tenantId; }
-    function isTenantAdmin(tenantId) { return isMemberOf(tenantId) && (getUserProfile().role == 'owner' || getUserProfile().role == 'admin'); }
+    function isTenantOwner(tenantId) { return isMemberOf(tenantId) && getUserProfile().role == 'owner'; }
+    function isTenantActive(tenantId) { return get(/databases/$(database)/documents/tenants/$(tenantId)).data.status == 'active'; }
 
     match /userProfiles/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || getUserProfile().role == 'owner');
+      allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow create, update: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /tenants/{tenantId} {
-      allow get: if isMemberOf(tenantId);
-      allow create: if isSignedIn();
-      allow update: if isTenantAdmin(tenantId);
+      allow read: if isMemberOf(tenantId) || isSuperAdmin();
+      allow write: if isSuperAdmin();
+      allow update: if isTenantOwner(tenantId) && request.resource.data.status == resource.data.status;
       
       match /b2bClients/{clientId} {
-        allow read: if isMemberOf(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow read: if isMemberOf(tenantId) && isTenantActive(tenantId);
+        allow write: if isTenantOwner(tenantId) && isTenantActive(tenantId);
       }
       
       match /reconciliations/{recId} {
-        allow read: if isMemberOf(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow read: if isMemberOf(tenantId) && isTenantActive(tenantId);
+        allow write: if isTenantOwner(tenantId) && isTenantActive(tenantId);
       }
 
       match /products/{productId} {
-        allow read: if isMemberOf(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow write: if isTenantOwner(tenantId) && isTenantActive(tenantId);
       }
 
       match /transactions/{txId} {
-        allow read: if isMemberOf(tenantId);
-        allow create: if isMemberOf(tenantId);
-        allow update: if isTenantAdmin(tenantId);
-
-        match /transactionItems/{itemId} {
-          allow read, create: if isMemberOf(tenantId);
-        }
+        allow read: if isMemberOf(tenantId) && isTenantActive(tenantId);
+        allow create: if isMemberOf(tenantId) && isTenantActive(tenantId);
       }
     }
   }
