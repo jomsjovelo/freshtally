@@ -58,7 +58,6 @@ export default function SuperAdminPage() {
   const { toast } = useToast()
   
   // State for Management
-  const [activeTab, setActiveTab] = useState("overview")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTenant, setSelectedTenant] = useState<any>(null)
   const [expiryDate, setExpiryDate] = useState<Date>(new Date())
@@ -140,18 +139,14 @@ export default function SuperAdminPage() {
       } else if (action === 'plan') {
         updateData = { 
           subscriptionPlan: selectedPlan,
-          status: selectedTenant.status, // Preserve current status
+          status: selectedTenant.status,
           expiryDate: expiryDate.toISOString()
         }
       }
 
       await updateDoc(tenantRef, updateData)
       toast({ title: "Update Successful", description: `${selectedTenant.name} has been synchronized.` })
-      
-      // Update local state if it's the plan action to close drawer
-      if (action === 'plan') {
-        setSelectedTenant(null)
-      }
+      if (action === 'plan') setSelectedTenant(null)
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
     } finally {
@@ -168,73 +163,23 @@ export default function SuperAdminPage() {
     })
   }
 
-  const mrr = tenants?.reduce((acc, t) => {
-    if (t.status !== 'active') return acc
-    const planPrices = { free: 0, basic: 999, pro: 2499, enterprise: 4999 }
-    return acc + (planPrices[t.subscriptionPlan as keyof typeof planPrices] || 0)
-  }, 0) || 0
-
   return (
     <div className="p-4 space-y-6 pb-28">
       <header className="flex items-center gap-4">
         <div className="h-16 w-16 bg-primary text-white rounded-[24px] flex items-center justify-center shadow-2xl">
-          <ShieldCheck className="h-8 w-8" />
+          <Users className="h-8 w-8" />
         </div>
         <div>
-          <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">Command Center</h1>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Platform Orchestration V2</p>
+          <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">Tenant Registry</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Node management & Control</p>
         </div>
       </header>
 
-      <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1">
-          <TabsTrigger value="overview" className="rounded-xl font-black text-[10px] uppercase"><LayoutDashboard className="w-4 h-4 mr-2" /> Overview</TabsTrigger>
+      <Tabs defaultValue="registry" className="w-full">
+        <TabsList className="grid grid-cols-2 h-14 bg-gray-100 rounded-2xl p-1">
           <TabsTrigger value="registry" className="rounded-xl font-black text-[10px] uppercase"><Users className="w-4 h-4 mr-2" /> Registry</TabsTrigger>
           <TabsTrigger value="broadcast" className="rounded-xl font-black text-[10px] uppercase"><Megaphone className="w-4 h-4 mr-2" /> Broadcast</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="space-y-6 pt-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="border-none shadow-sm bg-blue-50/50 rounded-[32px]">
-              <CardContent className="p-5">
-                <p className="text-[9px] font-black uppercase text-blue-600/70 tracking-widest mb-1">Platform MRR</p>
-                <p className="text-2xl font-black tracking-tighter">{formatCurrency(mrr)}</p>
-                <div className="flex items-center gap-1 text-[8px] font-black text-green-600 mt-2">
-                  <TrendingUp className="w-3 h-3" /> +14.2% THIS MONTH
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-accent/5 rounded-[32px]">
-              <CardContent className="p-5">
-                <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest mb-1">Active Nodes</p>
-                <p className="text-2xl font-black tracking-tighter">{tenants?.filter(t => t.status === 'active').length || 0}</p>
-                <div className="flex items-center gap-1 text-[8px] font-black text-accent mt-2 uppercase tracking-widest">
-                  <Activity className="w-3 h-3" /> System Healthy
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <section className="space-y-3">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Recent Activity</h3>
-            <div className="space-y-2">
-              {tenants?.slice(0, 3).map(t => (
-                <div key={t.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center font-black text-primary text-xs">
-                      {t.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-tight">{t.name}</p>
-                      <p className="text-[8px] font-bold text-muted-foreground uppercase">New Registration</p>
-                    </div>
-                  </div>
-                  <Badge variant="secondary" className="text-[8px] uppercase font-black">{t.subscriptionPlan}</Badge>
-                </div>
-              ))}
-            </div>
-          </section>
-        </TabsContent>
 
         <TabsContent value="registry" className="space-y-6 pt-4">
           <div className="relative">
@@ -290,7 +235,6 @@ export default function SuperAdminPage() {
                       </SheetHeader>
                       
                       <div className="p-8 space-y-8 overflow-y-auto h-full pb-32">
-                        {/* Status Toggle */}
                         <div className="flex items-center justify-between bg-gray-50 p-6 rounded-3xl border border-gray-100">
                           <div className="space-y-0.5">
                             <Label className="text-sm font-black uppercase tracking-tight">Account Status</Label>
@@ -302,7 +246,6 @@ export default function SuperAdminPage() {
                           />
                         </div>
 
-                        {/* Plan Selector */}
                         <div className="space-y-3">
                           <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Service Tier Override</label>
                           <div className="grid grid-cols-2 gap-2">
@@ -324,7 +267,6 @@ export default function SuperAdminPage() {
                           </div>
                         </div>
 
-                        {/* Expiry Override */}
                         <div className="space-y-4">
                           <div className="flex justify-between items-center px-1">
                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subscription Expiry</label>
@@ -414,7 +356,7 @@ export default function SuperAdminPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Expiry Date (Syncros V18)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Expiry Date</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full h-14 justify-start text-left font-black rounded-xl bg-gray-50 border-none px-4">

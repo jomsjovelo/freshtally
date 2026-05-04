@@ -8,7 +8,7 @@ import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { ExpenseAITool } from "@/components/dashboard/expense-ai-tool"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Store, Activity, Megaphone, Info, AlertTriangle } from "lucide-react"
+import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Store, Activity, Megaphone, Info, AlertTriangle, TrendingUp, LayoutDashboard, Users } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -19,14 +19,23 @@ export default function DashboardPage() {
   const router = useRouter()
   const db = useFirestore()
 
+  const isSuperAdmin = profile?.role === 'super_admin'
+
+  // Standard Tenant Queries
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id) return null
+    if (!db || !tenant?.id || isSuperAdmin) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id])
+  }, [db, tenant?.id, isSuperAdmin])
+
+  // Super Admin Queries
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!db || !isSuperAdmin) return null
+    return query(collection(db, "tenants"), orderBy("createdAt", "desc"))
+  }, [db, isSuperAdmin])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -40,6 +49,7 @@ export default function DashboardPage() {
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
+  const { data: tenants } = useCollection(tenantsQuery)
 
   useEffect(() => {
     if (!isUserLoading) {
@@ -47,8 +57,6 @@ export default function DashboardPage() {
         router.push("/auth")
       } else if (!profile) {
         router.push("/onboarding")
-      } else if (profile.role === 'super_admin') {
-        router.push("/super-admin")
       }
     }
   }, [profile, user, isUserLoading, router])
@@ -56,7 +64,7 @@ export default function DashboardPage() {
   if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12">Synchronizing State...</div>
 
   // Suspension Guard
-  if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
+  if (tenant?.status === 'suspended' && !isSuperAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
         <div className="h-24 w-24 bg-destructive text-white rounded-full flex items-center justify-center shadow-2xl animate-bounce">
@@ -65,7 +73,7 @@ export default function DashboardPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter">Subscription Expired</h1>
           <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[280px]">
-            Your access to <span className="text-foreground font-black">{tenant.name}</span> has been restricted. Please settle your balance.
+            Your access to <span className="text-foreground font-black">{tenant?.name || 'this store'}</span> has been restricted. Please settle your balance.
           </p>
         </div>
         <Button className="w-full h-16 rounded-[24px] bg-primary font-black text-lg shadow-xl" onClick={() => window.open('mailto:jomsjovelo@gmail.com')}>CONTACT SUPPORT</Button>
@@ -73,11 +81,76 @@ export default function DashboardPage() {
     )
   }
 
-  // SUPER ADMIN VIEW (GENESIS HUB) - Redirect to specialized page handled by bottom nav but fallback here
-  if (profile?.role === 'super_admin') {
-    return <div className="p-20 text-center animate-pulse font-black uppercase text-xs tracking-widest">Redirecting to Genesis Hub...</div>
+  // SUPER ADMIN DASHBOARD (HUB)
+  if (isSuperAdmin) {
+    const mrr = tenants?.reduce((acc, t) => {
+      if (t.status !== 'active') return acc
+      const planPrices = { free: 0, basic: 999, pro: 2499, enterprise: 4999 }
+      return acc + (planPrices[t.subscriptionPlan as keyof typeof planPrices] || 0)
+    }, 0) || 0
+
+    return (
+      <div className="p-4 space-y-6">
+        <header className="flex items-center gap-4">
+          <div className="h-16 w-16 bg-primary text-white rounded-[24px] flex items-center justify-center shadow-2xl">
+            <ShieldCheck className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">Command Center</h1>
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Platform Orchestration V2</p>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="border-none shadow-sm bg-blue-50/50 rounded-[32px]">
+            <CardContent className="p-5">
+              <p className="text-[9px] font-black uppercase text-blue-600/70 tracking-widest mb-1">Platform MRR</p>
+              <p className="text-2xl font-black tracking-tighter">{formatCurrency(mrr)}</p>
+              <div className="flex items-center gap-1 text-[8px] font-black text-green-600 mt-2">
+                <TrendingUp className="w-3 h-3" /> +14.2% THIS MONTH
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-none shadow-sm bg-accent/5 rounded-[32px]">
+            <CardContent className="p-5">
+              <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest mb-1">Active Nodes</p>
+              <p className="text-2xl font-black tracking-tighter">{tenants?.filter(t => t.status === 'active').length || 0}</p>
+              <div className="flex items-center gap-1 text-[8px] font-black text-accent mt-2 uppercase tracking-widest">
+                <Activity className="w-3 h-3" /> System Healthy
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <section className="space-y-4">
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent platform Activity</h3>
+          <div className="space-y-2">
+            {tenants?.slice(0, 5).map(t => (
+              <div key={t.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 bg-gray-50 rounded-2xl flex items-center justify-center font-black text-primary text-sm uppercase">
+                    {t.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-tight leading-none">{t.name}</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">New Registration</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Badge variant="secondary" className="text-[8px] uppercase font-black px-2">{t.subscriptionPlan}</Badge>
+                  <p className="text-[8px] text-muted-foreground font-black mt-1 uppercase">SUCCESS</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <BottomNav />
+      </div>
+    )
   }
 
+  // STANDARD TENANT DASHBOARD
   return (
     <div className="p-4 space-y-6">
       {broadcasts && broadcasts.length > 0 && (

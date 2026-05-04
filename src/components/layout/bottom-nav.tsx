@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -30,7 +31,7 @@ export function BottomNav() {
 
   // Super Admin Nav
   const adminNav = [
-    { href: "/", label: "Hub", icon: ChartBar, roles: ['super_admin'] },
+    { href: "/", label: "Hub", icon: LayoutDashboard, roles: ['super_admin'] },
     { href: "/super-admin", label: "Tenants", icon: Users, roles: ['super_admin'] },
     { href: "/settings", label: "Config", icon: Settings, roles: ['super_admin'] },
   ]
