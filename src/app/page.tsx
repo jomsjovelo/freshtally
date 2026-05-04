@@ -42,10 +42,14 @@ export default function DashboardPage() {
   const { data: broadcasts } = useCollection(broadcastsQuery)
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/auth")
-    } else if (!isUserLoading && user && !profile) {
-      router.push("/onboarding")
+    if (!isUserLoading) {
+      if (!user) {
+        router.push("/auth")
+      } else if (!profile) {
+        router.push("/onboarding")
+      } else if (profile.role === 'super_admin') {
+        router.push("/super-admin")
+      }
     }
   }, [profile, user, isUserLoading, router])
 
