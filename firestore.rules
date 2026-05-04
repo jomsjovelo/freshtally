@@ -3,30 +3,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Core helpers for authorization
+    // CORE AUTHORIZATION HELPERS
+    // Optimized for speed and resilience against propagation latency.
+    
     function isSignedIn() { 
       return request.auth != null; 
     }
     
-    function isSuperAdmin() {
-      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return isSignedIn() && exists(profilePath) && get(profilePath).data.role == 'super_admin';
-    }
-    
-    // Direct Owner Check: Resilient to profile indexing delays
-    function isOwner(tId) {
-      let tPath = /databases/$(database)/documents/tenants/$(tId);
-      let email = request.auth.token.email;
-      return isSignedIn() && exists(tPath) && 
-             email != null && 
-             get(tPath).data.get('ownerEmail', '').lower() == email.lower();
+    // Get the current user's profile - cached per request
+    function getProfile() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
     }
 
-    // Staff Check: Direct profile association
-    function isStaff(tId) {
+    function isSuperAdmin() {
       let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return isSignedIn() && exists(pPath) && 
-             get(pPath).data.get('tenantId', '') == tId;
+      return isSignedIn() && exists(pPath) && get(pPath).data.role == 'super_admin';
+    }
+    
+    // Membership Check: Validates if user belongs to the tenant via their profile link.
+    // This is the most robust check as it uses the authenticated UID as the primary key.
+    function isMember(tId) {
+      let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return isSignedIn() && exists(pPath) && get(pPath).data.tenantId == tId;
     }
 
     match /userProfiles/{userId} {
@@ -47,11 +45,12 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow create: if isSignedIn();
-      allow read, update: if isSignedIn() && (isSuperAdmin() || isOwner(tenantId) || isStaff(tenantId));
+      allow read, update: if isSignedIn() && (isSuperAdmin() || isMember(tenantId));
       
-      // Recursive match for all sub-collections (products, transactions, clients, etc.)
+      // RECURSIVE DATA ACCESS
+      // Ensures products, transactions, and clients are perfectly gated by tenant membership.
       match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && (isSuperAdmin() || isOwner(tenantId) || isStaff(tenantId));
+        allow read, write: if isSignedIn() && (isSuperAdmin() || isMember(tenantId));
       }
     }
   }

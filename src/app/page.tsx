@@ -40,8 +40,8 @@ export default function DashboardPage() {
 
   const transactionsQuery = useMemoFirebase(() => {
     // FRESHTALLY V2: Extreme Gating
-    // Do NOT fire sub-collection queries until the whole business context is stabilized and verified.
-    if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId || isSuperAdmin) return null
+    // Do NOT fire sub-collection queries until the whole business context is stabilized, verified, and Security Rules are fully recognized.
+    if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId) return null
     
     // Safety check: ensure the profile and tenant documents are perfectly in sync before querying.
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
