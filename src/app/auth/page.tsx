@@ -64,11 +64,11 @@ export default function AuthPage() {
 
         // GENESIS ADMIN CHECK
         const adminEmail = "jomsjovelo@gmail.com"
-        if (user.email === adminEmail) {
+        if (user.email?.toLowerCase() === adminEmail) {
           const profileRef = doc(db, "userProfiles", user.uid)
           batch.set(profileRef, {
             uid: user.uid,
-            email: user.email,
+            email: user.email.toLowerCase(),
             role: "super_admin",
             tenantId: null,
             name: ownerName || "System Owner",
@@ -92,14 +92,14 @@ export default function AuthPage() {
           status: "active",
           subscriptionPlan: "basic",
           expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          ownerEmail: user.email?.toLowerCase() || normalizedEmail,
+          ownerEmail: normalizedEmail,
           currency: "PHP",
           createdAt: serverTimestamp()
         })
 
         batch.set(profileRef, {
           uid: user.uid,
-          email: user.email?.toLowerCase() || normalizedEmail,
+          email: normalizedEmail,
           role: "owner",
           tenantId: tenantId,
           name: ownerName,
@@ -120,7 +120,7 @@ export default function AuthPage() {
 
         await setDoc(profileRef, {
           uid: user.uid,
-          email: user.email?.toLowerCase() || normalizedEmail,
+          email: normalizedEmail,
           role: "staff",
           tenantId: tenantIdInput,
           name: ownerName || "Shop Staff",

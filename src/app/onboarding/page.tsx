@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -43,6 +42,7 @@ export default function OnboardingPage() {
     try {
       // Generate a 5-digit unique numeric Store ID
       const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
+      const normalizedEmail = user.email.toLowerCase()
       
       // Create Tenant
       await setDoc(doc(db, "tenants", tenantId), {
@@ -52,7 +52,7 @@ export default function OnboardingPage() {
         status: "active",
         subscriptionPlan: "basic",
         expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 day trial
-        ownerEmail: user.email,
+        ownerEmail: normalizedEmail,
         currency: "PHP",
         createdAt: serverTimestamp()
       })
@@ -60,7 +60,7 @@ export default function OnboardingPage() {
       // Create User Profile
       await setDoc(doc(db, "userProfiles", user.uid), {
         uid: user.uid,
-        email: user.email,
+        email: normalizedEmail,
         role: "owner",
         tenantId: tenantId,
         name: user.displayName || storeName + " Owner",

@@ -8,23 +8,25 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
+      if (!isSignedIn()) return false;
       let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return isSignedIn() && exists(p) && get(p).data.role == 'super_admin';
+      return exists(p) && get(p).data.role == 'super_admin';
     }
     
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
-      let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      let t = /databases/$(database)/documents/tenants/$(tId);
+      
+      let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      let tPath = /databases/$(database)/documents/tenants/$(tId);
       
       // Dual-layered verification for resilience during indexing/propagation.
-      // 1. Direct Ownership Check: Compares token email with tenant ownerEmail (case-insensitive fallback).
+      // 1. Direct Ownership Check: Compares token email with tenant ownerEmail (resilient fallback).
+      let isOwnerByEmail = exists(tPath) && get(tPath).data.ownerEmail.toLower() == request.auth.token.email.toLower();
+      
       // 2. Profile Check: Verifies tenantId stored in the user's profile document.
+      let isMemberByProfile = exists(pPath) && get(pPath).data.tenantId == tId;
       
-      let emailMatch = exists(t) && get(t).data.ownerEmail.toLower() == request.auth.token.email.toLower();
-      let profileMatch = exists(p) && get(p).data.tenantId == tId;
-      
-      return emailMatch || profileMatch;
+      return isOwnerByEmail || isMemberByProfile;
     }
 
     match /userProfiles/{userId} {
