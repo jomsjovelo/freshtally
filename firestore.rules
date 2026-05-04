@@ -7,31 +7,40 @@ service cloud.firestore {
       return request.auth != null; 
     }
     
+    // Improved helper for getting profile with existence check
+    function getProfile() {
+      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
+    }
+    
     // Check if user is a super admin
     function isSuperAdmin() {
-      let profile = get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-      return isSignedIn() && profile.role == 'super_admin';
+      let profile = getProfile();
+      return isSignedIn() && profile != null && profile.role == 'super_admin';
     }
     
     // Check if user belongs to the specified tenant
     function isMemberOf(tId) {
-      let profile = get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-      return isSignedIn() && (string(profile.tenantId) == string(tId));
+      let profile = getProfile();
+      return isSignedIn() && profile != null && (string(profile.tenantId) == string(tId));
     }
     
     // Check if the tenant is active
     function isTenantActive(tId) {
-      let tenant = get(/databases/$(database)/documents/tenants/$(tId)).data;
-      return tenant.status == 'active';
+      let path = /databases/$(database)/documents/tenants/$(tId);
+      return exists(path) && get(path).data.status == 'active';
     }
 
-    // Combined helper for sub-collection access
+    // Combined helper for sub-collection access with robust existence checks
     function canAccessSub(tId) {
-      let profile = get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-      let tenant = get(/databases/$(database)/documents/tenants/$(tId)).data;
+      let profile = getProfile();
+      let tenantPath = /databases/$(database)/documents/tenants/$(tId);
+      
       return isSignedIn() && 
+             profile != null && 
+             exists(tenantPath) &&
              (string(profile.tenantId) == string(tId) || profile.role == 'super_admin') && 
-             tenant.status == 'active';
+             get(tenantPath).data.status == 'active';
     }
 
     match /userProfiles/{userId} {
@@ -62,7 +71,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerEmail == request.auth.token.email;
       
       // Allow updates if owner or super admin
-      allow update: if isSuperAdmin() || (isMemberOf(tenantId) && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'owner');
+      allow update: if isSuperAdmin() || (isMemberOf(tenantId) && getProfile().role == 'owner');
       
       // Subcollections with optimized access guards
       match /b2bClients/{clientId} {
