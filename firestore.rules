@@ -16,13 +16,22 @@ service cloud.firestore {
     // Check if user belongs to the specified tenant
     function isMemberOf(tId) {
       let profile = get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-      return isSignedIn() && string(profile.tenantId) == string(tId);
+      return isSignedIn() && (string(profile.tenantId) == string(tId));
     }
     
     // Check if the tenant is active
     function isTenantActive(tId) {
       let tenant = get(/databases/$(database)/documents/tenants/$(tId)).data;
       return tenant.status == 'active';
+    }
+
+    // Combined helper for sub-collection access
+    function canAccessSub(tId) {
+      let profile = get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
+      let tenant = get(/databases/$(database)/documents/tenants/$(tId)).data;
+      return isSignedIn() && 
+             (string(profile.tenantId) == string(tId) || profile.role == 'super_admin') && 
+             tenant.status == 'active';
     }
 
     match /userProfiles/{userId} {
@@ -55,21 +64,21 @@ service cloud.firestore {
       // Allow updates if owner or super admin
       allow update: if isSuperAdmin() || (isMemberOf(tenantId) && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'owner');
       
-      // Subcollections with active tenant and membership guards
+      // Subcollections with optimized access guards
       match /b2bClients/{clientId} {
-        allow read, write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, write: if canAccessSub(tenantId);
       }
       
       match /reconciliations/{recId} {
-        allow read, write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, write: if canAccessSub(tenantId);
       }
 
       match /products/{productId} {
-        allow read, write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, write: if canAccessSub(tenantId);
       }
 
       match /transactions/{txId} {
-        allow read, create: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, create: if canAccessSub(tenantId);
       }
     }
   }

@@ -66,6 +66,7 @@ export const FirebaseProvider: React.FC<{
     let unsubTenant: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Clean up previous listeners
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
       unsubProfile = null;
@@ -82,20 +83,23 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
+      // 1. Monitor Profile
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
+          // Profile might still be being written during registration
           setAuthState(s => ({ ...s, user, isUserLoading: false }));
           return;
         }
 
         const profileData = profileSnap.data() as UserProfile;
         
-        if (unsubTenant) unsubTenant();
-        unsubTenant = null;
-
+        // 2. Monitor Tenant if profile exists and has tenantId
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
+          
+          // Re-subscribe to tenant if ID changed or just initialized
+          if (unsubTenant) unsubTenant();
           unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
             setAuthState({
               user,
@@ -104,16 +108,18 @@ export const FirebaseProvider: React.FC<{
               isUserLoading: false,
               userError: null
             });
-          }, async (err) => {
-            // Silently handle transient errors during propagation
-            if (err.code === 'permission-denied') return;
+          }, (err) => {
+            // Silence transient permission errors during rule propagation
+            if (err.code === 'permission-denied') {
+              console.log('Transient permission delay for tenant document...');
+              return;
+            }
             
             const contextualError = new FirestorePermissionError({
               path: tenantRef.path,
               operation: 'get',
             });
             errorEmitter.emit('permission-error', contextualError);
-            setAuthState(s => ({ ...s, isUserLoading: false, userError: contextualError }));
           });
         } else {
           setAuthState({
@@ -124,7 +130,8 @@ export const FirebaseProvider: React.FC<{
             userError: null
           });
         }
-      }, async (err) => {
+      }, (err) => {
+        // Silence transient permission errors for profile
         if (err.code === 'permission-denied') return;
 
         const contextualError = new FirestorePermissionError({
@@ -132,7 +139,6 @@ export const FirebaseProvider: React.FC<{
           operation: 'get',
         });
         errorEmitter.emit('permission-error', contextualError);
-        setAuthState(s => ({ ...s, isUserLoading: false, userError: contextualError }));
       });
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
