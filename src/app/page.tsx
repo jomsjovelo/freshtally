@@ -7,14 +7,13 @@ import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Megaphone, AlertTriangle, TrendingUp, Store, Zap } from "lucide-react"
+import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Megaphone, AlertTriangle, TrendingUp } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-// Lazy-load heavy components
 const RevenueChart = dynamic(() => import("@/components/dashboard/revenue-chart").then(mod => mod.RevenueChart), {
   ssr: false,
   loading: () => <div className="h-[180px] w-full bg-muted/20 animate-pulse rounded-2xl" />
@@ -66,11 +65,9 @@ export default function DashboardPage() {
     if (!isUserLoading) {
       if (!user) {
         router.push("/auth")
-      } else if (!profile) {
-        router.push("/onboarding")
       }
     }
-  }, [profile, user, isUserLoading, router])
+  }, [user, isUserLoading, router])
 
   if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12">Synchronizing State...</div>
 
@@ -91,7 +88,6 @@ export default function DashboardPage() {
     )
   }
 
-  // --- SUPER ADMIN COMMAND CENTER ---
   if (isSuperAdmin) {
     const mrr = tenants?.reduce((acc, t) => {
       if (t.status !== 'active') return acc
@@ -107,7 +103,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">Command Center</h1>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Platform Orchestration V2</p>
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Platform Hub</p>
           </div>
         </header>
 
@@ -123,11 +119,9 @@ export default function DashboardPage() {
           </Card>
           <Card className="border-none shadow-sm bg-accent/5 rounded-[32px]">
             <CardContent className="p-5">
-              <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest mb-1">Nodes</p>
+              <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest mb-1">Active Nodes</p>
               <p className="text-2xl font-black tracking-tighter">{tenants?.filter(t => t.status === 'active').length || 0}</p>
-              <div className="text-[8px] font-black text-accent mt-2 uppercase tracking-widest">
-                System Healthy
-              </div>
+              <div className="text-[8px] font-black text-accent mt-2 uppercase tracking-widest">System Healthy</div>
             </CardContent>
           </Card>
         </div>
@@ -143,7 +137,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black uppercase tracking-tight leading-none">{t.name}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Registered</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">New Node</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -159,7 +153,6 @@ export default function DashboardPage() {
     )
   }
 
-  // --- OWNER & STAFF DASHBOARD ---
   return (
     <div className="p-4 space-y-6">
       {broadcasts && broadcasts.length > 0 && (
@@ -198,7 +191,6 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* STAFF PORTAL QUICK ACTIONS */}
       {isStaff && (
         <div className="grid grid-cols-2 gap-4">
           <button 
@@ -222,7 +214,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* OWNER ONLY SENSITIVE METRICS */}
       {isOwner && (
         <>
           <DashboardStats />
@@ -241,7 +232,6 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* RECENT ACTIVITY */}
       <section className="space-y-4 pb-4">
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">

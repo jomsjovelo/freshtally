@@ -8,7 +8,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from "firebase/auth"
-import { doc, setDoc, getFirestore, serverTimestamp, getDoc } from "firebase/firestore"
+import { doc, getFirestore, serverTimestamp, getDoc, writeBatch } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,7 +37,6 @@ export default function AuthPage() {
     e.preventDefault()
     setError(null)
     
-    // Validation
     if (authMode !== "login") {
       if (password !== confirmPassword) {
         toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
@@ -60,11 +59,13 @@ export default function AuthPage() {
         if (!storeAddress.trim()) throw new Error("Business address is required.")
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
-        
+        const batch = writeBatch(db)
+
         // GENESIS ADMIN CHECK
         const adminEmail = "jomsjovelo@gmail.com"
         if (user.email === adminEmail) {
-          await setDoc(doc(db, "userProfiles", user.uid), {
+          const profileRef = doc(db, "userProfiles", user.uid)
+          batch.set(profileRef, {
             uid: user.uid,
             email: user.email,
             role: "super_admin",
@@ -72,15 +73,17 @@ export default function AuthPage() {
             name: ownerName || "System Owner",
             createdAt: serverTimestamp()
           })
+          await batch.commit()
           toast({ title: "Genesis Activated", description: "Welcome back, System Owner." })
           router.push("/")
           return
         }
 
-        // Generate a 5-digit unique numeric Store ID
         const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
+        const tenantRef = doc(db, "tenants", tenantId)
+        const profileRef = doc(db, "userProfiles", user.uid)
 
-        await setDoc(doc(db, "tenants", tenantId), {
+        batch.set(tenantRef, {
           id: tenantId,
           name: businessName,
           ownerName: ownerName,
@@ -93,7 +96,7 @@ export default function AuthPage() {
           createdAt: serverTimestamp()
         })
 
-        await setDoc(doc(db, "userProfiles", user.uid), {
+        batch.set(profileRef, {
           uid: user.uid,
           email: user.email,
           role: "owner",
@@ -102,6 +105,7 @@ export default function AuthPage() {
           createdAt: serverTimestamp()
         })
 
+        await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
         router.push("/")
       } else if (authMode === "join_staff") {
@@ -111,8 +115,9 @@ export default function AuthPage() {
         if (!tenantDoc.exists()) throw new Error("Invalid Store ID. Check with your manager.")
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
+        const profileRef = doc(db, "userProfiles", user.uid)
 
-        await setDoc(doc(db, "userProfiles", user.uid), {
+        await setDoc(profileRef, {
           uid: user.uid,
           email: user.email,
           role: "staff",
@@ -127,20 +132,11 @@ export default function AuthPage() {
     } catch (err: any) {
       let message = err.message
       if (err.code === 'auth/email-already-in-use') {
-        message = "This email is already registered. Please switch to the LOGIN tab to access your account."
+        message = "This email is already registered. Please switch to the LOGIN tab."
         setAuthMode("login")
-      } else if (err.code === 'auth/weak-password') {
-        message = "Password is too weak. Min 6 characters."
-      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        message = "Invalid email or password. Please try again."
       }
-      
       setError(message)
-      toast({
-        title: "Authentication Failed",
-        description: message,
-        variant: "destructive"
-      })
+      toast({ title: "Authentication Failed", description: message, variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -167,9 +163,7 @@ export default function AuthPage() {
             <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700 animate-in fade-in slide-in-from-top-1">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="text-[10px] font-black uppercase tracking-widest">Auth Error</AlertTitle>
-              <AlertDescription className="text-xs font-bold leading-tight">
-                {error}
-              </AlertDescription>
+              <AlertDescription className="text-xs font-bold">{error}</AlertDescription>
             </Alert>
           )}
 
@@ -198,7 +192,7 @@ export default function AuthPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label className="text-[10px) font-black uppercase tracking-widest text-muted-foreground ml-1">Full Legal Name</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
                     <Input 
                       placeholder="e.g. Juan Dela Cruz" 
                       className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
@@ -213,7 +207,7 @@ export default function AuthPage() {
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
                         <Input 
-                          placeholder="e.g. Metro Roast Coffee" 
+                          placeholder="e.g. JMJ Foods" 
                           className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                           value={businessName}
                           onChange={(e) => setBusinessName(e.target.value)}
@@ -225,7 +219,7 @@ export default function AuthPage() {
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input 
-                            placeholder="e.g. Makati Ave, Makati City" 
+                            placeholder="e.g. Makati City" 
                             className="h-14 pl-10 rounded-2xl border-none bg-gray-100 font-bold"
                             value={storeAddress}
                             onChange={(e) => setStoreAddress(e.target.value)}
@@ -239,7 +233,7 @@ export default function AuthPage() {
               )}
 
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Account Email</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
                 <Input 
                   type="email" 
                   placeholder="name@business.com" 
@@ -277,7 +271,7 @@ export default function AuthPage() {
               )}
 
               <Button 
-                className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 active:scale-[0.98] transition-all mt-6" 
+                className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl active:scale-[0.98] transition-all mt-6" 
                 disabled={loading}
               >
                 {loading ? (
@@ -285,7 +279,6 @@ export default function AuthPage() {
                 ) : (
                   <>
                     {authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF"}
-                    {authMode === "login" ? <LogIn className="ml-2 h-4 w-4" /> : authMode === "register_owner" ? <Store className="ml-2 h-4 w-4" /> : <Users className="ml-2 h-4 w-4" />}
                   </>
                 )}
               </Button>
