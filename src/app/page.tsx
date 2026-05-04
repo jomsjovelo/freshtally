@@ -32,36 +32,36 @@ export default function DashboardPage() {
   const isOwner = profile?.role === 'owner'
   const isStaff = profile?.role === 'staff'
 
-  // Stable date reference for the broadcast query to prevent re-renders
   const stableNow = useMemo(() => {
     const d = new Date()
-    d.setSeconds(0, 0) // Stable within the same minute
+    d.setSeconds(0, 0)
     return d.toISOString()
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id || isSuperAdmin) return null
+    // CRITICAL: Only query if tenant ID is stable and user context is fully loaded
+    if (!db || !tenant?.id || isUserLoading || isSuperAdmin) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id, isSuperAdmin])
+  }, [db, tenant?.id, isUserLoading, isSuperAdmin])
 
   const tenantsQuery = useMemoFirebase(() => {
-    if (!db || !isSuperAdmin) return null
+    if (!db || !isSuperAdmin || isUserLoading) return null
     return query(collection(db, "tenants"), orderBy("createdAt", "desc"), limit(20))
-  }, [db, isSuperAdmin])
+  }, [db, isSuperAdmin, isUserLoading])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
+    if (!db || !user || isUserLoading) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user, stableNow])
+  }, [db, user, isUserLoading, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -75,7 +75,12 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router])
 
-  if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12">Synchronizing State...</div>
+  if (isUserLoading) return (
+    <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12 flex flex-col items-center gap-4">
+      <ShieldCheck className="h-10 w-10 animate-bounce" />
+      Syncing Environment...
+    </div>
+  )
 
   if (tenant?.status === 'suspended' && !isSuperAdmin) {
     return (
@@ -227,7 +232,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-black flex items-center justify-between uppercase tracking-tighter">
                 Revenue Performance
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">REAL-TIME</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">7-DAY VIEW</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -242,7 +247,7 @@ export default function DashboardPage() {
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">
           {isTxLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Reading Ledger...</div>
+            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Verifying Ledger...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
               <div key={tx.id} className="bg-card p-4 rounded-[24px] flex items-center justify-between shadow-sm border-none">
@@ -256,7 +261,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-black text-sm uppercase tracking-tighter leading-none">{tx.type}</p>
                     <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase tracking-widest">
-                      {tx.createdAt ? new Date(tx.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                      {tx.createdAt ? new Date(tx.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Processing'}
                     </p>
                   </div>
                 </div>
@@ -270,7 +275,7 @@ export default function DashboardPage() {
           ) : (
             <div className="bg-gray-50 rounded-[32px] p-8 text-center border-2 border-dashed border-gray-200">
               <PlusCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
-              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No Activity</p>
+              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No activity logged</p>
             </div>
           )}
         </div>

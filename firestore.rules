@@ -19,18 +19,25 @@ service cloud.firestore {
       return isSignedIn() && profile != null && profile.role == 'super_admin';
     }
     
-    // Robust check for tenant membership with document existence guards
+    // Check for tenant membership with multiple layers of verification
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
       
+      // Layer 1: Check user profile (standard path)
       let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      if (exists(profilePath)) {
+        let profile = get(profilePath).data;
+        if (profile != null && string(profile.tenantId) == string(tId)) return true;
+      }
+      
+      // Layer 2: Check tenant ownership directly (resilient fallback for new owners)
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
+      if (exists(tenantPath)) {
+        let tenant = get(tenantPath).data;
+        if (tenant != null && tenant.ownerEmail == request.auth.token.email) return true;
+      }
       
-      let profile = exists(profilePath) ? get(profilePath).data : null;
-      let tenant = exists(tenantPath) ? get(tenantPath).data : null;
-      
-      return (profile != null && string(profile.tenantId) == string(tId)) || 
-             (tenant != null && tenant.ownerEmail == request.auth.token.email);
+      return false;
     }
 
     match /userProfiles/{userId} {
@@ -50,16 +57,10 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Allow read if member, owner via email, or super admin
       allow read: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isMemberOf(tenantId) && (isSuperAdmin() || getProfile().role == 'owner'));
       
-      // Allow owners to create their tenant document
-      allow create: if isSignedIn() && request.resource.data.ownerEmail == request.auth.token.email;
-      
-      // Allow updates if owner or super admin
-      allow update: if isSuperAdmin() || (isMemberOf(tenantId) && (isSuperAdmin() || getProfile().role == 'owner'));
-      
-      // Subcollections using robust membership check
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       }

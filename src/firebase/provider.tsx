@@ -6,8 +6,6 @@ import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 interface UserProfile {
   uid: string;
@@ -67,7 +65,6 @@ export const FirebaseProvider: React.FC<{
     let unsubTenant: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Clean up previous listeners
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
       unsubProfile = null;
@@ -86,19 +83,15 @@ export const FirebaseProvider: React.FC<{
 
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
-      // 1. Monitor Profile
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // If no profile yet, we still set the user but keep loading
-          // This can happen briefly after registration
           setAuthState(s => ({ ...s, user, isUserLoading: true }));
           return;
         }
 
         const profileData = profileSnap.data() as UserProfile;
         
-        // 2. Monitor Tenant if profile exists and has tenantId
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           
@@ -112,17 +105,10 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Silently ignore transient permission errors during initial propagation
             if (err.code === 'permission-denied') {
-              console.log('Tenant access pending propagation...');
-              return;
+              return; // Silently wait for propagation
             }
-            
-            const contextualError = new FirestorePermissionError({
-              path: tenantRef.path,
-              operation: 'get',
-            });
-            errorEmitter.emit('permission-error', contextualError);
+            setAuthState(s => ({ ...s, isUserLoading: false }));
           });
         } else {
           setAuthState({
@@ -134,17 +120,10 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        // Silently ignore transient permission errors during initial registration propagation
         if (err.code === 'permission-denied') {
-          console.log('Profile access pending propagation...');
-          return;
+          return; // Silently wait for propagation
         }
-
-        const contextualError = new FirestorePermissionError({
-          path: profileRef.path,
-          operation: 'get',
-        });
-        errorEmitter.emit('permission-error', contextualError);
+        setAuthState(s => ({ ...s, isUserLoading: false }));
       });
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
