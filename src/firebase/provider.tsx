@@ -88,7 +88,11 @@ export const FirebaseProvider: React.FC<{
       // 1. Monitor Profile
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
-        if (!profileSnap.exists()) return;
+        if (!profileSnap.exists()) {
+          // If no profile yet, we still set the user but keep loading
+          setAuthState(s => ({ ...s, user, isUserLoading: true }));
+          return;
+        }
 
         const profileData = profileSnap.data() as UserProfile;
         
@@ -106,7 +110,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Silently ignore transient permission errors during propagation
+            // Silently ignore transient permission errors during initial registration propagation
             if (err.code === 'permission-denied') return;
             
             const contextualError = new FirestorePermissionError({
@@ -125,7 +129,7 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        // Silently ignore transient permission errors during propagation
+        // Silently ignore transient permission errors during initial registration propagation
         if (err.code === 'permission-denied') return;
 
         const contextualError = new FirestorePermissionError({
