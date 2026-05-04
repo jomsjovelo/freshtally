@@ -106,8 +106,8 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // Propagation Guard: Wait 1500ms to allow Security Rules propagation
-                // to fully recognize the documents created during registration/login.
+                // Propagation Guard: Increased to 3000ms to allow Security Rules 
+                // to fully recognize documents created during registration/login.
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -117,12 +117,13 @@ export const FirebaseProvider: React.FC<{
                     isUserLoading: false,
                     userError: null
                   });
-                }, 1500);
+                }, 3000);
               } else {
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);
               }
             }, (err) => {
+              // Silently handle transient permission denied during initial propagation
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);

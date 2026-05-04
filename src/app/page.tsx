@@ -39,10 +39,10 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    // CRITICAL: Prevent queries until business context is stable and Security Rules propagation is settled.
-    if (!db || isUserLoading || !tenant?.id || !profile || isSuperAdmin) return null
+    // EXTRA GUARD: Ensure both profile and tenant are present, matched, and fully stable before querying sub-collections.
+    if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId || isSuperAdmin) return null
     
-    // Safety check: ensure the profile and tenant documents are in sync before querying sub-collections.
+    // Safety check: ensure the profile and tenant documents are in sync before querying.
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
 
     return query(
@@ -50,7 +50,7 @@ export default function DashboardPage() {
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id, profile, isUserLoading, isSuperAdmin])
+  }, [db, tenant?.id, profile, isUserLoading, isSuperAdmin, user])
 
   const tenantsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin || isUserLoading) return null
