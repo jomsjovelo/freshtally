@@ -15,7 +15,8 @@ service cloud.firestore {
 
     match /userProfiles/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isTenantOwner(getUserProfile().tenantId));
     }
 
     match /platform_broadcasts/{broadcastId} {

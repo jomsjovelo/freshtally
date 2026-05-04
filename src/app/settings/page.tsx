@@ -1,3 +1,4 @@
+
 "use client"
 
 import { BottomNav } from "@/components/layout/bottom-nav"
@@ -12,7 +13,9 @@ import {
   Bell, 
   Moon,
   Globe,
-  Loader2
+  Loader2,
+  Copy,
+  Hash
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
@@ -21,15 +24,24 @@ import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 import { getAuth, signOut } from "firebase/auth"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
   const { profile, tenant, isUserLoading } = useUser()
   const router = useRouter()
   const auth = getAuth()
+  const { toast } = useToast()
 
   const handleSignOut = async () => {
     await signOut(auth)
     router.push('/auth')
+  }
+
+  const copyTenantId = () => {
+    if (tenant?.id) {
+      navigator.clipboard.writeText(tenant.id)
+      toast({ title: "Copied!", description: "Share this ID with your staff to join." })
+    }
   }
 
   if (isUserLoading) {
@@ -42,6 +54,7 @@ export default function SettingsPage() {
   }
 
   const isSuperAdmin = profile?.role === 'super_admin'
+  const isOwner = profile?.role === 'owner'
 
   return (
     <div className="p-4 space-y-6 pb-24">
@@ -70,6 +83,24 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {isOwner && tenant && (
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pl-1">Store Onboarding</h3>
+          <Card className="border-none shadow-sm bg-blue-50/50 rounded-2xl">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Your Store ID</p>
+                <p className="text-sm font-mono font-bold text-blue-900 mt-1">{tenant.id}</p>
+                <p className="text-[9px] text-blue-700/60 mt-1">Staff need this to register & join your store.</p>
+              </div>
+              <Button size="icon" variant="ghost" className="h-12 w-12 rounded-xl text-blue-600 bg-blue-100" onClick={copyTenantId}>
+                <Copy className="h-5 w-5" />
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <div className="space-y-6">
         <section className="space-y-3">
