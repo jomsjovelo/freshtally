@@ -1,16 +1,15 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback, memo } from "react"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote, UserCheck, PackageOpen, Zap } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, doc, increment, writeBatch } from "firebase/firestore"
+import { collection, query, orderBy, doc, increment, writeBatch, limit } from "firebase/firestore"
 import { runFullSystemAudit } from "@/lib/stress-tests"
 import { 
   Select, 
@@ -19,6 +18,23 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
+
+// Memoized Product Item to prevent re-renders when cart changes
+const ProductCard = memo(({ product, onAdd }: { product: any, onAdd: (p: any) => void }) => (
+  <button 
+    onClick={() => onAdd(product)}
+    className="bg-white p-5 rounded-[32px] shadow-sm border border-transparent active:scale-[0.95] active:bg-primary/5 transition-all text-left group"
+  >
+    <p className="font-black text-sm leading-tight h-10 line-clamp-2 uppercase tracking-tight">{product.name}</p>
+    <div className="flex justify-between items-center mt-3">
+      <span className="text-primary font-black text-xs">{formatCurrency(product.price)}</span>
+      <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+        <Plus className="h-5 w-5" />
+      </div>
+    </div>
+  </button>
+))
+ProductCard.displayName = "ProductCard"
 
 export default function POSPage() {
   const { tenant } = useUser()
@@ -32,18 +48,18 @@ export default function POSPage() {
 
   const productsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id) return null
-    return query(collection(db, "tenants", tenant.id, "products"), orderBy("name", "asc"))
+    return query(collection(db, "tenants", tenant.id, "products"), orderBy("name", "asc"), limit(100))
   }, [db, tenant?.id])
 
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id) return null
-    return query(collection(db, "tenants", tenant.id, "b2bClients"), orderBy("name", "asc"))
+    return query(collection(db, "tenants", tenant.id, "b2bClients"), orderBy("name", "asc"), limit(50))
   }, [db, tenant?.id])
 
   const { data: products, isLoading: isProductsLoading } = useCollection(productsQuery)
   const { data: clients } = useCollection(clientsQuery)
 
-  const addToCart = (product: any) => {
+  const addToCart = useCallback((product: any) => {
     setCart((prev) => {
       const existing = prev.find(item => item.id === product.id)
       if (existing) {
@@ -51,13 +67,13 @@ export default function POSPage() {
       }
       return [...prev, { ...product, quantity: 1 }]
     })
-  }
+  }, [])
 
-  const removeFromCart = (id: string) => {
+  const removeFromCart = useCallback((id: string) => {
     setCart((prev) => prev.filter(item => item.id !== id))
-  }
+  }, [])
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = useCallback((id: string, delta: number) => {
     setCart((prev) => prev.map(item => {
       if (item.id === id) {
         const newQty = Math.max(1, item.quantity + delta)
@@ -65,14 +81,18 @@ export default function POSPage() {
       }
       return item
     }))
-  }
+  }, [])
 
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const total = useMemo(() => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0), [cart])
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return []
+    return products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+  }, [products, search])
 
   const handleCheckout = async () => {
     if (!tenant?.id || isProcessing || cart.length === 0) return
 
-    // Risk 3 Mitigation: Verify stock availability before committing
     const stockShortages = cart.filter(item => item.stock < item.quantity)
     if (stockShortages.length > 0) {
       toast({
@@ -86,7 +106,7 @@ export default function POSPage() {
     if (paymentType === 'credit' && !selectedClientId) {
       toast({
         title: "Account Required",
-        description: "Please select a B2B client for credit charges.",
+        description: "Select a B2B client.",
         variant: "destructive",
       })
       return
@@ -95,9 +115,9 @@ export default function POSPage() {
     setIsProcessing(true)
     try {
       const batch = writeBatch(db)
-      
       const txColRef = collection(db, "tenants", tenant.id, "transactions")
       const txDocRef = doc(txColRef)
+      
       batch.set(txDocRef, {
         tenantId: tenant.id,
         items: cart,
@@ -120,19 +140,12 @@ export default function POSPage() {
 
       await batch.commit()
       
-      toast({
-        title: "Order Processed",
-        description: `Successfully logged sale of ${formatCurrency(total)}.`,
-      })
+      toast({ title: "Order Processed", description: formatCurrency(total) })
       setCart([])
       setSelectedClientId(null)
       setPaymentType('cash')
     } catch (error: any) {
-      toast({
-        title: "Checkout Failed",
-        description: error.message,
-        variant: "destructive",
-      })
+      toast({ title: "Checkout Failed", description: error.message, variant: "destructive" })
     } finally {
       setIsProcessing(false)
     }
@@ -170,29 +183,16 @@ export default function POSPage() {
           <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Store Catalog</h3>
           {isProductsLoading ? (
             <div className="p-20 text-center animate-pulse font-black text-muted-foreground uppercase tracking-widest">Waking Terminal...</div>
-          ) : products && products.length > 0 ? (
+          ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 pb-24">
-              {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map((product) => (
-                <button 
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="bg-white p-5 rounded-[32px] shadow-sm border border-transparent active:scale-[0.95] active:bg-primary/5 transition-all text-left group"
-                >
-                  <p className="font-black text-sm leading-tight h-10 line-clamp-2 uppercase tracking-tight">{product.name}</p>
-                  <div className="flex justify-between items-center mt-3">
-                    <span className="text-primary font-black text-xs">{formatCurrency(product.price)}</span>
-                    <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Plus className="h-5 w-5" />
-                    </div>
-                  </div>
-                </button>
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} onAdd={addToCart} />
               ))}
             </div>
           ) : (
             <div className="bg-white rounded-[40px] p-12 text-center shadow-inner border border-gray-100">
               <PackageOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-20" />
               <h3 className="text-lg font-black text-muted-foreground uppercase tracking-tighter">No Products</h3>
-              <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-2">Add inventory to begin selling.</p>
             </div>
           )}
         </div>
@@ -203,7 +203,7 @@ export default function POSPage() {
           <div className="flex items-center justify-between">
             <h3 className="font-black text-xl flex items-center gap-2 tracking-tighter uppercase">
               <ShoppingCart className="h-6 w-6 text-primary" />
-              Order Summary
+              Summary
             </h3>
             <span className="text-[10px] font-black bg-primary text-white px-4 py-1.5 rounded-full uppercase">{cart.length} ITEMS</span>
           </div>
@@ -221,7 +221,7 @@ export default function POSPage() {
                     <span className="text-base font-black w-10 text-center">{item.quantity}</span>
                     <button onClick={() => updateQuantity(item.id, 1)} className="p-1 text-primary"><Plus className="h-5 w-5" /></button>
                   </div>
-                  <button onClick={() => removeFromCart(item.id)} className="text-destructive p-3 hover:bg-destructive/5 rounded-2xl transition-colors"><Trash2 className="h-6 w-6" /></button>
+                  <button onClick={() => removeFromCart(item.id)} className="text-destructive p-3"><Trash2 className="h-6 w-6" /></button>
                 </div>
               </div>
             ))}
@@ -251,34 +251,29 @@ export default function POSPage() {
             </div>
 
             {paymentType === 'credit' && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <Select onValueChange={setSelectedClientId}>
-                  <SelectTrigger className="h-16 rounded-2xl border-none bg-gray-100 font-black uppercase text-xs tracking-widest px-6">
-                    <SelectValue placeholder="SELECT B2B CLIENT" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-3xl border-none shadow-2xl">
-                    {clients?.map(client => (
-                      <SelectItem key={client.id} value={client.id} className="font-bold py-3">{client.name}</SelectItem>
-                    ))}
-                    {(!clients || clients.length === 0) && (
-                      <div className="p-4 text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">No Clients Found</div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select onValueChange={setSelectedClientId}>
+                <SelectTrigger className="h-16 rounded-2xl border-none bg-gray-100 font-black uppercase text-xs tracking-widest px-6">
+                  <SelectValue placeholder="SELECT B2B CLIENT" />
+                </SelectTrigger>
+                <SelectContent className="rounded-3xl border-none shadow-2xl">
+                  {clients?.map(client => (
+                    <SelectItem key={client.id} value={client.id} className="font-bold py-3">{client.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
 
             <div className="flex justify-between items-center px-1">
-              <span className="text-muted-foreground font-black text-[10px] uppercase tracking-widest">GRAND TOTAL</span>
+              <span className="text-muted-foreground font-black text-[10px] uppercase tracking-widest">TOTAL</span>
               <span className="text-4xl font-black text-primary tracking-tighter">{formatCurrency(total)}</span>
             </div>
 
             <Button 
-              className="w-full h-20 rounded-[28px] bg-primary text-white font-black text-2xl shadow-[0_20px_40px_rgba(var(--primary),0.3)] active:scale-[0.98] transition-all"
+              className="w-full h-20 rounded-[28px] bg-primary text-white font-black text-2xl shadow-xl active:scale-[0.98] transition-all"
               onClick={handleCheckout}
               disabled={isProcessing}
             >
-              {isProcessing ? "PROCESSING..." : "FINALIZE ORDER"}
+              {isProcessing ? "POSTING..." : "FINALIZE"}
             </Button>
           </div>
         </div>

@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy } from "firebase/firestore"
+import { collection, query, orderBy, limit } from "firebase/firestore"
 
 export default function InventoryPage() {
   const [search, setSearch] = useState("")
@@ -21,15 +21,17 @@ export default function InventoryPage() {
     if (!db || !tenant?.id) return null
     return query(
       collection(db, "tenants", tenant.id, "products"),
-      orderBy("name", "asc")
+      orderBy("name", "asc"),
+      limit(100)
     )
   }, [db, tenant?.id])
 
   const { data: inventory, isLoading } = useCollection(inventoryQuery)
 
-  const filteredInventory = inventory?.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredInventory = useMemo(() => {
+    if (!inventory) return []
+    return inventory.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+  }, [inventory, search])
 
   return (
     <div className="p-4 space-y-6 pb-24">
@@ -38,7 +40,7 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-black tracking-tighter uppercase leading-none text-primary">Inventory</h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Live Stock Monitoring</p>
         </div>
-        <Button size="icon" className="h-14 w-14 rounded-3xl bg-accent hover:bg-accent/90 shadow-xl active:scale-90 transition-all">
+        <Button size="icon" className="h-14 w-14 rounded-3xl bg-accent hover:bg-accent/90 shadow-xl">
           <Plus className="h-7 w-7" />
         </Button>
       </header>
@@ -53,7 +55,7 @@ export default function InventoryPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="h-14 w-14 p-0 border-none shadow-sm bg-gray-100 rounded-2xl">
+        <Button variant="outline" className="h-14 w-14 p-0 border-none bg-gray-100 rounded-2xl">
           <Filter className="h-5 w-5" />
         </Button>
       </div>
@@ -61,7 +63,7 @@ export default function InventoryPage() {
       <div className="space-y-4">
         {isLoading ? (
           <div className="p-20 text-center animate-pulse font-black text-muted-foreground uppercase tracking-widest">Scanning Warehouse...</div>
-        ) : filteredInventory && filteredInventory.length > 0 ? (
+        ) : filteredInventory.length > 0 ? (
           filteredInventory.map((item) => {
             const isLowStock = item.stock < (item.minStock || 10)
             const stockPercent = (item.stock / ((item.minStock || 10) * 2)) * 100
@@ -81,7 +83,7 @@ export default function InventoryPage() {
                   <div className="flex-1">
                     <h3 className="font-black text-lg uppercase tracking-tight text-foreground leading-none">{item.name}</h3>
                     <p className="text-[10px] font-black text-muted-foreground mt-2 uppercase tracking-widest">
-                      {formatCurrency(item.price)} <span className="opacity-40 ml-1">/ UNIT</span>
+                      {formatCurrency(item.price)}
                     </p>
                   </div>
                   <button className="text-muted-foreground p-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -92,7 +94,7 @@ export default function InventoryPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
                     <span className={isLowStock ? "text-destructive" : "text-muted-foreground"}>
-                      {item.stock} UNITS IN HAND
+                      {item.stock} UNITS
                     </span>
                     <span className="text-muted-foreground opacity-60">MIN: {item.minStock || 10}</span>
                   </div>
@@ -104,7 +106,7 @@ export default function InventoryPage() {
 
                 <div className="flex gap-2 pt-2">
                   <Button variant="secondary" className="flex-1 h-12 text-[10px] font-black uppercase tracking-widest rounded-2xl bg-gray-100 border-none">
-                    STOCK ADJUST
+                    ADJUST
                   </Button>
                   <Button variant="outline" className="flex-1 h-12 text-[10px] font-black uppercase tracking-widest rounded-2xl border-2 border-gray-100">
                     RESTOCK
@@ -116,15 +118,7 @@ export default function InventoryPage() {
         ) : (
           <div className="bg-gray-50 rounded-[40px] p-12 text-center border-2 border-dashed border-gray-200">
             <PackageOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <h3 className="text-xl font-black text-muted-foreground uppercase tracking-tighter">Inventory Empty</h3>
-            <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest mt-2 max-w-[200px] mx-auto">
-              Your digital shelves are waiting for products.
-            </p>
-            <Button 
-              className="mt-6 h-14 rounded-2xl px-8 bg-primary text-white font-black uppercase tracking-tighter"
-            >
-              Add First SKU
-            </Button>
+            <h3 className="text-xl font-black text-muted-foreground uppercase tracking-tighter">Empty shelves</h3>
           </div>
         )}
       </div>

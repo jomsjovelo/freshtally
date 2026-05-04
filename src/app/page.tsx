@@ -2,17 +2,28 @@
 "use client"
 
 import { useEffect } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { RevenueChart } from "@/components/dashboard/revenue-chart"
-import { ExpenseAITool } from "@/components/dashboard/expense-ai-tool"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Store, Activity, Megaphone, Info, AlertTriangle, TrendingUp, LayoutDashboard, Users } from "lucide-react"
+import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Megaphone, AlertTriangle, TrendingUp } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+
+// Lazy-load heavy components to reduce initial JS payload
+const RevenueChart = dynamic(() => import("@/components/dashboard/revenue-chart").then(mod => mod.RevenueChart), {
+  ssr: false,
+  loading: () => <div className="h-[180px] w-full bg-muted/20 animate-pulse rounded-2xl" />
+})
+
+const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-tool").then(mod => mod.ExpenseAITool), {
+  ssr: false,
+  loading: () => <div className="h-40 w-full bg-muted/10 animate-pulse rounded-2xl" />
+})
 
 export default function DashboardPage() {
   const { profile, tenant, isUserLoading, user } = useUser()
@@ -21,7 +32,6 @@ export default function DashboardPage() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // Standard Tenant Queries
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id || isSuperAdmin) return null
     return query(
@@ -31,10 +41,9 @@ export default function DashboardPage() {
     )
   }, [db, tenant?.id, isSuperAdmin])
 
-  // Super Admin Queries
   const tenantsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null
-    return query(collection(db, "tenants"), orderBy("createdAt", "desc"))
+    return query(collection(db, "tenants"), orderBy("createdAt", "desc"), limit(20))
   }, [db, isSuperAdmin])
 
   const broadcastsQuery = useMemoFirebase(() => {
@@ -63,7 +72,6 @@ export default function DashboardPage() {
 
   if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12">Synchronizing State...</div>
 
-  // Suspension Guard
   if (tenant?.status === 'suspended' && !isSuperAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
@@ -81,7 +89,6 @@ export default function DashboardPage() {
     )
   }
 
-  // SUPER ADMIN DASHBOARD (HUB)
   if (isSuperAdmin) {
     const mrr = tenants?.reduce((acc, t) => {
       if (t.status !== 'active') return acc
@@ -113,10 +120,10 @@ export default function DashboardPage() {
           </Card>
           <Card className="border-none shadow-sm bg-accent/5 rounded-[32px]">
             <CardContent className="p-5">
-              <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest mb-1">Active Nodes</p>
+              <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest mb-1">Nodes</p>
               <p className="text-2xl font-black tracking-tighter">{tenants?.filter(t => t.status === 'active').length || 0}</p>
-              <div className="flex items-center gap-1 text-[8px] font-black text-accent mt-2 uppercase tracking-widest">
-                <Activity className="w-3 h-3" /> System Healthy
+              <div className="text-[8px] font-black text-accent mt-2 uppercase tracking-widest">
+                System Healthy
               </div>
             </CardContent>
           </Card>
@@ -133,12 +140,11 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black uppercase tracking-tight leading-none">{t.name}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">New Registration</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Registered</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <Badge variant="secondary" className="text-[8px] uppercase font-black px-2">{t.subscriptionPlan}</Badge>
-                  <p className="text-[8px] text-muted-foreground font-black mt-1 uppercase">SUCCESS</p>
                 </div>
               </div>
             ))}
@@ -150,7 +156,6 @@ export default function DashboardPage() {
     )
   }
 
-  // STANDARD TENANT DASHBOARD
   return (
     <div className="p-4 space-y-6">
       {broadcasts && broadcasts.length > 0 && (
@@ -177,10 +182,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary transition-all active:scale-90 hover:bg-gray-200">
+          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary transition-all active:scale-90">
             <Search className="h-5 w-5" />
           </button>
-          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary transition-all active:scale-90 hover:bg-gray-200 relative">
+          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary transition-all active:scale-90 relative">
             <Bell className="h-5 w-5" />
             <span className="absolute top-3 right-3 h-2 w-2 bg-accent rounded-full border-2 border-white animate-pulse"></span>
           </button>
@@ -229,14 +234,13 @@ export default function DashboardPage() {
                   <p className={cn("font-black text-sm", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
                     {tx.type === "Sale" ? "+" : "-"}{formatCurrency(tx.totalAmount || tx.amount || 0)}
                   </p>
-                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">SUCCESS</p>
                 </div>
               </div>
             ))
           ) : (
             <div className="bg-gray-50 rounded-[32px] p-8 text-center border-2 border-dashed border-gray-200">
               <PlusCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
-              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No Transactions Found</p>
+              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No Activity</p>
               <Button 
                 variant="link" 
                 className="mt-2 text-primary font-black uppercase tracking-tighter"
