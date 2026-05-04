@@ -15,8 +15,9 @@ import {
   Globe,
   Loader2,
   Copy,
-  Hash,
-  UserPlus
+  UserPlus,
+  MapPin,
+  Hash
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
@@ -43,7 +44,7 @@ export default function SettingsPage() {
       navigator.clipboard.writeText(tenant.id)
       toast({ 
         title: "Store ID Copied", 
-        description: "Your staff can now use this ID to join your shop.",
+        description: "Share this 5-digit code with your staff.",
         duration: 3000
       })
     }
@@ -93,6 +94,35 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* STORE IDENTITY (OWNER ONLY) */}
+      {!isSuperAdmin && tenant && (
+        <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Business Identity</h3>
+          <Card className="border-none shadow-sm bg-white rounded-[32px] overflow-hidden">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center text-primary shrink-0">
+                  <Store className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Store Name</p>
+                  <p className="font-bold text-foreground truncate">{tenant.name}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center text-primary shrink-0">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Location</p>
+                  <p className="font-bold text-foreground line-clamp-2">{tenant.address || 'Address Not Set'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       {/* STAFF ONBOARDING (OWNER ONLY) */}
       {isOwner && tenant && (
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
@@ -101,12 +131,12 @@ export default function SettingsPage() {
             <CardContent className="p-8 flex items-center justify-between gap-6">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2 text-accent">
-                  <UserPlus className="h-4 w-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Store ID for Staff</p>
+                  <Hash className="h-4 w-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Unique Store ID</p>
                 </div>
-                <p className="text-2xl font-black font-mono tracking-tighter text-foreground select-all">{tenant.id}</p>
+                <p className="text-4xl font-black font-mono tracking-tighter text-foreground select-all">{tenant.id}</p>
                 <p className="text-[9px] text-muted-foreground font-bold mt-2 uppercase tracking-widest opacity-60">
-                  Staff need this code to join your shop.
+                  Provide this 5-digit code to your staff.
                 </p>
               </div>
               <Button 
@@ -127,7 +157,6 @@ export default function SettingsPage() {
           <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Operational Node</h3>
           <div className="space-y-2">
             {[
-              { icon: Store, label: "Profile", description: "Identity and metadata", color: "text-blue-500", roles: ['owner', 'super_admin'] },
               { icon: ShieldCheck, label: "Access Control", description: "Roles and permissions", color: "text-purple-500", roles: ['owner', 'super_admin'] },
               { icon: CreditCard, label: "Financials", description: "Payment node config", color: "text-green-500", roles: ['owner'] },
             ].filter(item => !item.roles || item.roles.includes(profile?.role || '')).map((item) => (

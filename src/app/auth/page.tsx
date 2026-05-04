@@ -9,13 +9,12 @@ import {
   createUserWithEmailAndPassword 
 } from "firebase/auth"
 import { doc, setDoc, getFirestore, serverTimestamp, getDoc } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, LogIn, Store, Upload, Users, ArrowRight } from "lucide-react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ShieldCheck, LogIn, Store, Users, MapPin } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
@@ -26,13 +25,11 @@ export default function AuthPage() {
   const [ownerName, setOwnerName] = useState("")
   const [storeAddress, setStoreAddress] = useState("")
   const [tenantIdInput, setTenantIdInput] = useState("")
-  const [logoFile, setLogoFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const auth = getAuth()
   const db = getFirestore()
-  const storage = getStorage()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,6 +51,7 @@ export default function AuthPage() {
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
         if (!ownerName.trim()) throw new Error("Owner name is required.")
+        if (!storeAddress.trim()) throw new Error("Business address is required.")
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         
@@ -73,21 +71,14 @@ export default function AuthPage() {
           return
         }
 
-        const tenantId = `tenant_${Math.random().toString(36).substr(2, 9)}`
-        let logoUrl = null
-
-        if (logoFile) {
-          const logoRef = ref(storage, `tenants/${tenantId}/logo_${Date.now()}`)
-          await uploadBytes(logoRef, logoFile)
-          logoUrl = await getDownloadURL(logoRef)
-        }
+        // Generate a 5-digit unique numeric Store ID
+        const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
 
         await setDoc(doc(db, "tenants", tenantId), {
           id: tenantId,
           name: businessName,
           ownerName: ownerName,
           address: storeAddress,
-          logoUrl,
           status: "active",
           subscriptionPlan: "basic",
           expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -105,10 +96,10 @@ export default function AuthPage() {
           createdAt: serverTimestamp()
         })
 
-        toast({ title: "Store Created", description: `${businessName} is now live.` })
+        toast({ title: "Store Created", description: `${businessName} is now live with ID: ${tenantId}.` })
         router.push("/")
       } else if (authMode === "join_staff") {
-        if (!tenantIdInput.trim()) throw new Error("Store ID is required to join.")
+        if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required to join.")
         
         // Verify tenant exists
         const tenantDoc = await getDoc(doc(db, "tenants", tenantIdInput))
@@ -151,7 +142,7 @@ export default function AuthPage() {
             {authMode === "login" ? "Terminal Access" : "Market Entry"}
           </h1>
           <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2 relative z-10">
-            FreshTally SaaS • B2B Solutions
+            FreshTally SaaS • Multi-Tenant
           </p>
         </div>
 
@@ -168,9 +159,10 @@ export default function AuthPage() {
                 <div className="space-y-5 animate-in fade-in slide-in-from-top-2">
                   {authMode === "join_staff" && (
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store ID (from Manager)</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">5-Digit Store ID</Label>
                       <Input 
-                        placeholder="e.g. tenant_abc123" 
+                        placeholder="e.g. 54321" 
+                        maxLength={5}
                         className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                         value={tenantIdInput}
                         onChange={(e) => setTenantIdInput(e.target.value)}
@@ -195,7 +187,7 @@ export default function AuthPage() {
                   {authMode === "register_owner" && (
                     <>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Entity Name</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
                         <Input 
                           placeholder="e.g. Metro Roast Coffee" 
                           className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
@@ -203,6 +195,19 @@ export default function AuthPage() {
                           onChange={(e) => setBusinessName(e.target.value)}
                           required
                         />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Address</Label>
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="e.g. Makati Ave, Makati City" 
+                            className="h-14 pl-10 rounded-2xl border-none bg-gray-100 font-bold"
+                            value={storeAddress}
+                            onChange={(e) => setStoreAddress(e.target.value)}
+                            required
+                          />
+                        </div>
                       </div>
                     </>
                   )}

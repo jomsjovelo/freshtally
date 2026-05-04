@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Store, ArrowRight, Calendar as CalendarIcon } from "lucide-react"
+import { Store, ArrowRight, Calendar as CalendarIcon, MapPin } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 
 export default function OnboardingPage() {
   const [storeName, setStoreName] = useState("")
+  const [storeAddress, setStoreAddress] = useState("")
   const [startDate, setStartDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -36,16 +37,18 @@ export default function OnboardingPage() {
 
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !storeName.trim()) return
+    if (!user || !storeName.trim() || !storeAddress.trim()) return
 
     setLoading(true)
     try {
-      const tenantId = `tenant_${Math.random().toString(36).substr(2, 9)}`
+      // Generate a 5-digit unique numeric Store ID
+      const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
       
       // Create Tenant
       await setDoc(doc(db, "tenants", tenantId), {
         id: tenantId,
         name: storeName,
+        address: storeAddress,
         status: "active",
         subscriptionPlan: "basic",
         expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 day trial
@@ -66,7 +69,7 @@ export default function OnboardingPage() {
 
       toast({
         title: "Store Created!",
-        description: `Welcome to FreshTally, ${storeName} is ready.`
+        description: `Welcome to FreshTally. Your Store ID is ${tenantId}.`
       })
       router.push("/")
     } catch (error: any) {
@@ -103,6 +106,20 @@ export default function OnboardingPage() {
                 onChange={(e) => setStoreName(e.target.value)}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Address</Label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="e.g. Makati Ave, Makati City" 
+                  className="h-16 pl-12 rounded-2xl border-none bg-gray-100 font-bold text-lg"
+                  value={storeAddress}
+                  onChange={(e) => setStoreAddress(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
