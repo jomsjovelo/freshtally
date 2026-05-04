@@ -22,17 +22,26 @@ service cloud.firestore {
       let tPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Primary Check: Profile association (direct)
-      let hasProfileAccess = exists(pPath) && get(pPath).data.tenantId == tId;
-      if (hasProfileAccess) return true;
+      // Using .get() for field access is safer in case of missing fields
+      let profileExists = exists(pPath);
+      if (profileExists && get(pPath).data.get('tenantId', '') == tId) {
+        return true;
+      }
 
       // 2. Secondary Check: Owner via Token Email (Fastest source of truth for new stores)
+      // We check the tenant document directly for the owner's email
       let email = request.auth.token.email;
-      let isOwner = exists(tPath) && 
-                    email != null && 
-                    get(tPath).data.ownerEmail != null &&
-                    get(tPath).data.ownerEmail.lower() == email.lower();
+      let tenantExists = exists(tPath);
       
-      return isOwner;
+      if (tenantExists) {
+        let tenantData = get(tPath).data;
+        let ownerEmail = tenantData.get('ownerEmail', '');
+        if (email != null && ownerEmail != null && ownerEmail.lower() == email.lower()) {
+          return true;
+        }
+      }
+      
+      return false;
     }
 
     match /userProfiles/{userId} {
@@ -56,8 +65,10 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Access allowed for verified members, owners, or super admins
+      // For the tenant document itself, we can use resource.data if it exists for faster checks
       allow read, update: if isSignedIn() && (
         isSuperAdmin() || 
+        (resource != null && request.auth.token.email != null && resource.data.get('ownerEmail', '').lower() == request.auth.token.email.lower()) ||
         isMemberOf(tenantId)
       );
       

@@ -106,7 +106,7 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // Propagation Guard: Increased to 3000ms to allow Security Rules 
+                // Propagation Guard: Increased to allow Security Rules 
                 // to fully recognize documents created during registration/login.
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
