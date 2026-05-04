@@ -9,8 +9,8 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return isSignedIn() && exists(p) && get(p).data.role == 'super_admin';
+      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return isSignedIn() && exists(profilePath) && get(profilePath).data.role == 'super_admin';
     }
     
     // Resilient Membership Check: Checks Profile OR direct email ownership
@@ -21,14 +21,14 @@ service cloud.firestore {
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Profile Layer: Check the tenantId stored in the user's profile document
-      // We use exists() first to prevent rule evaluation crashes
       let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
       // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
       // This is immediate and immune to profile propagation delays.
+      // CEL uses .lower() instead of .toLower()
       let isOwnerByEmail = exists(tenantPath) && 
                           request.auth.token.email != null &&
-                          get(tenantPath).data.ownerEmail.toLower() == request.auth.token.email.toLower();
+                          get(tenantPath).data.ownerEmail.lower() == request.auth.token.email.lower();
       
       return isProfileMember || isOwnerByEmail;
     }

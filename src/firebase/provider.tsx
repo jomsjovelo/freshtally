@@ -63,9 +63,10 @@ export const FirebaseProvider: React.FC<{
 
     let unsubProfile: (() => void) | null = null;
     let unsubTenant: (() => void) | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Cleanup previous listeners
+      if (retryTimeout) clearTimeout(retryTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
       unsubProfile = null;
@@ -85,52 +86,59 @@ export const FirebaseProvider: React.FC<{
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
       const profileRef = doc(firestore, 'userProfiles', user.uid);
-      unsubProfile = onSnapshot(profileRef, (profileSnap) => {
-        if (!profileSnap.exists()) {
-          // Profile might be in creation phase. 
-          // Keep loading but don't error out yet.
-          return;
-        }
+      
+      const setupListeners = () => {
+        unsubProfile = onSnapshot(profileRef, (profileSnap) => {
+          if (!profileSnap.exists()) return;
 
-        const profileData = profileSnap.data() as UserProfile;
-        
-        if (profileData.tenantId) {
-          const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
+          const profileData = profileSnap.data() as UserProfile;
           
-          if (unsubTenant) unsubTenant();
-          unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
+          if (profileData.tenantId) {
+            const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
+            
+            if (unsubTenant) unsubTenant();
+            unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
+              setAuthState({
+                user,
+                profile: profileData,
+                tenant: tenantSnap.exists() ? (tenantSnap.data() as TenantData) : null,
+                isUserLoading: false,
+                userError: null
+              });
+            }, (err) => {
+              // Handle transient permission issues during initial sync
+              if (err.code === 'permission-denied') {
+                retryTimeout = setTimeout(setupListeners, 1000);
+                return;
+              }
+              setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
+            });
+          } else {
             setAuthState({
               user,
               profile: profileData,
-              tenant: tenantSnap.exists() ? (tenantSnap.data() as TenantData) : null,
+              tenant: null,
               isUserLoading: false,
               userError: null
             });
-          }, (err) => {
-            // Handle transient permission issues during propagation
-            if (err.code === 'permission-denied') return;
-            setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
-          });
-        } else {
-          setAuthState({
-            user,
-            profile: profileData,
-            tenant: null,
-            isUserLoading: false,
-            userError: null
-          });
-        }
-      }, (err) => {
-        // Handle transient permission issues during initial registration flow
-        if (err.code === 'permission-denied') return;
-        setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
-      });
+          }
+        }, (err) => {
+          if (err.code === 'permission-denied') {
+            retryTimeout = setTimeout(setupListeners, 1000);
+            return;
+          }
+          setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
+        });
+      };
+
+      setupListeners();
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });
 
     return () => {
       unsubscribeAuth();
+      if (retryTimeout) clearTimeout(retryTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
     };
