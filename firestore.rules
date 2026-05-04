@@ -21,6 +21,7 @@ service cloud.firestore {
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Profile Layer: Check the tenantId stored in the user's profile document
+      // We use exists() first to prevent rule evaluation crashes
       let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
       // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
