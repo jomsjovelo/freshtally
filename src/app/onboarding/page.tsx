@@ -1,0 +1,148 @@
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { getAuth, onAuthStateChanged } from "firebase/auth"
+import { doc, setDoc, getFirestore, serverTimestamp } from "firebase/firestore"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+import { Store, ArrowRight, Calendar as CalendarIcon } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+
+export default function OnboardingPage() {
+  const [storeName, setStoreName] = useState("")
+  const [startDate, setStartDate] = useState<Date>(new Date())
+  const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+  const { toast } = useToast()
+  const db = getFirestore()
+  const auth = getAuth()
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) router.push("/auth")
+      else setUser(u)
+    })
+    return () => unsub()
+  }, [auth, router])
+
+  const handleOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !storeName.trim()) return
+
+    setLoading(true)
+    try {
+      const tenantId = `tenant_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Create Tenant
+      await setDoc(doc(db, "tenants", tenantId), {
+        id: tenantId,
+        name: storeName,
+        status: "active",
+        subscriptionPlan: "basic",
+        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 day trial
+        ownerEmail: user.email,
+        currency: "PHP",
+        createdAt: serverTimestamp()
+      })
+
+      // Create User Profile
+      await setDoc(doc(db, "userProfiles", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        role: "owner",
+        tenantId: tenantId,
+        name: user.displayName || storeName + " Owner",
+        createdAt: serverTimestamp()
+      })
+
+      toast({
+        title: "Store Created!",
+        description: `Welcome to FreshTally, ${storeName} is ready.`
+      })
+      router.push("/")
+    } catch (error: any) {
+      toast({
+        title: "Setup Failed",
+        description: error.message,
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!user) return null
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
+      <Card className="w-full max-w-md border-none shadow-2xl rounded-[40px] overflow-hidden">
+        <CardHeader className="text-center pt-10 pb-6 bg-accent text-white relative">
+          <div className="h-20 w-20 bg-white/20 rounded-[24px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+            <Store className="h-10 w-10 text-white" />
+          </div>
+          <CardTitle className="text-2xl font-black uppercase tracking-tighter">Your Market Profile</CardTitle>
+          <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-2">Initialize your SaaS workspace</p>
+        </CardHeader>
+        <CardContent className="p-8 space-y-6">
+          <form onSubmit={handleOnboarding} className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
+              <Input 
+                placeholder="e.g. Metro Roast Coffee" 
+                className="h-16 rounded-2xl border-none bg-gray-100 font-bold text-lg"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operations Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full h-16 justify-start text-left font-bold rounded-2xl bg-gray-100 border-none",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-5 w-5 text-accent" />
+                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-[32px] overflow-hidden" align="center">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(d) => d && setStartDate(d)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+              <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mb-1">Currency Default</p>
+              <p className="text-sm font-bold text-blue-800">Philippine Peso (PHP ₱)</p>
+            </div>
+
+            <Button className="w-full h-16 rounded-[24px] bg-accent text-white font-black text-xl shadow-xl active:scale-[0.98] transition-all" disabled={loading}>
+              {loading ? "INITIALIZING..." : "LAUNCH STORE"}
+              <ArrowRight className="ml-2 h-6 w-6" />
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

@@ -14,7 +14,8 @@ import {
   Settings2, 
   Calendar as CalendarIcon, 
   AlertCircle,
-  Clock
+  Clock,
+  ExternalLink
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { 
@@ -35,7 +36,6 @@ export default function SuperAdminPage() {
   const [expiryDate, setExpiryDate] = useState<Date>(new Date())
 
   const tenantsQuery = useMemoFirebase(() => {
-    // Crucial: Only initiate the query if the user is logged in and confirmed as a super_admin
     if (!db || isUserLoading || profile?.role !== 'super_admin') return null
     return collection(db, "tenants")
   }, [db, isUserLoading, profile?.role])
@@ -46,8 +46,8 @@ export default function SuperAdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-8 text-center">
         <div className="space-y-4">
-          <Clock className="h-12 w-12 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground font-medium">Verifying platform access...</p>
+          <Clock className="h-16 w-16 text-primary animate-spin mx-auto opacity-20" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Verifying Authority...</p>
         </div>
       </div>
     )
@@ -55,12 +55,15 @@ export default function SuperAdminPage() {
 
   if (profile?.role !== 'super_admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8 text-center">
-        <div className="space-y-4">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-          <h1 className="text-xl font-bold">Access Denied</h1>
-          <p className="text-muted-foreground">This area is reserved for Platform Owners.</p>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-destructive/5">
+        <AlertCircle className="h-20 w-20 text-destructive mx-auto mb-6" />
+        <h1 className="text-3xl font-black uppercase tracking-tighter">Genesis Access Required</h1>
+        <p className="text-muted-foreground font-bold text-sm mt-2 max-w-[280px]">
+          This terminal is reserved for platform engineers.
+        </p>
+        <Button className="mt-8 h-16 rounded-[24px] bg-primary w-full max-w-xs font-black uppercase tracking-widest shadow-xl">
+          REQUEST ACCESS
+        </Button>
       </div>
     )
   }
@@ -80,57 +83,66 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="p-4 space-y-6 pb-24">
-      <header className="flex items-center gap-3">
-        <div className="h-12 w-12 bg-accent text-white rounded-2xl flex items-center justify-center shadow-lg">
-          <ShieldCheck className="h-6 w-6" />
+    <div className="p-4 space-y-6 pb-28">
+      <header className="flex items-center gap-4">
+        <div className="h-16 w-16 bg-primary text-white rounded-[24px] flex items-center justify-center shadow-2xl">
+          <ShieldCheck className="h-8 w-8" />
         </div>
         <div>
-          <h1 className="text-xl font-black uppercase tracking-tighter">SaaS Manager</h1>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Platform Command</p>
+          <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">Genesis Hub</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Platform Orchestration</p>
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="border-none shadow-sm bg-blue-50/50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Store className="h-5 w-5 text-blue-600" />
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="border-none shadow-sm bg-blue-50/50 rounded-[32px]">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="h-10 w-10 bg-blue-100 rounded-2xl flex items-center justify-center">
+              <Store className="h-5 w-5 text-blue-600" />
+            </div>
             <div>
-              <p className="text-[10px] font-bold uppercase text-blue-600/70">Total Tenants</p>
-              <p className="text-lg font-black">{tenants?.length || 0}</p>
+              <p className="text-[9px] font-black uppercase text-blue-600/70 tracking-widest">Total Shops</p>
+              <p className="text-2xl font-black tracking-tighter">{tenants?.length || 0}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm bg-orange-50/50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Clock className="h-5 w-5 text-orange-600" />
+        <Card className="border-none shadow-sm bg-accent/5 rounded-[32px]">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="h-10 w-10 bg-accent/10 rounded-2xl flex items-center justify-center">
+              <Clock className="h-5 w-5 text-accent" />
+            </div>
             <div>
-              <p className="text-[10px] font-bold uppercase text-orange-600/70">Platform Health</p>
-              <p className="text-lg font-black">Online</p>
+              <p className="text-[9px] font-black uppercase text-accent/70 tracking-widest">Sync Status</p>
+              <p className="text-xl font-black tracking-tighter uppercase">HEALTHY</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground pl-1">Store Network</h2>
-        <div className="space-y-2">
+      <section className="space-y-4">
+        <h2 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Network Tenants</h2>
+        <div className="space-y-3">
           {isQueryLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing platform state...</div>
+            <div className="p-20 text-center animate-pulse font-black text-muted-foreground uppercase tracking-widest">Connecting to Grid...</div>
           ) : tenants?.map((tenant) => (
-            <Card key={tenant.id} className="border-none shadow-sm rounded-2xl">
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card key={tenant.id} className="border-none shadow-sm rounded-[32px] overflow-hidden group hover:bg-gray-50 transition-colors">
+              <CardContent className="p-6 flex items-center justify-between">
                 <div className="flex-1 min-w-0 pr-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-sm truncate">{tenant.name}</h3>
-                    <Badge variant={tenant.status === 'active' ? 'secondary' : 'destructive'} className="text-[9px] h-4 uppercase font-black px-1.5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-black text-lg uppercase tracking-tight truncate">{tenant.name}</h3>
+                    <Badge variant={tenant.status === 'active' ? 'secondary' : 'destructive'} className="text-[8px] h-5 uppercase font-black px-2 rounded-lg">
                       {tenant.status}
                     </Badge>
                   </div>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1 font-semibold uppercase">
-                    <Clock className="h-3 w-3" />
-                    Expires: {tenant.expiryDate ? format(new Date(tenant.expiryDate), 'MMM dd, yyyy') : 'N/A'}
-                  </p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[9px] text-muted-foreground flex items-center gap-1 font-black uppercase tracking-widest">
+                      <Clock className="h-3 w-3" />
+                      Expires: {tenant.expiryDate ? format(new Date(tenant.expiryDate), 'MMM dd, yyyy') : 'PERMANENT'}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground flex items-center gap-1 font-black uppercase tracking-widest opacity-60">
+                      {tenant.ownerEmail}
+                    </p>
+                  </div>
                 </div>
                 
                 <div className="flex gap-2">
@@ -139,47 +151,48 @@ export default function SuperAdminPage() {
                       <Button 
                         variant="outline" 
                         size="icon" 
-                        className="h-10 w-10 rounded-xl border-none bg-secondary/50 text-primary"
+                        className="h-14 w-14 rounded-2xl border-none bg-gray-100 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
                         onClick={() => {
                           setSelectedTenant(tenant);
                           if (tenant.expiryDate) setExpiryDate(new Date(tenant.expiryDate));
                         }}
                       >
-                        <Settings2 className="h-4 w-4" />
+                        <Settings2 className="h-6 w-6" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-md w-[95%] rounded-3xl border-none">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tighter">Manage Subscription</DialogTitle>
+                    <DialogContent className="max-w-md w-[95%] rounded-[40px] border-none p-0 overflow-hidden bg-background">
+                      <DialogHeader className="p-8 bg-primary text-white">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Shop Control</DialogTitle>
+                        <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mt-1">{tenant.name} Manager</p>
                       </DialogHeader>
-                      <div className="space-y-6 pt-4">
+                      <div className="p-8 space-y-8">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Access Control</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Traffic Control</label>
                           <Button 
                             variant={tenant.status === 'active' ? 'destructive' : 'default'} 
-                            className="w-full h-14 rounded-2xl font-bold uppercase tracking-widest"
+                            className="w-full h-16 rounded-[24px] font-black uppercase tracking-widest shadow-xl text-lg"
                             onClick={() => toggleStatus(tenant)}
                           >
-                            {tenant.status === 'active' ? 'Suspend Access' : 'Activate Store'}
+                            {tenant.status === 'active' ? 'SUSPEND SERVICE' : 'RESTORE SERVICE'}
                           </Button>
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Set Expiry (Syncros V18)</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subscription Deadline (V18)</label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "w-full h-14 justify-start text-left font-normal rounded-xl bg-secondary/30 border-none",
+                                  "w-full h-16 justify-start text-left font-black rounded-[24px] bg-gray-50 border-none shadow-inner px-6",
                                   !expiryDate && "text-muted-foreground"
                                 )}
                               >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                                <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
+                                {expiryDate ? format(expiryDate, "PPP") : <span>Select Expiry</span>}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden" align="center">
+                            <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-[32px] overflow-hidden" align="center">
                               <Calendar
                                 mode="single"
                                 selected={expiryDate}
@@ -190,12 +203,17 @@ export default function SuperAdminPage() {
                           </Popover>
                         </div>
 
-                        <Button 
-                          className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl"
-                          onClick={updateExpiry}
-                        >
-                          SAVE CONFIGURATION
-                        </Button>
+                        <div className="pt-4 space-y-3">
+                          <Button 
+                            className="w-full h-18 rounded-[28px] bg-primary text-white font-black text-xl shadow-2xl"
+                            onClick={updateExpiry}
+                          >
+                            COMMIT CHANGES
+                          </Button>
+                          <Button variant="ghost" className="w-full h-12 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            <ExternalLink className="h-4 w-4 mr-2" /> Audit System Logs
+                          </Button>
+                        </div>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -204,8 +222,9 @@ export default function SuperAdminPage() {
             </Card>
           ))}
           {!isQueryLoading && (!tenants || tenants.length === 0) && (
-            <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-3xl">
-              No tenants found in the network.
+            <div className="p-16 text-center text-muted-foreground border-4 border-dashed rounded-[40px] bg-gray-50/50">
+              <Store className="h-16 w-16 mx-auto mb-4 opacity-10" />
+              <p className="text-xs font-black uppercase tracking-widest">No Active Nodes Found</p>
             </div>
           )}
         </div>

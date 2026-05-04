@@ -8,36 +8,53 @@ import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { ExpenseAITool } from "@/components/dashboard/expense-ai-tool"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useUser } from "@/firebase/provider"
+import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle } from "lucide-react"
+import { cn, formatCurrency } from "@/lib/utils"
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { collection, query, orderBy, limit, where } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 
 export default function DashboardPage() {
-  const { profile, tenant, isUserLoading } = useUser()
+  const { profile, tenant, isUserLoading, user } = useUser()
   const router = useRouter()
+  const db = useFirestore()
+
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!db || !tenant?.id) return null
+    return query(
+      collection(db, "tenants", tenant.id, "transactions"),
+      orderBy("createdAt", "desc"),
+      limit(5)
+    )
+  }, [db, tenant?.id])
+
+  const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
 
   useEffect(() => {
-    if (!isUserLoading && profile?.role === 'staff') {
+    if (!isUserLoading && !user) {
+      router.push("/auth")
+    } else if (!isUserLoading && user && !profile) {
+      router.push("/onboarding")
+    } else if (!isUserLoading && profile?.role === 'staff') {
       router.push('/pos')
     }
-  }, [profile, isUserLoading, router])
+  }, [profile, user, isUserLoading, router])
 
-  if (isUserLoading) return <div className="p-8 text-center animate-pulse">Initializing SaaS session...</div>
+  if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary">SYNCING SAAS STATE...</div>
 
   if (tenant?.status === 'suspended') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6">
-        <div className="h-20 w-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center">
-          <ShieldX className="h-10 w-10" />
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
+        <div className="h-24 w-24 bg-destructive text-white rounded-full flex items-center justify-center shadow-2xl animate-bounce">
+          <ShieldX className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-black text-foreground uppercase tracking-tighter">Subscription Expired</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            Your store access has been suspended. Please contact the system administrator to renew your plan.
+          <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter">Subscription Expired</h1>
+          <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[280px]">
+            Your access to <span className="text-foreground font-black">{tenant.name}</span> has been restricted. Please settle your balance.
           </p>
         </div>
-        <Button className="w-full h-14 rounded-2xl bg-primary font-bold">Contact Support</Button>
+        <Button className="w-full h-16 rounded-[24px] bg-primary font-black text-lg shadow-xl" onClick={() => window.open('mailto:jomsjovelo26@gmail.com')}>CONTACT SUPPORT</Button>
       </div>
     )
   }
@@ -48,27 +65,29 @@ export default function DashboardPage() {
     <div className="p-4 space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">FreshTally</h1>
-          <p className="text-sm text-muted-foreground">Store Overview: {tenant?.name || 'Loading...'}</p>
+          <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">FreshTally</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
+            {tenant?.name || 'STORE MANAGER'}
+          </p>
         </div>
         <div className="flex gap-2">
-          <button className="h-10 w-10 flex items-center justify-center rounded-full bg-secondary text-primary transition-transform active:scale-95">
+          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary transition-all active:scale-90 hover:bg-gray-200">
             <Search className="h-5 w-5" />
           </button>
-          <button className="h-10 w-10 flex items-center justify-center rounded-full bg-secondary text-primary transition-transform active:scale-95 relative">
+          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary transition-all active:scale-90 hover:bg-gray-200 relative">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full border-2 border-background"></span>
+            <span className="absolute top-3 right-3 h-2 w-2 bg-accent rounded-full border-2 border-white animate-pulse"></span>
           </button>
         </div>
       </header>
 
       <DashboardStats />
 
-      <Card className="border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur">
+      <Card className="border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur-[2px] rounded-[32px]">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold flex items-center justify-between">
+          <CardTitle className="text-base font-black flex items-center justify-between uppercase tracking-tighter">
             Revenue Performance
-            <span className="text-xs font-normal text-muted-foreground uppercase tracking-widest">Last 7 Days</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">REAL-TIME</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -78,35 +97,49 @@ export default function DashboardPage() {
 
       <ExpenseAITool />
 
-      <section className="space-y-3 pb-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider pl-1">Recent Transactions</h3>
+      <section className="space-y-4 pb-4">
+        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">
-          {[
-            { id: 1, type: "Sale", amount: "+₱42.50", time: "2 mins ago", status: "Success" },
-            { id: 2, type: "Expense", amount: "-₱120.00", time: "1 hour ago", status: "Pending" },
-            { id: 3, type: "Sale", amount: "+₱15.00", time: "3 hours ago", status: "Success" },
-          ].map((tx) => (
-            <div key={tx.id} className="bg-card p-4 rounded-xl flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-10 w-10 rounded-full flex items-center justify-center",
-                  tx.type === "Sale" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                )}>
-                  {tx.type === "Sale" ? <ShoppingCart className="h-5 w-5" /> : <Package className="h-5 w-5" />}
+          {isTxLoading ? (
+            <div className="p-8 text-center text-muted-foreground animate-pulse">Reading Ledger...</div>
+          ) : transactions && transactions.length > 0 ? (
+            transactions.map((tx) => (
+              <div key={tx.id} className="bg-card p-4 rounded-[24px] flex items-center justify-between shadow-sm border-none">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "h-12 w-12 rounded-[16px] flex items-center justify-center",
+                    tx.type === "Sale" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                  )}>
+                    {tx.type === "Sale" ? <ShoppingCart className="h-6 w-6" /> : <Package className="h-6 w-6" />}
+                  </div>
+                  <div>
+                    <p className="font-black text-sm uppercase tracking-tighter leading-none">{tx.type}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase tracking-widest">
+                      {tx.createdAt ? new Date(tx.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-sm">{tx.type} #{tx.id}</p>
-                  <p className="text-xs text-muted-foreground">{tx.time}</p>
+                <div className="text-right">
+                  <p className={cn("font-black text-sm", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
+                    {tx.type === "Sale" ? "+" : "-"}{formatCurrency(tx.totalAmount || tx.amount || 0)}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">SUCCESS</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className={cn("font-bold text-sm", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
-                  {tx.amount}
-                </p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter">{tx.status}</p>
-              </div>
+            ))
+          ) : (
+            <div className="bg-gray-50 rounded-[32px] p-8 text-center border-2 border-dashed border-gray-200">
+              <PlusCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
+              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No Transactions Found</p>
+              <Button 
+                variant="link" 
+                className="mt-2 text-primary font-black uppercase tracking-tighter"
+                onClick={() => router.push('/pos')}
+              >
+                Start First Sale
+              </Button>
             </div>
-          ))}
+          )}
         </div>
       </section>
 

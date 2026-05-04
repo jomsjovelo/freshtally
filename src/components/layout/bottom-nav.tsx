@@ -1,28 +1,35 @@
+
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingCart, Package, Settings, ShieldAlert } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, ShoppingCart, Package, Settings, ShieldAlert, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase/provider"
+import { getAuth, signOut } from "firebase/auth"
 
 export function BottomNav() {
   const pathname = usePathname()
-  const { profile, tenant, isUserLoading } = useUser()
+  const router = useRouter()
+  const { profile, tenant, isUserLoading, user } = useUser()
 
-  if (tenant?.status === 'suspended') return null;
+  if (pathname === '/auth' || pathname === '/onboarding') return null;
+  if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') return null;
+
+  const handleSignOut = async () => {
+    await signOut(getAuth())
+    router.push('/auth')
+  }
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['owner', 'super_admin'] },
+    { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'super_admin'] },
     { href: "/pos", label: "POS", icon: ShoppingCart, roles: ['staff', 'owner', 'super_admin'] },
     { href: "/inventory", label: "Stock", icon: Package, roles: ['staff', 'owner', 'super_admin'] },
-    { href: "/settings", label: "Settings", icon: Settings, roles: ['owner', 'super_admin'] },
+    { href: "/settings", label: "Set", icon: Settings, roles: ['owner', 'super_admin'] },
   ]
 
-  // Filter items based on roles. Show basic items during loading for better UX,
-  // but strictly restrict SAAS tab to super_admin.
   const filteredItems = (!profile || isUserLoading) 
-    ? navItems 
+    ? navItems.filter(i => i.href === '/pos' || i.href === '/inventory') 
     : navItems.filter(item => 
         profile?.role === 'super_admin' || (profile?.role && item.roles.includes(profile.role))
       )
@@ -30,7 +37,7 @@ export function BottomNav() {
   const isSuperAdmin = !isUserLoading && profile?.role === 'super_admin'
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-border flex items-center justify-around h-16 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
       {filteredItems.map((item) => {
         const isActive = pathname === item.href
         const Icon = item.icon
@@ -39,16 +46,16 @@ export function BottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              "flex flex-col items-center justify-center flex-1 h-full transition-all relative",
+              isActive ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground opacity-60"
             )}
           >
             <Icon className={cn("h-6 w-6", isActive && "fill-current")} />
-            <span className="text-[10px] font-medium mt-1 uppercase tracking-wider">
+            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">
               {item.label}
             </span>
             {isActive && (
-              <div className="absolute top-0 w-12 h-1 bg-primary rounded-b-full" />
+              <div className="absolute -top-1 w-8 h-1 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
             )}
           </Link>
         )
@@ -58,16 +65,26 @@ export function BottomNav() {
         <Link
           href="/super-admin"
           className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
-            pathname === "/super-admin" ? "text-accent" : "text-muted-foreground"
+            "flex flex-col items-center justify-center flex-1 h-full transition-all relative",
+            pathname === "/super-admin" ? "text-accent scale-110" : "text-muted-foreground opacity-60"
           )}
         >
           <ShieldAlert className={cn("h-6 w-6", pathname === "/super-admin" && "fill-current")} />
-          <span className="text-[10px] font-medium mt-1 uppercase tracking-wider">SAAS</span>
+          <span className="text-[9px] font-black mt-1 uppercase tracking-widest">ADMIN</span>
           {pathname === "/super-admin" && (
-            <div className="absolute top-0 w-12 h-1 bg-accent rounded-b-full" />
+            <div className="absolute -top-1 w-8 h-1 bg-accent rounded-full shadow-[0_0_10px_rgba(var(--accent),0.5)]" />
           )}
         </Link>
+      )}
+
+      {user && (
+        <button
+          onClick={handleSignOut}
+          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground opacity-40 hover:opacity-100 transition-opacity"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="text-[9px] font-black mt-1 uppercase tracking-widest">EXIT</span>
+        </button>
       )}
     </nav>
   )
