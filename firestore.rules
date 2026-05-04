@@ -3,29 +3,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Heartbeat: Security Sync V3 - Resilient Ownership Fallback
-    
+    // Core helpers for resilient authorization
     function isSignedIn() { 
       return request.auth != null; 
     }
     
     function isSuperAdmin() {
-      if (!isSignedIn()) return false;
       let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return exists(p) && get(p).data.role == 'super_admin';
+      return isSignedIn() && exists(p) && get(p).data.role == 'super_admin';
     }
     
+    // Resilient Membership Check: Checks Profile OR direct email ownership
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
       
       let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // 1. Profile Layer: Check the tenantId stored in the user's verified profile
+      // 1. Profile Layer: Check the tenantId stored in the user's profile document
       let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
-      // 2. Token Layer Fallback: Check if the user's auth email matches the tenant ownerEmail
-      // This is more resilient immediately after registration before profile indexing completes.
+      // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
+      // This is immediate and immune to profile propagation delays.
       let isOwnerByEmail = exists(tenantPath) && 
                           request.auth.token.email != null &&
                           get(tenantPath).data.ownerEmail.toLower() == request.auth.token.email.toLower();
@@ -50,10 +49,10 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Owners can create their own tenant node
+      // Allow creation for any signed-in user initializing their store
       allow create: if isSignedIn();
       
-      // Access allowed for members, owners (via email fallback), or system admins
+      // Access allowed for verified members, owners, or super admins
       allow read, update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
       // Cascade permissions to all sub-nodes (products, transactions, etc.)

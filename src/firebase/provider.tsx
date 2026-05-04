@@ -87,7 +87,8 @@ export const FirebaseProvider: React.FC<{
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Profile might be in creation phase. Keep loading state active.
+          // Profile might be in creation phase. 
+          // Keep loading but don't error out yet.
           return;
         }
 
@@ -106,12 +107,11 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Ignore transient permission errors during propagation
+            // Handle transient permission issues during propagation
             if (err.code === 'permission-denied') return;
             setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
           });
         } else {
-          // Likely a super_admin or user without a store yet
           setAuthState({
             user,
             profile: profileData,
@@ -121,6 +121,7 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
+        // Handle transient permission issues during initial registration flow
         if (err.code === 'permission-denied') return;
         setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
       });
