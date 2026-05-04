@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "business-logo",
+      "description": "Professional business logo placeholder",
+      "imageUrl": "https://picsum.photos/seed/fresh1/200/200",
+      "imageHint": "business logo"
+    },
+    {
+      "id": "product-coffee",
+      "description": "Coffee beans product image",
+      "imageUrl": "https://picsum.photos/seed/coffee/400/400",
+      "imageHint": "coffee beans"
+    },
+    {
+      "id": "product-pastry",
+      "description": "Fresh pastry product image",
+      "imageUrl": "https://picsum.photos/seed/pastry/400/400",
+      "imageHint": "pastry"
+    },
+    {
+      "id": "dashboard-hero",
+      "description": "Dashboard analytics background",
+      "imageUrl": "https://picsum.photos/seed/stats/800/400",
+      "imageHint": "analytics data"
+    }
+  ]
+}
