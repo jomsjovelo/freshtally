@@ -14,18 +14,21 @@ service cloud.firestore {
     }
     
     // Robust membership check with direct email ownership fallback.
-    // This handles propagation lag for new owners.
+    // This handles propagation lag for new owners and provides a secondary security layer.
     function canAccessTenant(tId) {
+      if (!isSignedIn()) { return false; }
+      if (isSuperAdmin()) { return true; }
+
       let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      let tPath = /databases/$(database)/documents/tenants/$(tId);
-      
       let profileExists = exists(pPath);
-      let tenantExists = exists(tPath);
-      
       let hasProfileAccess = profileExists && get(pPath).data.tenantId == tId;
+      
+      // Secondary fallback: Direct check on the tenant document for ownership
+      let tPath = /databases/$(database)/documents/tenants/$(tId);
+      let tenantExists = exists(tPath);
       let isOwnerFallback = tenantExists && get(tPath).data.ownerEmail.lower() == request.auth.token.email.lower();
       
-      return isSignedIn() && (isSuperAdmin() || hasProfileAccess || isOwnerFallback);
+      return hasProfileAccess || isOwnerFallback;
     }
 
     match /userProfiles/{userId} {

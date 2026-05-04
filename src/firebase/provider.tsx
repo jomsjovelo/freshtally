@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     let settlingTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Immediate cleanup of all previous listeners and timeouts
+      // Cleanup previous listeners
       if (retryTimeout) clearTimeout(retryTimeout);
       if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
@@ -93,9 +93,8 @@ export const FirebaseProvider: React.FC<{
         
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            // Document creation delay handling - retry until profile exists
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 1500);
+            retryTimeout = setTimeout(setupSync, 1000);
             return;
           }
 
@@ -107,7 +106,7 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // FRESHTALLY V2: Mandatory 5-second rules propagation buffer
+                // FRESHTALLY V3: Optimized 3-second rules propagation buffer
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -117,22 +116,22 @@ export const FirebaseProvider: React.FC<{
                     isUserLoading: false,
                     userError: null
                   });
-                }, 5000);
+                }, 3000);
               } else {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 1500);
+                retryTimeout = setTimeout(setupSync, 1000);
               }
             }, (err) => {
-              // Gracefully handle propagation lag in security rules
+              // Silent retry on transient permission errors during initial sync
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 2000);
+                retryTimeout = setTimeout(setupSync, 1500);
                 return;
               }
               setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
             });
           } else {
-            // Super Admin or Onboarding needed - Add same settling buffer for consistency
+            // Super Admin or Onboarding needed
             if (settlingTimeout) clearTimeout(settlingTimeout);
             settlingTimeout = setTimeout(() => {
               setAuthState({
@@ -142,12 +141,12 @@ export const FirebaseProvider: React.FC<{
                 isUserLoading: false,
                 userError: null
               });
-            }, 5000);
+            }, 3000);
           }
         }, (err) => {
           if (err.code === 'permission-denied') {
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 2000);
+            retryTimeout = setTimeout(setupSync, 1500);
             return;
           }
           setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
