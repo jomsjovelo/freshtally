@@ -1,7 +1,6 @@
-
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
@@ -33,6 +32,13 @@ export default function DashboardPage() {
   const isOwner = profile?.role === 'owner'
   const isStaff = profile?.role === 'staff'
 
+  // Stable date reference for the broadcast query to prevent re-renders
+  const stableNow = useMemo(() => {
+    const d = new Date()
+    d.setSeconds(0, 0) // Stable within the same minute
+    return d.toISOString()
+  }, [])
+
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id || isSuperAdmin) return null
     return query(
@@ -51,11 +57,11 @@ export default function DashboardPage() {
     if (!db || !user) return null
     return query(
       collection(db, "platform_broadcasts"),
-      where("activeUntil", ">=", new Date().toISOString()),
+      where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user])
+  }, [db, user, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)

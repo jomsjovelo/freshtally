@@ -1,34 +1,28 @@
 rules_version = '2';
 
-// FRESHTALLY SECURITY RULES - V2.1.0
-// Deployment Sync Heartbeat: 2024-05-04T08:45:00Z
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
     function isSignedIn() { return request.auth != null; }
     
-    // Safely retrieve user data, returning null if the document doesn't exist
-    function getUserData() {
-      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
+    // Helper to get the user's profile data
+    function getProfile() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
     }
     
+    // Check if user is a super admin
     function isSuperAdmin() { 
-      let profile = getUserData();
-      return isSignedIn() && profile != null && profile.role == 'super_admin'; 
+      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return isSignedIn() && exists(profilePath) && get(profilePath).data.role == 'super_admin'; 
     }
     
+    // Check if user belongs to the specified tenant
     function isMemberOf(tenantId) { 
-      let profile = getUserData();
-      return isSignedIn() && profile != null && string(profile.tenantId) == string(tenantId); 
+      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return isSignedIn() && exists(profilePath) && string(get(profilePath).data.tenantId) == string(tenantId); 
     }
     
-    function isTenantOwner(tenantId) { 
-      let profile = getUserData();
-      return isMemberOf(tenantId) && profile.role == 'owner'; 
-    }
-    
+    // Check if the tenant is active
     function isTenantActive(tenantId) { 
       let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
       return exists(tenantPath) && get(tenantPath).data.status == 'active'; 
@@ -51,33 +45,30 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Allow any signed-in user to 'get' a tenant to verify Store IDs or join
-      allow get: if isSignedIn() || isSuperAdmin();
+      // Allow any signed-in user to 'get' a tenant to verify IDs
+      allow get: if isSignedIn();
       allow list: if isSuperAdmin();
       
-      // Allow owners to create their tenant during registration
+      // Allow owners to create their tenant
       allow create: if isSignedIn() && request.resource.data.ownerEmail == request.auth.token.email;
       
-      allow update: if (isTenantOwner(tenantId) && request.resource.data.status == resource.data.status) || isSuperAdmin();
+      // Allow updates if owner or super admin
+      allow update: if isSuperAdmin() || (isMemberOf(tenantId) && getProfile().role == 'owner' && request.resource.data.status == resource.data.status);
       
       match /b2bClients/{clientId} {
-        allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
       
       match /reconciliations/{recId} {
-        allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
 
       match /products/{productId} {
-        allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
 
       match /transactions/{txId} {
-        allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow create: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow read, create: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
     }
   }
