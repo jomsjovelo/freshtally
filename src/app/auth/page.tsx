@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, LogIn, Store, Users, MapPin } from "lucide-react"
+import { ShieldCheck, LogIn, Store, Users, MapPin, Loader2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AuthPage() {
@@ -34,13 +34,16 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (authMode !== "login" && password !== confirmPassword) {
-      toast({
-        title: "Validation Error",
-        description: "Passwords do not match.",
-        variant: "destructive"
-      })
-      return
+    // Validation
+    if (authMode !== "login") {
+      if (password !== confirmPassword) {
+        toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
+        return
+      }
+      if (password.length < 6) {
+        toast({ title: "Weak Password", description: "Password must be at least 6 characters.", variant: "destructive" })
+        return
+      }
     }
 
     setLoading(true)
@@ -50,12 +53,12 @@ export default function AuthPage() {
         router.push("/")
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
-        if (!ownerName.trim()) throw new Error("Owner name is required.")
+        if (!ownerName.trim()) throw new Error("Full name is required.")
         if (!storeAddress.trim()) throw new Error("Business address is required.")
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         
-        // GENESIS ADMIN CHECK - Hardcoded master account
+        // GENESIS ADMIN CHECK
         const adminEmail = "jomsjovelo@gmail.com"
         if (user.email === adminEmail) {
           await setDoc(doc(db, "userProfiles", user.uid), {
@@ -66,7 +69,7 @@ export default function AuthPage() {
             name: ownerName || "System Owner",
             createdAt: serverTimestamp()
           })
-          toast({ title: "Genesis Active", description: "System Owner privileges granted." })
+          toast({ title: "Genesis Activated", description: "Welcome back, System Owner." })
           router.push("/")
           return
         }
@@ -96,14 +99,13 @@ export default function AuthPage() {
           createdAt: serverTimestamp()
         })
 
-        toast({ title: "Store Created", description: `${businessName} is now live with ID: ${tenantId}.` })
+        toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
         router.push("/")
       } else if (authMode === "join_staff") {
-        if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required to join.")
+        if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
-        // Verify tenant exists
         const tenantDoc = await getDoc(doc(db, "tenants", tenantIdInput))
-        if (!tenantDoc.exists()) throw new Error("Invalid Store ID. Please check with your manager.")
+        if (!tenantDoc.exists()) throw new Error("Invalid Store ID. Check with your manager.")
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
 
@@ -116,13 +118,20 @@ export default function AuthPage() {
           createdAt: serverTimestamp()
         })
 
-        toast({ title: "Welcome to the Team", description: `Successfully joined ${tenantDoc.data().name}.` })
+        toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
         router.push("/")
       }
     } catch (error: any) {
+      let message = error.message
+      if (error.code === 'auth/email-already-in-use') {
+        message = "Account already exists. Please login instead."
+      } else if (error.code === 'auth/weak-password') {
+        message = "Password is too weak. Min 6 characters."
+      }
+      
       toast({
-        title: "Access Denied",
-        description: error.message,
+        title: "Authentication Failed",
+        description: message,
         variant: "destructive"
       })
     } finally {
@@ -172,9 +181,7 @@ export default function AuthPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                      Full Legal Name
-                    </Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Legal Name</Label>
                     <Input 
                       placeholder="e.g. Juan Dela Cruz" 
                       className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
@@ -230,7 +237,7 @@ export default function AuthPage() {
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
                 <Input 
                   type="password" 
-                  placeholder="••••••••" 
+                  placeholder="Min 6 characters" 
                   className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -240,7 +247,7 @@ export default function AuthPage() {
 
               {authMode !== "login" && (
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Identity</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
                   <Input 
                     type="password" 
                     placeholder="Repeat Password" 
@@ -256,8 +263,14 @@ export default function AuthPage() {
                 className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 active:scale-[0.98] transition-all mt-6" 
                 disabled={loading}
               >
-                {loading ? "AUTHENTICATING..." : authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF"}
-                {authMode === "login" ? <LogIn className="ml-2 h-4 w-4" /> : authMode === "register_owner" ? <Store className="ml-2 h-4 w-4" /> : <Users className="ml-2 h-4 w-4" />}
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    {authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF"}
+                    {authMode === "login" ? <LogIn className="ml-2 h-4 w-4" /> : authMode === "register_owner" ? <Store className="ml-2 h-4 w-4" /> : <Users className="ml-2 h-4 w-4" />}
+                  </>
+                )}
               </Button>
             </form>
           </Tabs>
