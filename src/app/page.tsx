@@ -14,7 +14,7 @@ import { collection, query, orderBy, limit, where } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-// Lazy-load heavy components to reduce initial JS payload
+// Lazy-load heavy components
 const RevenueChart = dynamic(() => import("@/components/dashboard/revenue-chart").then(mod => mod.RevenueChart), {
   ssr: false,
   loading: () => <div className="h-[180px] w-full bg-muted/20 animate-pulse rounded-2xl" />
@@ -133,7 +133,7 @@ export default function DashboardPage() {
         </div>
 
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent platform Activity</h3>
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
           <div className="space-y-2">
             {tenants?.slice(0, 5).map(t => (
               <div key={t.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
@@ -226,7 +226,6 @@ export default function DashboardPage() {
       {isOwner && (
         <>
           <DashboardStats />
-
           <Card className="border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur-[2px] rounded-[32px]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-black flex items-center justify-between uppercase tracking-tighter">
@@ -238,12 +237,11 @@ export default function DashboardPage() {
               <RevenueChart />
             </CardContent>
           </Card>
-
           <ExpenseAITool />
         </>
       )}
 
-      {/* RECENT ACTIVITY (VISIBLE TO BOTH) */}
+      {/* RECENT ACTIVITY */}
       <section className="space-y-4 pb-4">
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">
@@ -277,13 +275,6 @@ export default function DashboardPage() {
             <div className="bg-gray-50 rounded-[32px] p-8 text-center border-2 border-dashed border-gray-200">
               <PlusCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
               <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No Activity</p>
-              <Button 
-                variant="link" 
-                className="mt-2 text-primary font-black uppercase tracking-tighter"
-                onClick={() => router.push('/pos')}
-              >
-                Start First Sale
-              </Button>
             </div>
           )}
         </div>

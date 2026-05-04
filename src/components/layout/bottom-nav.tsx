@@ -39,10 +39,8 @@ export function BottomNav() {
   const navItems = profile?.role === 'super_admin' ? adminNav : tenantNav
 
   const filteredItems = (!profile || isUserLoading) 
-    ? navItems.filter(i => i.href === '/pos' || i.href === '/inventory') 
-    : navItems.filter(item => 
-        profile?.role === 'super_admin' || (profile?.role && item.roles.includes(profile.role))
-      )
+    ? [] 
+    : navItems.filter(item => item.roles.includes(profile.role))
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
@@ -63,7 +61,7 @@ export function BottomNav() {
               {item.label}
             </span>
             {isActive && (
-              <div className="absolute -top-1 w-8 h-1 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+              <div className="absolute -top-1 w-8 h-1 bg-primary rounded-full" />
             )}
           </Link>
         )

@@ -57,7 +57,7 @@ export default function AuthPage() {
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         
-        // GENESIS ADMIN CHECK
+        // GENESIS ADMIN CHECK - Hardcoded master account
         const adminEmail = "jomsjovelo@gmail.com"
         if (user.email === adminEmail) {
           await setDoc(doc(db, "userProfiles", user.uid), {

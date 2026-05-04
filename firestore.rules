@@ -16,7 +16,7 @@ service cloud.firestore {
     match /userProfiles/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && (request.auth.uid == userId || isTenantOwner(getUserProfile().tenantId));
+      allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
     }
 
     match /platform_broadcasts/{broadcastId} {
@@ -32,21 +32,21 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow read: if isMemberOf(tenantId) || isSuperAdmin();
       allow write: if isSuperAdmin();
-      allow update: if isTenantOwner(tenantId) && request.resource.data.status == resource.data.status;
+      allow update: if (isTenantOwner(tenantId) && request.resource.data.status == resource.data.status) || isSuperAdmin();
       
       match /b2bClients/{clientId} {
         allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow write: if (isTenantOwner(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
       
       match /reconciliations/{recId} {
         allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow write: if (isTenantOwner(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
 
       match /products/{productId} {
         allow read: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
-        allow write: if (isTenantOwner(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
+        allow write: if (isMemberOf(tenantId) && isTenantActive(tenantId)) || isSuperAdmin();
       }
 
       match /transactions/{txId} {
