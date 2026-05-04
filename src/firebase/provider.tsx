@@ -123,27 +123,31 @@ export const FirebaseProvider: React.FC<{
                 retryTimeout = setTimeout(setupSync, 1500);
               }
             }, (err) => {
+              // Gracefully handle propagation lag in security rules
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 1500);
+                retryTimeout = setTimeout(setupSync, 2000);
                 return;
               }
               setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
             });
           } else {
-            // Super Admin or Onboarding needed
-            setAuthState({
-              user,
-              profile: profileData,
-              tenant: null,
-              isUserLoading: false,
-              userError: null
-            });
+            // Super Admin or Onboarding needed - Add same settling buffer for consistency
+            if (settlingTimeout) clearTimeout(settlingTimeout);
+            settlingTimeout = setTimeout(() => {
+              setAuthState({
+                user,
+                profile: profileData,
+                tenant: null,
+                isUserLoading: false,
+                userError: null
+              });
+            }, 5000);
           }
         }, (err) => {
           if (err.code === 'permission-denied') {
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 1500);
+            retryTimeout = setTimeout(setupSync, 2000);
             return;
           }
           setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));

@@ -13,13 +13,17 @@ service cloud.firestore {
       return isSignedIn() && exists(pPath) && get(pPath).data.role == 'super_admin';
     }
     
-    // Optimized membership check with email-based fallback for owners to bypass propagation lag.
+    // Robust membership check with direct email ownership fallback.
+    // This handles propagation lag for new owners.
     function canAccessTenant(tId) {
       let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let tPath = /databases/$(database)/documents/tenants/$(tId);
       
-      let hasProfileAccess = exists(pPath) && get(pPath).data.tenantId == tId;
-      let isOwnerFallback = exists(tPath) && get(tPath).data.ownerEmail.lower() == request.auth.token.email.lower();
+      let profileExists = exists(pPath);
+      let tenantExists = exists(tPath);
+      
+      let hasProfileAccess = profileExists && get(pPath).data.tenantId == tId;
+      let isOwnerFallback = tenantExists && get(tPath).data.ownerEmail.lower() == request.auth.token.email.lower();
       
       return isSignedIn() && (isSuperAdmin() || hasProfileAccess || isOwnerFallback);
     }
@@ -44,8 +48,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read, update: if canAccessTenant(tenantId);
       
-      // RECURSIVE DATA ACCESS
-      // Hardened recursive match for all store sub-collections.
+      // RECURSIVE DATA ACCESS: Hardened for all store sub-collections.
       match /{allSubcollections=**} {
         allow read, write: if canAccessTenant(tenantId);
       }

@@ -39,9 +39,11 @@ export default function DashboardPage() {
   }, [])
 
   // FRESHTALLY V2: Extreme Gating logic to prevent permission errors before rules propagation
+  // We verify that the user ID from auth matches the profile, AND the tenant context is fully settled.
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId) return null
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
+    if (user.uid !== profile.uid) return null
 
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
