@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Tenant": {
@@ -8,6 +7,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "address": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "suspended"] },
         "subscriptionPlan": { "type": "string", "enum": ["basic", "pro", "enterprise"] },
         "expiryDate": { "type": "string", "format": "date-time" },

@@ -12,20 +12,16 @@ import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/card-custom"
 import { useToast } from "@/hooks/use-toast"
 import { ShieldCheck, LogIn, Store, Upload } from "lucide-react"
-
-// Simple wrapper since we are updating branding
-function CardCustom({ children, className }: { children: React.ReactNode, className?: string }) {
-  return <div className={`bg-card rounded-[32px] shadow-2xl overflow-hidden ${className}`}>{children}</div>
-}
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [businessName, setBusinessName] = useState("")
+  const [storeAddress, setStoreAddress] = useState("")
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -36,6 +32,16 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!isLogin && password !== confirmPassword) {
+      toast({
+        title: "Validation Error",
+        description: "Passwords do not match.",
+        variant: "destructive"
+      })
+      return
+    }
+
     setLoading(true)
     try {
       if (isLogin) {
@@ -43,7 +49,10 @@ export default function AuthPage() {
         router.push("/")
       } else {
         if (!businessName.trim()) {
-          throw new Error("Business name is required for registration.")
+          throw new Error("Business name is required.")
+        }
+        if (!storeAddress.trim()) {
+          throw new Error("Store address is required.")
         }
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
@@ -77,6 +86,7 @@ export default function AuthPage() {
         await setDoc(doc(db, "tenants", tenantId), {
           id: tenantId,
           name: businessName,
+          address: storeAddress,
           logoUrl,
           status: "active",
           subscriptionPlan: "basic",
@@ -115,8 +125,8 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
-      <div className="w-full max-w-sm bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100">
-        <div className="text-center pt-10 pb-8 bg-primary text-white px-6">
+      <div className="w-full max-sm bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+        <div className="text-center pt-10 pb-8 bg-primary text-white px-6 shrink-0">
           <div className="h-20 w-20 bg-white/20 rounded-[28px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
             <ShieldCheck className="h-10 w-10 text-white" />
           </div>
@@ -128,7 +138,7 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <div className="p-8 space-y-5">
+        <div className="p-8 space-y-5 overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -159,6 +169,16 @@ export default function AuthPage() {
                     </div>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Address</Label>
+                  <Input 
+                    placeholder="123 Market St, City, Province" 
+                    className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
+                    value={storeAddress}
+                    onChange={(e) => setStoreAddress(e.target.value)}
+                    required={!isLogin}
+                  />
+                </div>
               </div>
             )}
 
@@ -174,7 +194,7 @@ export default function AuthPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Security Key</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
               <Input 
                 type="password" 
                 placeholder="••••••••" 
@@ -184,6 +204,20 @@ export default function AuthPage() {
                 required
               />
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+            )}
 
             <Button className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 active:scale-95 transition-all" disabled={loading}>
               {loading ? "INITIALIZING..." : isLogin ? "LOGIN ACCESS" : "REGISTER STORE"}
