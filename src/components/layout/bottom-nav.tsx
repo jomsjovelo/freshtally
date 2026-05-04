@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -20,13 +19,15 @@ export function BottomNav() {
     { href: "/settings", label: "Settings", icon: Settings, roles: ['owner', 'super_admin'] },
   ]
 
-  // If loading or profile doc doesn't exist yet, show all items for a better onboarding/dev experience
-  // Otherwise, filter strictly by role
+  // Filter items based on roles. Show basic items during loading for better UX,
+  // but strictly restrict SAAS tab to super_admin.
   const filteredItems = (!profile || isUserLoading) 
     ? navItems 
     : navItems.filter(item => 
         profile?.role === 'super_admin' || (profile?.role && item.roles.includes(profile.role))
       )
+
+  const isSuperAdmin = !isUserLoading && profile?.role === 'super_admin'
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-border flex items-center justify-around h-16 z-50">
@@ -52,16 +53,20 @@ export function BottomNav() {
           </Link>
         )
       })}
-      {(profile?.role === 'super_admin' || !profile) && (
+      
+      {isSuperAdmin && (
         <Link
           href="/super-admin"
           className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full transition-colors",
+            "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
             pathname === "/super-admin" ? "text-accent" : "text-muted-foreground"
           )}
         >
-          <ShieldAlert className="h-6 w-6" />
-          <span className="text-[10px] font-medium mt-1 uppercase tracking-wider">SaaS</span>
+          <ShieldAlert className={cn("h-6 w-6", pathname === "/super-admin" && "fill-current")} />
+          <span className="text-[10px] font-medium mt-1 uppercase tracking-wider">SAAS</span>
+          {pathname === "/super-admin" && (
+            <div className="absolute top-0 w-12 h-1 bg-accent rounded-b-full" />
+          )}
         </Link>
       )}
     </nav>
