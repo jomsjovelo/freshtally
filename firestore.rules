@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * FreshTally Security Rules
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset implements a strict multi-tenant authorization model. Access to data is 
+     * partitioned by a `tenantId`. User permissions are determined by a UserProfile document 
+     * (found at /userProfiles/{userId}) which links a Firebase Authentication UID to a specific 
+     * Tenant and assigns a Role (e.g., 'owner', 'staff').
+     *
+     * DATA STRUCTURE:
+     * - /userProfiles/{userId}: Global user registry containing tenant association and roles.
+     * - /tenants/{tenantId}: Root metadata for a business instance.
+     * - /tenants/{tenantId}/...: Tenant-specific operational data (products, transactions, expenses).
+     *
+     * KEY SECURITY DECISIONS:
+     * 1. Authorization Independence: Every document within a tenant's subcollections contains 
+     *    a denormalized `tenantId`. This allows rules to verify access by comparing the user's 
+     *    assigned tenantId against the document's data without deep tree walking.
+     * 2. Role-Based Access: Operations are differentiated by role. For example, 'staff' can 
+     *    typically read data and create transactions, while 'owner' is required for destructive 
+     *    actions or tenant configuration.
+     * 3. Prototyping Flexibility: Rules focus on "Who" can access "What" rather than the "Shape" 
+     *    of the data. Field types and optionality are not enforced to allow for rapid iteration.
+     * 4. Relational Integrity: On creation of nested data, the rules enforce that the `tenantId` 
+     *    in the document body matches the `tenantId` in the URL path.
+     */
+
+    // --- HELPER FUNCTIONS ---
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the user's UID matches the provided ID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Retrieves the UserProfile document for the currently authenticated user. */
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
+    }
+
+    /** @description Checks if the user belongs to the specified tenant. */
+    function isMemberOf(tenantId) {
+      return isSignedIn() && getUserProfile().tenantId == tenantId;
+    }
+
+    /** @description Checks if the user has a specific role. */
+    function hasRole(role) {
+      return isSignedIn() && getUserProfile().role == role;
+    }
+
+    /** @description Combines member check and role check for higher-privilege operations. */
+    function isTenantAdmin(tenantId) {
+      return isMemberOf(tenantId) && (hasRole('owner') || hasRole('admin'));
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for the UserProfile collection. Users can manage their own profiles, 
+     * and Tenant owners can view/manage profiles belonging to their tenant.
+     * @path /userProfiles/{userId}
+     * @allow (get) If the user is the owner of the profile or an owner in the same tenant.
+     * @deny (create) If the user attempts to create a profile for a different UID.
+     * @principle Pattern 1 (Ownership) & Pattern 4 (Self-Creation).
+     */
+    match /userProfiles/{userId} {
+      allow get: if isOwner(userId) || (isSignedIn() && getUserProfile().role == 'owner' && getUserProfile().tenantId == resource.data.tenantId);
+      allow list: if isSignedIn() && getUserProfile().role == 'owner';
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) && resource != null) || (isSignedIn() && getUserProfile().role == 'owner' && getUserProfile().tenantId == resource.data.tenantId);
+      allow delete: if false; // Profiles are typically deactivated, not deleted.
+    }
+
+    /**
+     * @description Rules for Tenant metadata. Only members can read, and only owners can update.
+     * @path /tenants/{tenantId}
+     * @allow (update) If the user is an 'owner' assigned to this tenantId.
+     * @deny (get) If the user is not assigned to this tenantId.
+     * @principle Pattern 3 (Shared Access / Closed Collaborators).
+     */
+    match /tenants/{tenantId} {
+      allow get, list: if isMemberOf(tenantId);
+      allow create: if isSignedIn(); // Allow initial creation during onboarding.
+      allow update: if isTenantAdmin(tenantId) && resource != null;
+      allow delete: if false; // Tenant deletion is a high-risk administrative action.
+    }
+
+    /**
+     * @description Rules for Products. All tenant members can view, but only admins/owners can modify.
+     * @path /tenants/{tenantId}/products/{productId}
+     * @allow (create) If member of tenant and data.tenantId matches path.tenantId.
+     * @deny (update) If the user is a 'staff' role (assuming only owners manage inventory).
+     * @principle Pattern 3 (Shared Access) & P5 (Relational Integrity).
+     */
+    match /tenants/{tenantId}/products/{productId} {
+      allow get, list: if isMemberOf(tenantId);
+      allow create: if isTenantAdmin(tenantId) && request.resource.data.tenantId == tenantId;
+      allow update: if isTenantAdmin(tenantId) && resource != null && request.resource.data.tenantId == resource.data.tenantId;
+      allow delete: if isTenantAdmin(tenantId) && resource != null;
+    }
+
+    /**
+     * @description Rules for Transactions. Any staff or owner in the tenant can create and view.
+     * @path /tenants/{tenantId}/transactions/{transactionId}
+     * @allow (create) If user is a member of the tenant.
+     * @deny (delete) Transactions should be immutable for audit purposes.
+     * @principle Pattern 3 (Shared Access) & P7 (Robustness).
+     */
+    match /tenants/{tenantId}/transactions/{transactionId} {
+      allow get, list: if isMemberOf(tenantId);
+      allow create: if isMemberOf(tenantId) && request.resource.data.tenantId == tenantId;
+      allow update: if isTenantAdmin(tenantId) && resource != null;
+      allow delete: if false; // Point-of-sale data should not be deleted.
+      
+      /**
+       * @description Rules for line items within a transaction.
+       * @path /tenants/{tenantId}/transactions/{transactionId}/transactionItems/{itemId}
+       */
+      match /transactionItems/{itemId} {
+        allow get, list: if isMemberOf(tenantId);
+        allow create: if isMemberOf(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.transactionId == transactionId;
+        allow update: if isTenantAdmin(tenantId) && resource != null;
+        allow delete: if false;
+      }
+    }
+
+    /**
+     * @description Rules for Expenses. Only owners or specifically authorized staff can view/edit.
+     * @path /tenants/{tenantId}/expenses/{expenseId}
+     * @allow (list) If user is a tenant owner.
+     * @deny (get) If user is a member but not an owner (Expenses are often sensitive).
+     * @principle Access restriction based on specific role within the tenant.
+     */
+    match /tenants/{tenantId}/expenses/{expenseId} {
+      allow get, list: if isTenantAdmin(tenantId);
+      allow create: if isTenantAdmin(tenantId) && request.resource.data.tenantId == tenantId;
+      allow update: if isTenantAdmin(tenantId) && resource != null && request.resource.data.tenantId == resource.data.tenantId;
+      allow delete: if isTenantAdmin(tenantId) && resource != null;
+    }
+
+  }
+}
