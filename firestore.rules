@@ -17,11 +17,14 @@ service cloud.firestore {
       let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let t = /databases/$(database)/documents/tenants/$(tId);
       
-      // Dual-layered verification for resilience during indexing/propagation
-      let profileMatch = exists(p) && string(get(p).data.tenantId) == string(tId);
-      let ownerMatch = exists(t) && get(t).data.ownerEmail == request.auth.token.email;
+      // Dual-layered verification for resilience during indexing/propagation.
+      // 1. Direct Ownership Check: Compares token email with tenant ownerEmail (case-insensitive fallback).
+      // 2. Profile Check: Verifies tenantId stored in the user's profile document.
       
-      return profileMatch || ownerMatch;
+      let emailMatch = exists(t) && get(t).data.ownerEmail.toLower() == request.auth.token.email.toLower();
+      let profileMatch = exists(p) && get(p).data.tenantId == tId;
+      
+      return emailMatch || profileMatch;
     }
 
     match /userProfiles/{userId} {
@@ -42,8 +45,7 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
-      allow update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      allow read, update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());

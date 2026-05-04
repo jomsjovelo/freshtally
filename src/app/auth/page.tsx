@@ -36,6 +36,8 @@ export default function AuthPage() {
     e.preventDefault()
     setError(null)
     
+    const normalizedEmail = email.trim().toLowerCase()
+    
     if (authMode !== "login") {
       if (password !== confirmPassword) {
         toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
@@ -50,14 +52,14 @@ export default function AuthPage() {
     setLoading(true)
     try {
       if (authMode === "login") {
-        await signInWithEmailAndPassword(auth, email, password)
+        await signInWithEmailAndPassword(auth, normalizedEmail, password)
         router.push("/")
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
         if (!ownerName.trim()) throw new Error("Full name is required.")
         if (!storeAddress.trim()) throw new Error("Business address is required.")
 
-        const { user } = await createUserWithEmailAndPassword(auth, email, password)
+        const { user } = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
         const batch = writeBatch(db)
 
         // GENESIS ADMIN CHECK
@@ -90,14 +92,14 @@ export default function AuthPage() {
           status: "active",
           subscriptionPlan: "basic",
           expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          ownerEmail: user.email,
+          ownerEmail: user.email?.toLowerCase() || normalizedEmail,
           currency: "PHP",
           createdAt: serverTimestamp()
         })
 
         batch.set(profileRef, {
           uid: user.uid,
-          email: user.email,
+          email: user.email?.toLowerCase() || normalizedEmail,
           role: "owner",
           tenantId: tenantId,
           name: ownerName,
@@ -113,12 +115,12 @@ export default function AuthPage() {
         const tenantDoc = await getDoc(doc(db, "tenants", tenantIdInput))
         if (!tenantDoc.exists()) throw new Error("Invalid Store ID. Check with your manager.")
 
-        const { user } = await createUserWithEmailAndPassword(auth, email, password)
+        const { user } = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
         const profileRef = doc(db, "userProfiles", user.uid)
 
         await setDoc(profileRef, {
           uid: user.uid,
-          email: user.email,
+          email: user.email?.toLowerCase() || normalizedEmail,
           role: "staff",
           tenantId: tenantIdInput,
           name: ownerName || "Shop Staff",
