@@ -29,17 +29,29 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 
 export default function SuperAdminPage() {
-  const { profile } = useUser()
+  const { profile, isUserLoading } = useUser()
   const db = useFirestore()
   const [selectedTenant, setSelectedTenant] = useState<any>(null)
   const [expiryDate, setExpiryDate] = useState<Date>(new Date())
 
   const tenantsQuery = useMemoFirebase(() => {
-    if (!db) return null
+    // Crucial: Only initiate the query if the user is logged in and confirmed as a super_admin
+    if (!db || isUserLoading || profile?.role !== 'super_admin') return null
     return collection(db, "tenants")
-  }, [db])
+  }, [db, isUserLoading, profile?.role])
 
-  const { data: tenants, isLoading } = useCollection(tenantsQuery)
+  const { data: tenants, isLoading: isQueryLoading } = useCollection(tenantsQuery)
+
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8 text-center">
+        <div className="space-y-4">
+          <Clock className="h-12 w-12 text-primary animate-spin mx-auto" />
+          <p className="text-muted-foreground font-medium">Verifying platform access...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (profile?.role !== 'super_admin') {
     return (
@@ -93,8 +105,8 @@ export default function SuperAdminPage() {
           <CardContent className="p-4 flex items-center gap-3">
             <Clock className="h-5 w-5 text-orange-600" />
             <div>
-              <p className="text-[10px] font-bold uppercase text-orange-600/70">Expiring</p>
-              <p className="text-lg font-black">2</p>
+              <p className="text-[10px] font-bold uppercase text-orange-600/70">Platform Health</p>
+              <p className="text-lg font-black">Online</p>
             </div>
           </CardContent>
         </Card>
@@ -103,7 +115,7 @@ export default function SuperAdminPage() {
       <section className="space-y-3">
         <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground pl-1">Store Network</h2>
         <div className="space-y-2">
-          {isLoading ? (
+          {isQueryLoading ? (
             <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing platform state...</div>
           ) : tenants?.map((tenant) => (
             <Card key={tenant.id} className="border-none shadow-sm rounded-2xl">
@@ -191,6 +203,11 @@ export default function SuperAdminPage() {
               </CardContent>
             </Card>
           ))}
+          {!isQueryLoading && (!tenants || tenants.length === 0) && (
+            <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-3xl">
+              No tenants found in the network.
+            </div>
+          )}
         </div>
       </section>
 
