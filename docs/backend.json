@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Tenant": {
@@ -12,6 +13,9 @@
         "subscriptionPlan": { "type": "string", "enum": ["basic", "pro", "enterprise"] },
         "expiryDate": { "type": "string", "format": "date-time" },
         "ownerEmail": { "type": "string", "format": "email" },
+        "ownerName": { "type": "string" },
+        "isVerified": { "type": "boolean", "default": false },
+        "logoUrl": { "type": "string" },
         "currency": { "type": "string", "default": "PHP" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -30,25 +34,27 @@
       },
       "required": ["uid", "role", "email"]
     },
-    "B2BClient": {
-      "title": "B2BClient",
+    "PlatformBroadcast": {
+      "title": "PlatformBroadcast",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "name": { "type": "string" },
-        "outstandingBalance": { "type": "number" }
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "priority": { "type": "string", "enum": ["info", "warning", "critical"] },
+        "activeUntil": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     },
-    "Reconciliation": {
-      "title": "Reconciliation",
+    "SubscriptionPlan": {
+      "title": "SubscriptionPlan",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "clientId": { "type": "string" },
-        "amountPaid": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" }
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "staffLimit": { "type": "number" },
+        "features": { "type": "array", "items": { "type": "string" } }
       }
     }
   },
@@ -71,6 +77,22 @@
           "entityName": "UserProfile",
           "schema": { "$ref": "#/backend/entities/UserProfile" },
           "description": "Global user profiles."
+        }
+      },
+      {
+        "path": "/platform_broadcasts/{broadcastId}",
+        "definition": {
+          "entityName": "PlatformBroadcast",
+          "schema": { "$ref": "#/backend/entities/PlatformBroadcast" },
+          "description": "System-wide announcements."
+        }
+      },
+      {
+        "path": "/subscription_plans/{planId}",
+        "definition": {
+          "entityName": "SubscriptionPlan",
+          "schema": { "$ref": "#/backend/entities/SubscriptionPlan" },
+          "description": "Available billing tiers."
         }
       }
     ]

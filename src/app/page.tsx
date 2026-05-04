@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect } from "react"
@@ -7,10 +8,10 @@ import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { ExpenseAITool } from "@/components/dashboard/expense-ai-tool"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Store, Activity } from "lucide-react"
+import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Store, Activity, Megaphone, Info, AlertTriangle } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, limit } from "firebase/firestore"
+import { collection, query, orderBy, limit, where } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 
 export default function DashboardPage() {
@@ -27,13 +28,18 @@ export default function DashboardPage() {
     )
   }, [db, tenant?.id])
 
-  const tenantsQuery = useMemoFirebase(() => {
-    if (!db || profile?.role !== 'super_admin') return null
-    return collection(db, "tenants")
-  }, [db, profile?.role])
+  const broadcastsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(
+      collection(db, "platform_broadcasts"),
+      where("activeUntil", ">=", new Date().toISOString()),
+      orderBy("activeUntil", "asc"),
+      limit(1)
+    )
+  }, [db, user])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
-  const { data: allTenants, isLoading: isTenantsLoading } = useCollection(tenantsQuery)
+  const { data: broadcasts } = useCollection(broadcastsQuery)
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -63,79 +69,29 @@ export default function DashboardPage() {
     )
   }
 
-  // SUPER ADMIN VIEW (GENESIS HUB)
+  // SUPER ADMIN VIEW (GENESIS HUB) - Redirect to specialized page handled by bottom nav but fallback here
   if (profile?.role === 'super_admin') {
-    return (
-      <div className="p-4 space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter text-accent uppercase leading-none">Genesis Hub</h1>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-              Platform Macro Metrics
-            </p>
-          </div>
-          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-accent/10 text-accent">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-        </header>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="border-none shadow-sm bg-blue-50/50 rounded-[32px]">
-            <CardContent className="p-5">
-              <div className="h-10 w-10 bg-blue-100 rounded-2xl flex items-center justify-center mb-3 text-blue-600">
-                <Store className="h-5 w-5" />
-              </div>
-              <p className="text-[9px] font-black uppercase text-blue-600/70 tracking-widest">Active Nodes</p>
-              <p className="text-2xl font-black tracking-tighter">{allTenants?.length || 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm bg-green-50/50 rounded-[32px]">
-            <CardContent className="p-5">
-              <div className="h-10 w-10 bg-green-100 rounded-2xl flex items-center justify-center mb-3 text-green-600">
-                <Activity className="h-5 w-5" />
-              </div>
-              <p className="text-[9px] font-black uppercase text-green-600/70 tracking-widest">System Sync</p>
-              <p className="text-xl font-black tracking-tighter text-green-700">HEALTHY</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Network Tenants</h3>
-          <div className="space-y-2">
-            {isTenantsLoading ? (
-              <div className="p-8 text-center animate-pulse text-[10px] font-black uppercase tracking-widest">Scanning Network...</div>
-            ) : allTenants?.map((t) => (
-              <div key={t.id} className="bg-card p-4 rounded-[24px] flex items-center justify-between shadow-sm border-none">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center">
-                    <Store className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-black text-sm uppercase tracking-tight leading-none">{t.name}</p>
-                    <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase tracking-widest">
-                      {t.ownerEmail}
-                    </p>
-                  </div>
-                </div>
-                <div className={cn(
-                  "px-3 py-1 rounded-full text-[8px] font-black uppercase",
-                  t.status === 'active' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                )}>
-                  {t.status}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-        <BottomNav />
-      </div>
-    )
+    return <div className="p-20 text-center animate-pulse font-black uppercase text-xs tracking-widest">Redirecting to Genesis Hub...</div>
   }
 
-  // TENANT OWNER/STAFF VIEW
   return (
     <div className="p-4 space-y-6">
+      {broadcasts && broadcasts.length > 0 && (
+        <div className={cn(
+          "p-5 rounded-[28px] flex gap-4 items-center animate-in slide-in-from-top-4 duration-500",
+          broadcasts[0].priority === 'critical' ? "bg-red-50 text-red-700" : broadcasts[0].priority === 'warning' ? "bg-orange-50 text-orange-700" : "bg-blue-50 text-blue-700"
+        )}>
+          <div className="shrink-0">
+            {broadcasts[0].priority === 'critical' ? <AlertTriangle className="h-6 w-6" /> : <Megaphone className="h-6 w-6" />}
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">System Dispatch</p>
+            <p className="text-sm font-black uppercase tracking-tight leading-none mt-0.5">{broadcasts[0].title}</p>
+            <p className="text-[10px] font-bold mt-1 opacity-80">{broadcasts[0].message}</p>
+          </div>
+        </div>
+      )}
+
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">Intelligence</h1>
