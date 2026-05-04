@@ -127,7 +127,7 @@
     },
     "/platform_broadcasts/{broadcastId}": {
       "schema": { "$ref": "#/backend/entities/PlatformBroadcast" },
-      "description": "System-wide announcements."
+      "description": "System-wide announcements. Supports composite index: [priority, activeUntil]."
     },
     "/subscription_plans/{planId}": {
       "schema": { "$ref": "#/backend/entities/SubscriptionPlan" },
@@ -135,15 +135,15 @@
     },
     "/tenants/{tenantId}/products/{productId}": {
       "schema": { "$ref": "#/backend/entities/Product" },
-      "description": "Tenant inventory."
+      "description": "Tenant inventory. Supports composite index: [category, name]."
     },
     "/tenants/{tenantId}/transactions/{txId}": {
       "schema": { "$ref": "#/backend/entities/Transaction" },
-      "description": "Sales and ledger history."
+      "description": "Sales and ledger history. Supports composite index: [type, createdAt]."
     },
     "/tenants/{tenantId}/b2bClients/{clientId}": {
       "schema": { "$ref": "#/backend/entities/B2BClient" },
-      "description": "B2B client debt tracking."
+      "description": "B2B client debt tracking. Supports composite index: [outstandingBalance, name]."
     },
     "/tenants/{tenantId}/reconciliations/{recId}": {
       "schema": { "$ref": "#/backend/entities/Reconciliation" },
