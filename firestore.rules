@@ -21,6 +21,7 @@ service cloud.firestore {
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Profile Layer: Check the tenantId stored in the user's profile document
+      // We use exists() guard to prevent rules evaluation failure if profile is still propagating
       let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
       // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
@@ -56,8 +57,17 @@ service cloud.firestore {
       // Access allowed for verified members, owners, or super admins
       allow read, update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
-      // Cascade permissions to all sub-nodes (products, transactions, etc.)
-      match /{allSubcollections=**} {
+      // Specific subcollection matches to ensure clean variable scope inheritance
+      match /products/{productId} {
+        allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      }
+      match /transactions/{txId} {
+        allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      }
+      match /b2bClients/{clientId} {
+        allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      }
+      match /reconciliations/{recId} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       }
     }
