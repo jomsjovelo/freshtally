@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -8,7 +7,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from "firebase/auth"
-import { doc, getFirestore, serverTimestamp, getDoc, writeBatch } from "firebase/firestore"
+import { doc, getFirestore, serverTimestamp, getDoc, writeBatch, setDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

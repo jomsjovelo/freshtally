@@ -1,5 +1,8 @@
-
 rules_version = '2';
+
+// FRESHTALLY SECURITY RULES - V2.1.0
+// Deployment Sync Heartbeat: 2024-05-04T08:45:00Z
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
@@ -7,9 +10,8 @@ service cloud.firestore {
     
     // Safely retrieve user data, returning null if the document doesn't exist
     function getUserData() {
-      return exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) 
-        ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data 
-        : null;
+      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
     
     function isSuperAdmin() { 
@@ -19,7 +21,7 @@ service cloud.firestore {
     
     function isMemberOf(tenantId) { 
       let profile = getUserData();
-      return isSignedIn() && profile != null && profile.tenantId == tenantId; 
+      return isSignedIn() && profile != null && string(profile.tenantId) == string(tenantId); 
     }
     
     function isTenantOwner(tenantId) { 
@@ -28,7 +30,8 @@ service cloud.firestore {
     }
     
     function isTenantActive(tenantId) { 
-      return get(/databases/$(database)/documents/tenants/$(tenantId)).data.status == 'active'; 
+      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
+      return exists(tenantPath) && get(tenantPath).data.status == 'active'; 
     }
 
     match /userProfiles/{userId} {
