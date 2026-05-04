@@ -38,12 +38,9 @@ export default function DashboardPage() {
     return d.toISOString()
   }, [])
 
+  // FRESHTALLY V2: Extreme Gating logic to prevent permission errors before rules propagation
   const transactionsQuery = useMemoFirebase(() => {
-    // FRESHTALLY V2: Extreme Gating
-    // Do NOT fire sub-collection queries until the whole business context is stabilized, verified, and Security Rules are fully recognized.
     if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId) return null
-    
-    // Safety check: ensure the profile and tenant documents are perfectly in sync before querying.
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
 
     return query(
@@ -81,7 +78,7 @@ export default function DashboardPage() {
   if (isUserLoading) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12 flex flex-col items-center gap-4">
       <ShieldCheck className="h-10 w-10 animate-bounce" />
-      Finalizing Terminal Node...
+      Syncing Terminal Context...
     </div>
   )
 
@@ -250,7 +247,7 @@ export default function DashboardPage() {
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">
           {isTxLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Verifying Ledger...</div>
+            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Syncing Ledger...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
               <div key={tx.id} className="bg-card p-4 rounded-[24px] flex items-center justify-between shadow-sm border-none">

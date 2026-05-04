@@ -107,8 +107,7 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // FRESHTALLY V2: Hardened settling period (5s) for global rules propagation
-                // This ensures sub-collection queries don't fire until the rules engine is live.
+                // FRESHTALLY V2: Mandatory 5-second rules propagation buffer
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -124,7 +123,6 @@ export const FirebaseProvider: React.FC<{
                 retryTimeout = setTimeout(setupSync, 1500);
               }
             }, (err) => {
-              // Silently handle transient permission denied during initial propagation
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 1500);
