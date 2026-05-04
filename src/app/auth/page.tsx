@@ -21,6 +21,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [businessName, setBusinessName] = useState("")
+  const [ownerName, setOwnerName] = useState("")
   const [storeAddress, setStoreAddress] = useState("")
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -48,12 +49,9 @@ export default function AuthPage() {
         await signInWithEmailAndPassword(auth, email, password)
         router.push("/")
       } else {
-        if (!businessName.trim()) {
-          throw new Error("Business name is required.")
-        }
-        if (!storeAddress.trim()) {
-          throw new Error("Store address is required.")
-        }
+        if (!businessName.trim()) throw new Error("Business name is required.")
+        if (!ownerName.trim()) throw new Error("Owner name is required.")
+        if (!storeAddress.trim()) throw new Error("Store address is required.")
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         
@@ -65,7 +63,7 @@ export default function AuthPage() {
             email: user.email,
             role: "super_admin",
             tenantId: "SYSTEM_GLOBAL",
-            name: "Platform Admin",
+            name: ownerName || "Platform Admin",
             createdAt: serverTimestamp()
           })
           router.push("/super-admin")
@@ -86,6 +84,7 @@ export default function AuthPage() {
         await setDoc(doc(db, "tenants", tenantId), {
           id: tenantId,
           name: businessName,
+          ownerName: ownerName,
           address: storeAddress,
           logoUrl,
           status: "active",
@@ -102,7 +101,7 @@ export default function AuthPage() {
           email: user.email,
           role: "owner",
           tenantId: tenantId,
-          name: businessName + " Owner",
+          name: ownerName,
           createdAt: serverTimestamp()
         })
 
@@ -179,6 +178,19 @@ export default function AuthPage() {
                     required={!isLogin}
                   />
                 </div>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Owner Full Name</Label>
+                <Input 
+                  placeholder="e.g. Juan Dela Cruz" 
+                  className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  required={!isLogin}
+                />
               </div>
             )}
 
