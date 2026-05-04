@@ -53,7 +53,7 @@ export default function DashboardPage() {
             Your access to <span className="text-foreground font-black">{tenant.name}</span> has been restricted. Please settle your balance.
           </p>
         </div>
-        <Button className="w-full h-16 rounded-[24px] bg-primary font-black text-lg shadow-xl" onClick={() => window.open('mailto:jomsjovelo26@gmail.com')}>CONTACT SUPPORT</Button>
+        <Button className="w-full h-16 rounded-[24px] bg-primary font-black text-lg shadow-xl" onClick={() => window.open('mailto:jomsjovelo@gmail.com')}>CONTACT SUPPORT</Button>
       </div>
     )
   }

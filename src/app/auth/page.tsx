@@ -56,7 +56,7 @@ export default function AuthPage() {
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         
         // Genesis Admin Logic
-        const adminEmail = "jomsjovelo26@gmail.com"
+        const adminEmail = "jomsjovelo@gmail.com"
         if (user.email === adminEmail) {
           await setDoc(doc(db, "userProfiles", user.uid), {
             uid: user.uid,
