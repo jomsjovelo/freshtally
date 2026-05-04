@@ -2,19 +2,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Audit: Mathematical isolation for multi-tenant SaaS
-    // Version: 2.1.1 (Heartbeat update to resolve deployment 409 and confirm index alignment)
     
     function isSignedIn() { return request.auth != null; }
-    function getUserProfile() { return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data; }
     
-    function isSuperAdmin() { 
-      return isSignedIn() && getUserProfile().role == 'super_admin'; 
+    // Safely retrieve user data, returning null if the document doesn't exist
+    function getUserData() {
+      return exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) 
+        ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data 
+        : null;
     }
     
-    function isMemberOf(tenantId) { return isSignedIn() && getUserProfile().tenantId == tenantId; }
-    function isTenantOwner(tenantId) { return isMemberOf(tenantId) && getUserProfile().role == 'owner'; }
-    function isTenantActive(tenantId) { return get(/databases/$(database)/documents/tenants/$(tenantId)).data.status == 'active'; }
+    function isSuperAdmin() { 
+      let profile = getUserData();
+      return isSignedIn() && profile != null && profile.role == 'super_admin'; 
+    }
+    
+    function isMemberOf(tenantId) { 
+      let profile = getUserData();
+      return isSignedIn() && profile != null && profile.tenantId == tenantId; 
+    }
+    
+    function isTenantOwner(tenantId) { 
+      let profile = getUserData();
+      return isMemberOf(tenantId) && profile.role == 'owner'; 
+    }
+    
+    function isTenantActive(tenantId) { 
+      return get(/databases/$(database)/documents/tenants/$(tenantId)).data.status == 'active'; 
+    }
 
     match /userProfiles/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
@@ -33,8 +48,13 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      allow read: if isMemberOf(tenantId) || isSuperAdmin();
-      allow write: if isSuperAdmin();
+      // Allow any signed-in user to 'get' a tenant to verify Store IDs or join
+      allow get: if isSignedIn() || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      
+      // Allow owners to create their tenant during registration
+      allow create: if isSignedIn() && request.resource.data.ownerEmail == request.auth.token.email;
+      
       allow update: if (isTenantOwner(tenantId) && request.resource.data.status == resource.data.status) || isSuperAdmin();
       
       match /b2bClients/{clientId} {

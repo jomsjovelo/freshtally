@@ -7,6 +7,8 @@ import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface UserProfile {
   uid: string;
@@ -106,6 +108,13 @@ export const FirebaseProvider: React.FC<{
               isUserLoading: false,
               userError: null
             });
+          }, async (err) => {
+            const contextualError = new FirestorePermissionError({
+              path: tenantRef.path,
+              operation: 'get',
+            });
+            errorEmitter.emit('permission-error', contextualError);
+            setAuthState(s => ({ ...s, isUserLoading: false, userError: contextualError }));
           });
         } else {
           setAuthState({
@@ -116,9 +125,13 @@ export const FirebaseProvider: React.FC<{
             userError: null
           });
         }
-      }, (err) => {
-        console.error("Profile sync error:", err);
-        setAuthState(s => ({ ...s, isUserLoading: false }));
+      }, async (err) => {
+        const contextualError = new FirestorePermissionError({
+          path: profileRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        setAuthState(s => ({ ...s, isUserLoading: false, userError: contextualError }));
       });
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
