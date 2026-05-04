@@ -83,17 +83,12 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Keep loading true while we fetch profile
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
       // 1. Monitor Profile
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
-        if (!profileSnap.exists()) {
-          // Profile might still be being written during registration
-          // We wait for it rather than setting isUserLoading: false immediately
-          return;
-        }
+        if (!profileSnap.exists()) return;
 
         const profileData = profileSnap.data() as UserProfile;
         
@@ -111,7 +106,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Handle transient permission delay
+            // Silently ignore transient permission errors during propagation
             if (err.code === 'permission-denied') return;
             
             const contextualError = new FirestorePermissionError({
@@ -121,7 +116,6 @@ export const FirebaseProvider: React.FC<{
             errorEmitter.emit('permission-error', contextualError);
           });
         } else {
-          // If no tenantId (e.g. super_admin), we're done loading
           setAuthState({
             user,
             profile: profileData,
@@ -131,7 +125,7 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        // Handle transient permission delay
+        // Silently ignore transient permission errors during propagation
         if (err.code === 'permission-denied') return;
 
         const contextualError = new FirestorePermissionError({
