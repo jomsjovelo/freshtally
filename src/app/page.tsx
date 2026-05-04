@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Megaphone, AlertTriangle, TrendingUp } from "lucide-react"
+import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Megaphone, AlertTriangle, TrendingUp, Store, Zap } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -31,6 +31,8 @@ export default function DashboardPage() {
   const db = useFirestore()
 
   const isSuperAdmin = profile?.role === 'super_admin'
+  const isOwner = profile?.role === 'owner'
+  const isStaff = profile?.role === 'staff'
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id || isSuperAdmin) return null
@@ -89,6 +91,7 @@ export default function DashboardPage() {
     )
   }
 
+  // --- SUPER ADMIN COMMAND CENTER ---
   if (isSuperAdmin) {
     const mrr = tenants?.reduce((acc, t) => {
       if (t.status !== 'active') return acc
@@ -156,6 +159,7 @@ export default function DashboardPage() {
     )
   }
 
+  // --- OWNER & STAFF DASHBOARD ---
   return (
     <div className="p-4 space-y-6">
       {broadcasts && broadcasts.length > 0 && (
@@ -176,9 +180,11 @@ export default function DashboardPage() {
 
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">Intelligence</h1>
+          <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">
+            {isStaff ? "Service Portal" : "Intelligence"}
+          </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-            Real-time shop metrics
+            {isStaff ? "Operational Overview" : "Real-time shop metrics"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -192,22 +198,52 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <DashboardStats />
+      {/* STAFF PORTAL QUICK ACTIONS */}
+      {isStaff && (
+        <div className="grid grid-cols-2 gap-4">
+          <button 
+            onClick={() => router.push('/pos')}
+            className="bg-primary p-6 rounded-[32px] text-white shadow-xl shadow-primary/20 flex flex-col items-center gap-3 active:scale-95 transition-all"
+          >
+            <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center">
+              <ShoppingCart className="h-6 w-6" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest">Open Terminal</span>
+          </button>
+          <button 
+            onClick={() => router.push('/inventory')}
+            className="bg-white border-2 border-primary/10 p-6 rounded-[32px] flex flex-col items-center gap-3 active:scale-95 transition-all"
+          >
+            <div className="h-12 w-12 bg-gray-50 rounded-2xl flex items-center justify-center text-primary">
+              <Package className="h-6 w-6" />
+            </div>
+            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Check Stock</span>
+          </button>
+        </div>
+      )}
 
-      <Card className="border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur-[2px] rounded-[32px]">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-black flex items-center justify-between uppercase tracking-tighter">
-            Revenue Performance
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">REAL-TIME</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RevenueChart />
-        </CardContent>
-      </Card>
+      {/* OWNER ONLY SENSITIVE METRICS */}
+      {isOwner && (
+        <>
+          <DashboardStats />
 
-      <ExpenseAITool />
+          <Card className="border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur-[2px] rounded-[32px]">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-black flex items-center justify-between uppercase tracking-tighter">
+                Revenue Performance
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">REAL-TIME</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RevenueChart />
+            </CardContent>
+          </Card>
 
+          <ExpenseAITool />
+        </>
+      )}
+
+      {/* RECENT ACTIVITY (VISIBLE TO BOTH) */}
       <section className="space-y-4 pb-4">
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">
