@@ -24,6 +24,7 @@ interface TenantData {
   expiryDate: string;
   name: string;
   logoUrl?: string;
+  ownerEmail?: string;
 }
 
 interface UserAuthState {
@@ -90,6 +91,7 @@ export const FirebaseProvider: React.FC<{
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
           // If no profile yet, we still set the user but keep loading
+          // This can happen briefly after registration
           setAuthState(s => ({ ...s, user, isUserLoading: true }));
           return;
         }
@@ -110,8 +112,11 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Silently ignore transient permission errors during initial registration propagation
-            if (err.code === 'permission-denied') return;
+            // Silently ignore transient permission errors during initial propagation
+            if (err.code === 'permission-denied') {
+              console.log('Tenant access pending propagation...');
+              return;
+            }
             
             const contextualError = new FirestorePermissionError({
               path: tenantRef.path,
@@ -130,7 +135,10 @@ export const FirebaseProvider: React.FC<{
         }
       }, (err) => {
         // Silently ignore transient permission errors during initial registration propagation
-        if (err.code === 'permission-denied') return;
+        if (err.code === 'permission-denied') {
+          console.log('Profile access pending propagation...');
+          return;
+        }
 
         const contextualError = new FirestorePermissionError({
           path: profileRef.path,

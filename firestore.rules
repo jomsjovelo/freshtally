@@ -7,9 +7,10 @@ service cloud.firestore {
       return request.auth != null; 
     }
     
-    // Fetch profile data. Note: get() will fail if the document does not exist.
+    // Safely fetch profile data without crashing the rule evaluation
     function getProfile() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
     
     // Check if user is a super admin
@@ -18,15 +19,18 @@ service cloud.firestore {
       return isSignedIn() && profile != null && profile.role == 'super_admin';
     }
     
-    // Direct check for tenant membership via profile or direct ownership
+    // Robust check for tenant membership with document existence guards
     function isMemberOf(tId) {
-      let profile = get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-      let isOwnerViaEmail = get(/databases/$(database)/documents/tenants/$(tId)).data.ownerEmail == request.auth.token.email;
+      if (!isSignedIn()) return false;
       
-      return isSignedIn() && (
-        (profile != null && string(profile.tenantId) == string(tId)) || 
-        isOwnerViaEmail
-      );
+      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      let tenantPath = /databases/$(database)/documents/tenants/$(tId);
+      
+      let profile = exists(profilePath) ? get(profilePath).data : null;
+      let tenant = exists(tenantPath) ? get(tenantPath).data : null;
+      
+      return (profile != null && string(profile.tenantId) == string(tId)) || 
+             (tenant != null && tenant.ownerEmail == request.auth.token.email);
     }
 
     match /userProfiles/{userId} {
@@ -46,7 +50,7 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Allow read if member, owner, or super admin
+      // Allow read if member, owner via email, or super admin
       allow read: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
       // Allow owners to create their tenant document
