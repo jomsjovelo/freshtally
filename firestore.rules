@@ -14,25 +14,28 @@ service cloud.firestore {
     }
     
     // Hardened Membership Check: Checks Profile OR direct email ownership
-    // Uses short-circuiting to be efficient and resilient to propagation delays
+    // Optimized to be resilient to propagation delays after registration
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
       
       let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // 1. Profile Layer: Check the tenantId stored in the user's profile document
-      let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
-      
-      // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
-      // This is immediate and immune to profile propagation delays.
+      // 1. Token Layer Check (Fastest & most resilient fallback for owners)
       let userEmail = request.auth.token.email;
       let isOwnerByEmail = exists(tenantPath) && 
                           userEmail != null &&
                           get(tenantPath).data.ownerEmail != null &&
                           get(tenantPath).data.ownerEmail.lower() == userEmail.lower();
       
-      return isProfileMember || isOwnerByEmail;
+      if (isOwnerByEmail) return true;
+
+      // 2. Profile Layer Check (For staff and secondary verification)
+      let hasProfile = exists(profilePath);
+      if (!hasProfile) return false;
+      
+      let profileData = get(profilePath).data;
+      return profileData.tenantId == tId;
     }
 
     match /userProfiles/{userId} {
@@ -56,9 +59,14 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Access allowed for verified members, owners, or super admins
-      allow read, update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      // For the tenant document itself, we can use resource.data to avoid an extra get()
+      allow read, update: if isSignedIn() && (
+        isSuperAdmin() || 
+        (resource != null && request.auth.token.email != null && resource.data.ownerEmail.lower() == request.auth.token.email.lower()) ||
+        isMemberOf(tenantId)
+      );
       
-      // Specific subcollection matches
+      // Subcollection matches
       match /products/{productId} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       }

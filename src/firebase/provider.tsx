@@ -64,10 +64,12 @@ export const FirebaseProvider: React.FC<{
     let unsubProfile: (() => void) | null = null;
     let unsubTenant: (() => void) | null = null;
     let retryTimeout: NodeJS.Timeout | null = null;
+    let settlingTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Cleanup previous listeners
+      // Cleanup previous listeners and timeouts
       if (retryTimeout) clearTimeout(retryTimeout);
+      if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
       unsubProfile = null;
@@ -91,7 +93,6 @@ export const FirebaseProvider: React.FC<{
         
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            // Profile document not found yet - retry with backoff to handle propagation
             if (retryTimeout) clearTimeout(retryTimeout);
             retryTimeout = setTimeout(setupSync, 2000);
             return;
@@ -105,20 +106,23 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                setAuthState({
-                  user,
-                  profile: profileData,
-                  tenant: tenantSnap.data() as TenantData,
-                  isUserLoading: false,
-                  userError: null
-                });
+                // Introduce a small settling period (800ms) to allow Security Rules 
+                // propagation to stabilize before releasing the UI to perform queries.
+                if (settlingTimeout) clearTimeout(settlingTimeout);
+                settlingTimeout = setTimeout(() => {
+                  setAuthState({
+                    user,
+                    profile: profileData,
+                    tenant: tenantSnap.data() as TenantData,
+                    isUserLoading: false,
+                    userError: null
+                  });
+                }, 800);
               } else {
-                // Tenant doc referenced but not visible yet
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);
               }
             }, (err) => {
-              // Handle transient permission denial during rule propagation
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);
@@ -137,7 +141,6 @@ export const FirebaseProvider: React.FC<{
             });
           }
         }, (err) => {
-          // Handle transient permission denial during rule propagation
           if (err.code === 'permission-denied') {
             if (retryTimeout) clearTimeout(retryTimeout);
             retryTimeout = setTimeout(setupSync, 2000);
@@ -155,6 +158,7 @@ export const FirebaseProvider: React.FC<{
     return () => {
       unsubscribeAuth();
       if (retryTimeout) clearTimeout(retryTimeout);
+      if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
     };
