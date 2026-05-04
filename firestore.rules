@@ -3,6 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Heartbeat: Security Sync V3 - Resilient Ownership Fallback
+    
     function isSignedIn() { 
       return request.auth != null; 
     }
@@ -16,17 +18,19 @@ service cloud.firestore {
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
       
-      let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      let tPath = /databases/$(database)/documents/tenants/$(tId);
+      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // Dual-layered verification for resilience during indexing/propagation.
-      // 1. Direct Ownership Check: Compares token email with tenant ownerEmail (resilient fallback).
-      let isOwnerByEmail = exists(tPath) && get(tPath).data.ownerEmail.toLower() == request.auth.token.email.toLower();
+      // 1. Profile Layer: Check the tenantId stored in the user's verified profile
+      let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
-      // 2. Profile Check: Verifies tenantId stored in the user's profile document.
-      let isMemberByProfile = exists(pPath) && get(pPath).data.tenantId == tId;
+      // 2. Token Layer Fallback: Check if the user's auth email matches the tenant ownerEmail
+      // This is more resilient immediately after registration before profile indexing completes.
+      let isOwnerByEmail = exists(tenantPath) && 
+                          request.auth.token.email != null &&
+                          get(tenantPath).data.ownerEmail.toLower() == request.auth.token.email.toLower();
       
-      return isOwnerByEmail || isMemberByProfile;
+      return isProfileMember || isOwnerByEmail;
     }
 
     match /userProfiles/{userId} {
@@ -46,9 +50,13 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
+      // Owners can create their own tenant node
       allow create: if isSignedIn();
+      
+      // Access allowed for members, owners (via email fallback), or system admins
       allow read, update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
+      // Cascade permissions to all sub-nodes (products, transactions, etc.)
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       }

@@ -39,14 +39,14 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    // CRITICAL: Only query if tenant ID is stable and user context is fully loaded
-    if (!db || !tenant?.id || isUserLoading || isSuperAdmin) return null
+    // CRITICAL: Prevent premature queries before business context is fully established
+    if (!db || !tenant?.id || !profile || isUserLoading || isSuperAdmin) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id, isUserLoading, isSuperAdmin])
+  }, [db, tenant?.id, profile, isUserLoading, isSuperAdmin])
 
   const tenantsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin || isUserLoading) return null
@@ -68,10 +68,8 @@ export default function DashboardPage() {
   const { data: tenants } = useCollection(tenantsQuery)
 
   useEffect(() => {
-    if (!isUserLoading) {
-      if (!user) {
-        router.push("/auth")
-      }
+    if (!isUserLoading && !user) {
+      router.push("/auth")
     }
   }, [user, isUserLoading, router])
 
