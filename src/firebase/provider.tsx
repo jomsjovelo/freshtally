@@ -65,6 +65,7 @@ export const FirebaseProvider: React.FC<{
     let unsubTenant: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Cleanup previous listeners
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
       unsubProfile = null;
@@ -81,12 +82,14 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
+      // Keep loading until we have the profile
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          setAuthState(s => ({ ...s, user, isUserLoading: true }));
+          // If profile doesn't exist, we might be in registration phase
+          // We wait for the document to appear
           return;
         }
 
@@ -95,6 +98,7 @@ export const FirebaseProvider: React.FC<{
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           
+          // Cleanup previous tenant listener if tenantId changed
           if (unsubTenant) unsubTenant();
           unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
             setAuthState({
@@ -105,12 +109,12 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            if (err.code === 'permission-denied') {
-              return; // Silently wait for propagation
-            }
+            // Silently handle transient permission issues during propagation
+            if (err.code === 'permission-denied') return;
             setAuthState(s => ({ ...s, isUserLoading: false }));
           });
         } else {
+          // Profile exists but no tenant (e.g. Super Admin or pending setup)
           setAuthState({
             user,
             profile: profileData,
@@ -120,9 +124,8 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        if (err.code === 'permission-denied') {
-          return; // Silently wait for propagation
-        }
+        // Silently handle transient permission issues during propagation
+        if (err.code === 'permission-denied') return;
         setAuthState(s => ({ ...s, isUserLoading: false }));
       });
     }, (error) => {

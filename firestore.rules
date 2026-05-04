@@ -7,37 +7,21 @@ service cloud.firestore {
       return request.auth != null; 
     }
     
-    // Safely fetch profile data without crashing the rule evaluation
-    function getProfile() {
-      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
-    }
-    
-    // Check if user is a super admin
     function isSuperAdmin() {
-      let profile = getProfile();
-      return isSignedIn() && profile != null && profile.role == 'super_admin';
+      let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return isSignedIn() && exists(p) && get(p).data.role == 'super_admin';
     }
     
-    // Check for tenant membership with multiple layers of verification
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
+      let p = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      let t = /databases/$(database)/documents/tenants/$(tId);
       
-      // Layer 1: Check user profile (standard path)
-      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      if (exists(profilePath)) {
-        let profile = get(profilePath).data;
-        if (profile != null && string(profile.tenantId) == string(tId)) return true;
-      }
+      // Dual-layered verification for resilience during indexing/propagation
+      let profileMatch = exists(p) && string(get(p).data.tenantId) == string(tId);
+      let ownerMatch = exists(t) && get(t).data.ownerEmail == request.auth.token.email;
       
-      // Layer 2: Check tenant ownership directly (resilient fallback for new owners)
-      let tenantPath = /databases/$(database)/documents/tenants/$(tId);
-      if (exists(tenantPath)) {
-        let tenant = get(tenantPath).data;
-        if (tenant != null && tenant.ownerEmail == request.auth.token.email) return true;
-      }
-      
-      return false;
+      return profileMatch || ownerMatch;
     }
 
     match /userProfiles/{userId} {
@@ -57,9 +41,9 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      allow read: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isMemberOf(tenantId) && (isSuperAdmin() || getProfile().role == 'owner'));
+      allow read: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
+      allow update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
