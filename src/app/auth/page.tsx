@@ -121,9 +121,11 @@ export default function AuthPage() {
             <ShieldCheck className="h-10 w-10 text-white" />
           </div>
           <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">
-            {isLogin ? "Welcome Back" : "Start Market"}
+            {isLogin ? "Welcome Back" : "FRESHTALLY"}
           </h1>
-          <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2">B2B SaaS Terminal V2</p>
+          <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2">
+            {isLogin ? "B2B SaaS Terminal V2" : "Store Registration"}
+          </p>
         </div>
 
         <div className="p-8 space-y-5">
