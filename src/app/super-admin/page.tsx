@@ -16,7 +16,6 @@ import {
   Calendar as CalendarIcon, 
   AlertCircle,
   Clock,
-  ExternalLink,
   Search,
   Megaphone,
   TrendingUp,
@@ -24,7 +23,9 @@ import {
   Users,
   CheckCircle2,
   XCircle,
-  Activity
+  Activity,
+  CreditCard,
+  Zap
 } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { 
@@ -34,12 +35,21 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog"
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger 
+} from "@/components/ui/sheet"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
+import { format, addDays } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 export default function SuperAdminPage() {
   const { profile, isUserLoading, user } = useUser()
@@ -51,6 +61,7 @@ export default function SuperAdminPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTenant, setSelectedTenant] = useState<any>(null)
   const [expiryDate, setExpiryDate] = useState<Date>(new Date())
+  const [selectedPlan, setSelectedPlan] = useState<string>("basic")
   const [isProcessing, setIsProcessing] = useState(false)
 
   // Broadcast State
@@ -112,20 +123,34 @@ export default function SuperAdminPage() {
     }
   }
 
-  const handleTenantAction = async (action: 'status' | 'verify' | 'expiry') => {
+  const handleTenantAction = async (action: 'status' | 'verify' | 'expiry' | 'plan') => {
     if (!selectedTenant) return
     setIsProcessing(true)
     try {
       const tenantRef = doc(db, "tenants", selectedTenant.id)
+      let updateData: any = {}
+
       if (action === 'status') {
-        await updateDoc(tenantRef, { status: selectedTenant.status === 'active' ? 'suspended' : 'active' })
+        updateData = { status: selectedTenant.status === 'active' ? 'suspended' : 'active' }
       } else if (action === 'verify') {
-        await updateDoc(tenantRef, { isVerified: !selectedTenant.isVerified })
+        updateData = { isVerified: !selectedTenant.isVerified }
       } else if (action === 'expiry') {
-        await updateDoc(tenantRef, { expiryDate: expiryDate.toISOString() })
+        updateData = { expiryDate: expiryDate.toISOString() }
+      } else if (action === 'plan') {
+        updateData = { 
+          subscriptionPlan: selectedPlan,
+          status: selectedTenant.status, // Preserve current status
+          expiryDate: expiryDate.toISOString()
+        }
       }
-      toast({ title: "Update Successful", description: `${selectedTenant.name} has been updated.` })
-      setSelectedTenant(null)
+
+      await updateDoc(tenantRef, updateData)
+      toast({ title: "Update Successful", description: `${selectedTenant.name} has been synchronized.` })
+      
+      // Update local state if it's the plan action to close drawer
+      if (action === 'plan') {
+        setSelectedTenant(null)
+      }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
     } finally {
@@ -133,10 +158,18 @@ export default function SuperAdminPage() {
     }
   }
 
-  // Calculate MRR (Simplified for demo: sum of prices of active tiers)
+  const handleStartTrial = () => {
+    const sixtyDays = addDays(new Date(), 60)
+    setExpiryDate(sixtyDays)
+    toast({
+      title: "Trial Automated",
+      description: "Expiry date set to 60 days from today."
+    })
+  }
+
   const mrr = tenants?.reduce((acc, t) => {
     if (t.status !== 'active') return acc
-    const planPrices = { basic: 999, pro: 2499, enterprise: 4999 }
+    const planPrices = { free: 0, basic: 999, pro: 2499, enterprise: 4999 }
     return acc + (planPrices[t.subscriptionPlan as keyof typeof planPrices] || 0)
   }, 0) || 0
 
@@ -224,13 +257,18 @@ export default function SuperAdminPage() {
                       <h3 className="font-black text-base uppercase tracking-tight truncate">{tenant.name}</h3>
                       {tenant.isVerified && <CheckCircle2 className="h-3 w-3 text-blue-500 fill-blue-500/10" />}
                     </div>
-                    <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {format(new Date(tenant.expiryDate), 'MMM dd, yyyy')}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {format(new Date(tenant.expiryDate), 'MMM dd, yyyy')}
+                      </p>
+                      <Badge variant={tenant.status === 'active' ? 'default' : 'destructive'} className="text-[7px] uppercase h-4">
+                        {tenant.status}
+                      </Badge>
+                    </div>
                   </div>
                   
-                  <Dialog>
-                    <DialogTrigger asChild>
+                  <Sheet>
+                    <SheetTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -238,50 +276,75 @@ export default function SuperAdminPage() {
                         onClick={() => {
                           setSelectedTenant(tenant);
                           setExpiryDate(new Date(tenant.expiryDate));
+                          setSelectedPlan(tenant.subscriptionPlan || 'basic');
                         }}
                       >
-                        <Settings2 className="h-6 w-6" />
+                        <CreditCard className="h-6 w-6" />
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md w-[95%] rounded-[40px] border-none p-0 overflow-hidden">
-                      <DialogHeader className="p-8 bg-primary text-white">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Tenant Intelligence</DialogTitle>
-                        <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mt-1">Management Profile: {tenant.name}</p>
-                      </DialogHeader>
-                      <div className="p-8 space-y-6">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button 
-                            variant={tenant.status === 'active' ? 'destructive' : 'default'} 
-                            className="h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest"
-                            onClick={() => handleTenantAction('status')}
-                            disabled={isProcessing}
-                          >
-                            {tenant.status === 'active' ? <XCircle className="w-4 h-4 mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                            {tenant.status === 'active' ? 'SUSPEND' : 'ACTIVATE'}
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            className="h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest border-2"
-                            onClick={() => handleTenantAction('verify')}
-                            disabled={isProcessing}
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                            {tenant.isVerified ? 'UNVERIFY' : 'VERIFY'}
-                          </Button>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" className="h-[90vh] rounded-t-[40px] border-none p-0 overflow-hidden bg-background">
+                      <SheetHeader className="p-8 bg-primary text-white text-left">
+                        <SheetTitle className="text-2xl font-black uppercase tracking-tighter text-white">Subscription Management</SheetTitle>
+                        <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mt-1">Tenant ID: {tenant.id}</p>
+                      </SheetHeader>
+                      
+                      <div className="p-8 space-y-8 overflow-y-auto h-full pb-32">
+                        {/* Status Toggle */}
+                        <div className="flex items-center justify-between bg-gray-50 p-6 rounded-3xl border border-gray-100">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-black uppercase tracking-tight">Account Status</Label>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Enable or restrict system access</p>
+                          </div>
+                          <Switch 
+                            checked={tenant.status === 'active'} 
+                            onCheckedChange={() => handleTenantAction('status')}
+                          />
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subscription Deadline</label>
+                        {/* Plan Selector */}
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Service Tier Override</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {['free', 'basic', 'pro', 'enterprise'].map((plan) => (
+                              <button
+                                key={plan}
+                                onClick={() => setSelectedPlan(plan)}
+                                className={cn(
+                                  "h-14 rounded-2xl border-2 transition-all font-black uppercase text-[10px] tracking-widest",
+                                  selectedPlan === plan 
+                                    ? "border-primary bg-primary/5 text-primary" 
+                                    : "border-gray-100 bg-white text-muted-foreground"
+                                )}
+                              >
+                                {plan}
+                                {plan !== 'free' && <p className="text-[8px] opacity-60 mt-0.5">{plan === 'basic' ? '₱999' : plan === 'pro' ? '₱2499' : '₱4999'}/mo</p>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Expiry Override */}
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center px-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subscription Expiry</label>
+                            <button 
+                              onClick={handleStartTrial}
+                              className="text-[10px] font-black uppercase text-accent flex items-center gap-1 hover:underline"
+                            >
+                              <Zap className="h-3 w-3" /> Start 2-Month Trial
+                            </button>
+                          </div>
+                          
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "w-full h-16 justify-start text-left font-black rounded-2xl bg-gray-50 border-none px-6",
+                                  "w-full h-16 justify-start text-left font-black rounded-2xl bg-gray-50 border-none px-6 text-lg",
                                   !expiryDate && "text-muted-foreground"
                                 )}
                               >
-                                <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
+                                <CalendarIcon className="mr-3 h-6 w-6 text-primary" />
                                 {expiryDate ? format(expiryDate, "PPP") : <span>Set Deadline</span>}
                               </Button>
                             </PopoverTrigger>
@@ -297,15 +360,15 @@ export default function SuperAdminPage() {
                         </div>
 
                         <Button 
-                          className="w-full h-18 rounded-[28px] bg-primary text-white font-black text-lg shadow-xl"
-                          onClick={() => handleTenantAction('expiry')}
+                          className="w-full h-20 rounded-[28px] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20"
+                          onClick={() => handleTenantAction('plan')}
                           disabled={isProcessing}
                         >
-                          {isProcessing ? "SYNCING..." : "COMMIT CHANGES"}
+                          {isProcessing ? "SYNCHRONIZING..." : "SAVE PLAN OVERRIDE"}
                         </Button>
                       </div>
-                    </DialogContent>
-                  </Dialog>
+                    </SheetContent>
+                  </Sheet>
                 </CardContent>
               </Card>
             ))}
