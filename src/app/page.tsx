@@ -39,9 +39,12 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    // CRITICAL: Prevent premature queries before business context is fully established and rules are settled.
-    // Explicitly check for tenant.id and isUserLoading.
+    // CRITICAL: Prevent queries until business context is stable and Security Rules propagation is settled.
     if (!db || isUserLoading || !tenant?.id || !profile || isSuperAdmin) return null
+    
+    // Safety check: ensure the profile and tenant documents are in sync before querying sub-collections.
+    if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
+
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),

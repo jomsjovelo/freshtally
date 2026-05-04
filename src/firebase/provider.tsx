@@ -106,8 +106,8 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // Introduce a small settling period (800ms) to allow Security Rules 
-                // propagation to stabilize before releasing the UI to perform queries.
+                // Propagation Guard: Wait 1500ms to allow Security Rules propagation
+                // to fully recognize the documents created during registration/login.
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -117,7 +117,7 @@ export const FirebaseProvider: React.FC<{
                     isUserLoading: false,
                     userError: null
                   });
-                }, 800);
+                }, 1500);
               } else {
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);

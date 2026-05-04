@@ -21,21 +21,18 @@ service cloud.firestore {
       let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // 1. Token Layer Check (Fastest & most resilient fallback for owners)
+      // 1. Check Owner via Token Email (Token is fastest source of truth)
+      // This fallback is critical for immediate access after store registration
       let userEmail = request.auth.token.email;
-      let isOwnerByEmail = exists(tenantPath) && 
-                          userEmail != null &&
-                          get(tenantPath).data.ownerEmail != null &&
-                          get(tenantPath).data.ownerEmail.lower() == userEmail.lower();
+      let isOwner = exists(tenantPath) && 
+                    userEmail != null && 
+                    get(tenantPath).data.ownerEmail != null &&
+                    get(tenantPath).data.ownerEmail.lower() == userEmail.lower();
       
-      if (isOwnerByEmail) return true;
+      if (isOwner) return true;
 
       // 2. Profile Layer Check (For staff and secondary verification)
-      let hasProfile = exists(profilePath);
-      if (!hasProfile) return false;
-      
-      let profileData = get(profilePath).data;
-      return profileData.tenantId == tId;
+      return exists(profilePath) && get(profilePath).data.tenantId == tId;
     }
 
     match /userProfiles/{userId} {
@@ -59,7 +56,6 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Access allowed for verified members, owners, or super admins
-      // For the tenant document itself, we can use resource.data to avoid an extra get()
       allow read, update: if isSignedIn() && (
         isSuperAdmin() || 
         (resource != null && request.auth.token.email != null && resource.data.ownerEmail.lower() == request.auth.token.email.lower()) ||
