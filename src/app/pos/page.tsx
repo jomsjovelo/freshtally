@@ -5,12 +5,13 @@ import { useState } from "react"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote, UserCheck, PackageOpen } from "lucide-react"
+import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote, UserCheck, PackageOpen, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, doc, increment, writeBatch } from "firebase/firestore"
+import { runFullSystemAudit } from "@/lib/stress-tests"
 import { 
   Select, 
   SelectContent, 
@@ -71,6 +72,17 @@ export default function POSPage() {
   const handleCheckout = async () => {
     if (!tenant?.id || isProcessing || cart.length === 0) return
 
+    // Risk 3 Mitigation: Verify stock availability before committing
+    const stockShortages = cart.filter(item => item.stock < item.quantity)
+    if (stockShortages.length > 0) {
+      toast({
+        title: "Transaction Blocked",
+        description: `Insufficient stock for: ${stockShortages.map(i => i.name).join(", ")}`,
+        variant: "destructive",
+      })
+      return
+    }
+
     if (paymentType === 'credit' && !selectedClientId) {
       toast({
         title: "Account Required",
@@ -84,7 +96,6 @@ export default function POSPage() {
     try {
       const batch = writeBatch(db)
       
-      // 1. Create Transaction (Atomic with Doc Ref)
       const txColRef = collection(db, "tenants", tenant.id, "transactions")
       const txDocRef = doc(txColRef)
       batch.set(txDocRef, {
@@ -97,19 +108,16 @@ export default function POSPage() {
         type: "Sale"
       })
 
-      // 2. Update Client Balance if Credit
       if (paymentType === 'credit' && selectedClientId) {
         const clientRef = doc(db, "tenants", tenant.id, "b2bClients", selectedClientId)
         batch.update(clientRef, { outstandingBalance: increment(total) })
       }
 
-      // 3. Update Inventory
       cart.forEach(item => {
         const productRef = doc(db, "tenants", tenant.id, "products", item.id)
         batch.update(productRef, { stock: increment(-item.quantity) })
       })
 
-      // Atomic Commit
       await batch.commit()
       
       toast({
@@ -138,9 +146,14 @@ export default function POSPage() {
             <h1 className="text-3xl font-black text-primary uppercase tracking-tighter">Terminal</h1>
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Ready for checkout</p>
           </div>
-          <Badge variant="secondary" className="bg-primary/10 text-primary rounded-xl px-4 h-10 font-black text-[10px] uppercase">
-            Active #01
-          </Badge>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-10 text-[8px] font-black uppercase text-accent border border-accent/20 rounded-xl"
+            onClick={() => tenant?.id && runFullSystemAudit(db, tenant.id, cart)}
+          >
+            <Zap className="h-3 w-3 mr-1" /> Run Audit
+          </Button>
         </header>
 
         <div className="relative">
@@ -200,7 +213,7 @@ export default function POSPage() {
               <div key={item.id} className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black uppercase tracking-tight truncate">{item.name}</p>
-                  <p className="text-xs font-bold text-muted-foreground">{formatCurrency(item.price)}</p>
+                  <p className="text-xs font-bold text-muted-foreground">{item.stock} in stock</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center bg-gray-100 rounded-2xl h-12 px-3">
