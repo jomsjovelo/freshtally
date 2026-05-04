@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -67,7 +66,6 @@ export const FirebaseProvider: React.FC<{
     let unsubTenant: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Cleanup existing listeners on auth change
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
       unsubProfile = null;
@@ -84,7 +82,6 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // 1. Subscribe to User Profile
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -94,7 +91,6 @@ export const FirebaseProvider: React.FC<{
 
         const profileData = profileSnap.data() as UserProfile;
         
-        // 2. Cleanup tenant listener if tenantId changes
         if (unsubTenant) unsubTenant();
         unsubTenant = null;
 
@@ -109,6 +105,9 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, async (err) => {
+            // Silently handle transient errors during propagation
+            if (err.code === 'permission-denied') return;
+            
             const contextualError = new FirestorePermissionError({
               path: tenantRef.path,
               operation: 'get',
@@ -126,6 +125,8 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, async (err) => {
+        if (err.code === 'permission-denied') return;
+
         const contextualError = new FirestorePermissionError({
           path: profileRef.path,
           operation: 'get',
@@ -137,7 +138,6 @@ export const FirebaseProvider: React.FC<{
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });
 
-    // Final effect cleanup
     return () => {
       unsubscribeAuth();
       if (unsubProfile) unsubProfile();
