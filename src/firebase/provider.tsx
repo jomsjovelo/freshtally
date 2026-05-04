@@ -57,6 +57,8 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
+    let unsubTenant: (() => void) | null = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (!user) {
         setAuthState(s => ({ ...s, user: null, profile: null, tenant: null, isUserLoading: false }));
@@ -72,9 +74,15 @@ export const FirebaseProvider: React.FC<{
 
         const profileData = profileSnap.data() as UserProfile;
         
+        // Clean up previous tenant listener if it exists
+        if (unsubTenant) {
+          unsubTenant();
+          unsubTenant = null;
+        }
+
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
-          onSnapshot(tenantRef, (tenantSnap) => {
+          unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
             setAuthState({
               user,
               profile: profileData,
@@ -94,7 +102,10 @@ export const FirebaseProvider: React.FC<{
         }
       });
 
-      return () => unsubProfile();
+      return () => {
+        unsubProfile();
+        if (unsubTenant) unsubTenant();
+      };
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });

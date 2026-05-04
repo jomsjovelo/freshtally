@@ -9,7 +9,7 @@ import { useUser } from "@/firebase/provider"
 
 export function BottomNav() {
   const pathname = usePathname()
-  const { profile, tenant } = useUser()
+  const { profile, tenant, isUserLoading } = useUser()
 
   if (tenant?.status === 'suspended') return null;
 
@@ -20,9 +20,13 @@ export function BottomNav() {
     { href: "/settings", label: "Settings", icon: Settings, roles: ['owner', 'super_admin'] },
   ]
 
-  const filteredItems = navItems.filter(item => 
-    profile?.role === 'super_admin' || (profile?.role && item.roles.includes(profile.role))
-  )
+  // If loading or profile doc doesn't exist yet, show all items for a better onboarding/dev experience
+  // Otherwise, filter strictly by role
+  const filteredItems = (!profile || isUserLoading) 
+    ? navItems 
+    : navItems.filter(item => 
+        profile?.role === 'super_admin' || (profile?.role && item.roles.includes(profile.role))
+      )
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-border flex items-center justify-around h-16 z-50">
@@ -48,7 +52,7 @@ export function BottomNav() {
           </Link>
         )
       })}
-      {profile?.role === 'super_admin' && (
+      {(profile?.role === 'super_admin' || !profile) && (
         <Link
           href="/super-admin"
           className={cn(
