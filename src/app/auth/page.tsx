@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -62,7 +63,7 @@ export default function AuthPage() {
             uid: user.uid,
             email: user.email,
             role: "super_admin",
-            tenantId: "SYSTEM_GLOBAL",
+            tenantId: null, // Super Admins are global, no specific tenant
             name: ownerName || "Platform Admin",
             createdAt: serverTimestamp()
           })

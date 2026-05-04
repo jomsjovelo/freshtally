@@ -30,15 +30,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 
 export default function SuperAdminPage() {
-  const { profile, isUserLoading } = useUser()
+  const { profile, isUserLoading, user } = useUser()
   const db = useFirestore()
   const [selectedTenant, setSelectedTenant] = useState<any>(null)
   const [expiryDate, setExpiryDate] = useState<Date>(new Date())
 
   const tenantsQuery = useMemoFirebase(() => {
-    if (!db || isUserLoading || profile?.role !== 'super_admin') return null
+    // Crucial: ensure user is authenticated and isUserLoading is false before starting the list query
+    if (!db || isUserLoading || !user || profile?.role !== 'super_admin') return null
     return collection(db, "tenants")
-  }, [db, isUserLoading, profile?.role])
+  }, [db, isUserLoading, user, profile?.role])
 
   const { data: tenants, isLoading: isQueryLoading } = useCollection(tenantsQuery)
 
