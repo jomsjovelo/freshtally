@@ -14,6 +14,7 @@ service cloud.firestore {
     }
     
     // Resilient Membership Check: Checks Profile OR direct email ownership
+    // Designed to handle propagation delays during new user registration
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
       
@@ -21,15 +22,17 @@ service cloud.firestore {
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Profile Layer: Check the tenantId stored in the user's profile document
-      // We use exists() guard to prevent rules evaluation failure if profile is still propagating
-      let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
+      let profileExists = exists(profilePath);
+      let isProfileMember = profileExists && get(profilePath).data.tenantId == tId;
       
       // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
       // This is immediate and immune to profile propagation delays.
-      // CEL uses .lower() instead of .toLower()
-      let isOwnerByEmail = exists(tenantPath) && 
-                          request.auth.token.email != null &&
-                          get(tenantPath).data.ownerEmail.lower() == request.auth.token.email.lower();
+      let userEmail = request.auth.token.email;
+      let tenantExists = exists(tenantPath);
+      let isOwnerByEmail = tenantExists && 
+                          userEmail != null &&
+                          get(tenantPath).data.ownerEmail != null &&
+                          get(tenantPath).data.ownerEmail.lower() == userEmail.lower();
       
       return isProfileMember || isOwnerByEmail;
     }
@@ -57,7 +60,7 @@ service cloud.firestore {
       // Access allowed for verified members, owners, or super admins
       allow read, update: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       
-      // Specific subcollection matches to ensure clean variable scope inheritance
+      // Specific subcollection matches
       match /products/{productId} {
         allow read, write: if isSignedIn() && (isMemberOf(tenantId) || isSuperAdmin());
       }

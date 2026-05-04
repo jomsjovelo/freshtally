@@ -66,7 +66,7 @@ export const FirebaseProvider: React.FC<{
     let retryTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Clear any pending sync listeners on auth change
+      // Cleanup previous listeners
       if (retryTimeout) clearTimeout(retryTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
@@ -86,14 +86,13 @@ export const FirebaseProvider: React.FC<{
 
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
-      const profileRef = doc(firestore, 'userProfiles', user.uid);
-      
-      const setupListeners = () => {
-        // We use nested onSnapshot for real-time reactivity to profile/tenant changes
+      const setupSync = () => {
+        const profileRef = doc(firestore, 'userProfiles', user.uid);
+        
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            // Profile might be creating... wait a moment
-            retryTimeout = setTimeout(setupListeners, 1500);
+            // Profile document not found yet - retry with backoff
+            retryTimeout = setTimeout(setupSync, 1500);
             return;
           }
 
@@ -113,19 +112,19 @@ export const FirebaseProvider: React.FC<{
                   userError: null
                 });
               } else {
-                // Tenant doc exists in profile but not in collection yet
-                retryTimeout = setTimeout(setupListeners, 1000);
+                // Tenant doc referenced but not visible yet
+                retryTimeout = setTimeout(setupSync, 1500);
               }
             }, (err) => {
-              // Handle transient permission issues during initial sync
+              // Handle transient permission denial during rule propagation
               if (err.code === 'permission-denied') {
-                retryTimeout = setTimeout(setupListeners, 1500);
+                retryTimeout = setTimeout(setupSync, 2000);
                 return;
               }
               setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
             });
           } else {
-            // User has no tenant (e.g. Super Admin or pending onboarding)
+            // Super Admin or Onboarding needed
             setAuthState({
               user,
               profile: profileData,
@@ -136,14 +135,14 @@ export const FirebaseProvider: React.FC<{
           }
         }, (err) => {
           if (err.code === 'permission-denied') {
-            retryTimeout = setTimeout(setupListeners, 1500);
+            retryTimeout = setTimeout(setupSync, 2000);
             return;
           }
           setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
         });
       };
 
-      setupListeners();
+      setupSync();
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });
