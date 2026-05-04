@@ -13,8 +13,8 @@ service cloud.firestore {
       return isSignedIn() && exists(profilePath) && get(profilePath).data.role == 'super_admin';
     }
     
-    // Resilient Membership Check: Checks Profile OR direct email ownership
-    // Designed to handle propagation delays during new user registration
+    // Hardened Membership Check: Checks Profile OR direct email ownership
+    // Uses short-circuiting to be efficient and resilient to propagation delays
     function isMemberOf(tId) {
       if (!isSignedIn()) return false;
       
@@ -22,14 +22,12 @@ service cloud.firestore {
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Profile Layer: Check the tenantId stored in the user's profile document
-      let profileExists = exists(profilePath);
-      let isProfileMember = profileExists && get(profilePath).data.tenantId == tId;
+      let isProfileMember = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
       // 2. Token Layer Fallback: Direct ownership check via email on the tenant node
       // This is immediate and immune to profile propagation delays.
       let userEmail = request.auth.token.email;
-      let tenantExists = exists(tenantPath);
-      let isOwnerByEmail = tenantExists && 
+      let isOwnerByEmail = exists(tenantPath) && 
                           userEmail != null &&
                           get(tenantPath).data.ownerEmail != null &&
                           get(tenantPath).data.ownerEmail.lower() == userEmail.lower();

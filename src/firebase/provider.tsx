@@ -91,8 +91,9 @@ export const FirebaseProvider: React.FC<{
         
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            // Profile document not found yet - retry with backoff
-            retryTimeout = setTimeout(setupSync, 1500);
+            // Profile document not found yet - retry with backoff to handle propagation
+            if (retryTimeout) clearTimeout(retryTimeout);
+            retryTimeout = setTimeout(setupSync, 2000);
             return;
           }
 
@@ -113,11 +114,13 @@ export const FirebaseProvider: React.FC<{
                 });
               } else {
                 // Tenant doc referenced but not visible yet
-                retryTimeout = setTimeout(setupSync, 1500);
+                if (retryTimeout) clearTimeout(retryTimeout);
+                retryTimeout = setTimeout(setupSync, 2000);
               }
             }, (err) => {
               // Handle transient permission denial during rule propagation
               if (err.code === 'permission-denied') {
+                if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);
                 return;
               }
@@ -134,7 +137,9 @@ export const FirebaseProvider: React.FC<{
             });
           }
         }, (err) => {
+          // Handle transient permission denial during rule propagation
           if (err.code === 'permission-denied') {
+            if (retryTimeout) clearTimeout(retryTimeout);
             retryTimeout = setTimeout(setupSync, 2000);
             return;
           }
