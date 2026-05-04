@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -60,16 +61,30 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
+    let unsubProfile: (() => void) | null = null;
     let unsubTenant: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Cleanup existing listeners on auth change
+      if (unsubProfile) unsubProfile();
+      if (unsubTenant) unsubTenant();
+      unsubProfile = null;
+      unsubTenant = null;
+
       if (!user) {
-        setAuthState(s => ({ ...s, user: null, profile: null, tenant: null, isUserLoading: false }));
+        setAuthState({
+          user: null,
+          profile: null,
+          tenant: null,
+          isUserLoading: false,
+          userError: null,
+        });
         return;
       }
 
+      // 1. Subscribe to User Profile
       const profileRef = doc(firestore, 'userProfiles', user.uid);
-      const unsubProfile = onSnapshot(profileRef, (profileSnap) => {
+      unsubProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
           setAuthState(s => ({ ...s, user, isUserLoading: false }));
           return;
@@ -77,10 +92,9 @@ export const FirebaseProvider: React.FC<{
 
         const profileData = profileSnap.data() as UserProfile;
         
-        if (unsubTenant) {
-          unsubTenant();
-          unsubTenant = null;
-        }
+        // 2. Cleanup tenant listener if tenantId changes
+        if (unsubTenant) unsubTenant();
+        unsubTenant = null;
 
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
@@ -102,17 +116,20 @@ export const FirebaseProvider: React.FC<{
             userError: null
           });
         }
+      }, (err) => {
+        console.error("Profile sync error:", err);
+        setAuthState(s => ({ ...s, isUserLoading: false }));
       });
-
-      return () => {
-        unsubProfile();
-        if (unsubTenant) unsubTenant();
-      };
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });
 
-    return () => unsubscribeAuth();
+    // Final effect cleanup
+    return () => {
+      unsubscribeAuth();
+      if (unsubProfile) unsubProfile();
+      if (unsubTenant) unsubTenant();
+    };
   }, [auth, firestore]);
 
   const contextValue = useMemo(() => ({

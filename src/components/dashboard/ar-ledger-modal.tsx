@@ -18,7 +18,7 @@ import { CalendarIcon, User, History, CheckCircle2, ChevronRight, UserPlus } fro
 import { formatCurrency, cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, doc, updateDoc, addDoc, increment, serverTimestamp, query, orderBy } from "firebase/firestore"
+import { collection, doc, increment, writeBatch, query, orderBy } from "firebase/firestore"
 
 export function ARLedgerModal({ children }: { children: React.ReactNode }) {
   const { tenant } = useUser()
@@ -43,20 +43,23 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
     setIsProcessing(true)
     try {
       const settlementAmount = Number(amount)
+      const batch = writeBatch(db)
       
       // 1. Log Reconciliation
-      await addDoc(collection(db, "tenants", tenant.id, "reconciliations"), {
+      const recRef = doc(collection(db, "tenants", tenant.id, "reconciliations"))
+      batch.set(recRef, {
         tenantId: tenant.id,
         clientId: selectedClient.id,
         amountPaid: settlementAmount,
         date: date.toISOString(),
-        createdAt: serverTimestamp()
+        createdAt: new Date()
       })
 
-      // 2. Update Client Balance
-      await updateDoc(doc(db, "tenants", tenant.id, "b2bClients", selectedClient.id), {
-        outstandingBalance: increment(-settlementAmount)
-      })
+      // 2. Update Client Balance (Atomic)
+      const clientRef = doc(db, "tenants", tenant.id, "b2bClients", selectedClient.id)
+      batch.update(clientRef, { outstandingBalance: increment(-settlementAmount) })
+
+      await batch.commit()
 
       toast({
         title: "Balance Settled",

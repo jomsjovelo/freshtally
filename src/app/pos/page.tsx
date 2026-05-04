@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, addDoc, serverTimestamp, doc, increment, writeBatch } from "firebase/firestore"
+import { collection, query, orderBy, doc, increment, writeBatch } from "firebase/firestore"
 import { 
   Select, 
   SelectContent, 
@@ -69,7 +69,7 @@ export default function POSPage() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
   const handleCheckout = async () => {
-    if (!tenant?.id || isProcessing) return
+    if (!tenant?.id || isProcessing || cart.length === 0) return
 
     if (paymentType === 'credit' && !selectedClientId) {
       toast({
@@ -84,15 +84,16 @@ export default function POSPage() {
     try {
       const batch = writeBatch(db)
       
-      // 1. Create Transaction
-      const txRef = collection(db, "tenants", tenant.id, "transactions")
-      await addDoc(txRef, {
+      // 1. Create Transaction (Atomic with Doc Ref)
+      const txColRef = collection(db, "tenants", tenant.id, "transactions")
+      const txDocRef = doc(txColRef)
+      batch.set(txDocRef, {
         tenantId: tenant.id,
         items: cart,
         totalAmount: total,
         paymentType,
         clientId: selectedClientId || null,
-        createdAt: serverTimestamp(),
+        createdAt: new Date(),
         type: "Sale"
       })
 
@@ -108,6 +109,7 @@ export default function POSPage() {
         batch.update(productRef, { stock: increment(-item.quantity) })
       })
 
+      // Atomic Commit
       await batch.commit()
       
       toast({
