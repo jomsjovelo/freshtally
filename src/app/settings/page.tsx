@@ -15,7 +15,8 @@ import {
   Globe,
   Loader2,
   Copy,
-  Hash
+  Hash,
+  UserPlus
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
@@ -40,7 +41,11 @@ export default function SettingsPage() {
   const copyTenantId = () => {
     if (tenant?.id) {
       navigator.clipboard.writeText(tenant.id)
-      toast({ title: "Copied!", description: "Share this ID with your staff to join." })
+      toast({ 
+        title: "Store ID Copied", 
+        description: "Your staff can now use this ID to join your shop.",
+        duration: 3000
+      })
     }
   }
 
@@ -48,7 +53,7 @@ export default function SettingsPage() {
     return (
       <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12">
         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        Fetching Configuration...
+        Syncing Preferences...
       </div>
     )
   }
@@ -57,100 +62,123 @@ export default function SettingsPage() {
   const isOwner = profile?.role === 'owner'
 
   return (
-    <div className="p-4 space-y-6 pb-24">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your FreshTally experience</p>
+    <div className="p-4 space-y-6 pb-28">
+      <header className="px-1">
+        <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground">Settings</h1>
+        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Configure your ecosystem</p>
       </header>
 
-      <div className="bg-primary p-6 rounded-3xl flex items-center gap-4 text-white shadow-lg relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700" />
-        <Avatar className="h-16 w-16 border-4 border-white/20 shadow-xl">
-          <AvatarImage src={isSuperAdmin ? undefined : tenant?.logoUrl} />
-          <AvatarFallback className={isSuperAdmin ? "bg-accent text-white font-bold" : "bg-secondary text-primary font-bold"}>
-            {profile?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+      {/* USER PROFILE HEADER */}
+      <div className="bg-primary p-7 rounded-[40px] flex items-center gap-5 text-white shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 transition-transform group-hover:scale-125 duration-1000" />
+        <Avatar className="h-20 w-20 border-4 border-white/20 shadow-2xl rounded-[24px]">
+          <AvatarImage src={isSuperAdmin ? undefined : tenant?.logoUrl} className="object-cover" />
+          <AvatarFallback className={cn(
+            "rounded-[20px] font-black text-2xl",
+            isSuperAdmin ? "bg-accent text-white" : "bg-white text-primary"
+          )}>
+            {profile?.name?.charAt(0).toUpperCase() || 'U'}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 z-10">
-          <h2 className="text-lg font-bold">{profile?.name || 'User Profile'}</h2>
-          <p className="text-white/70 text-sm uppercase font-black tracking-widest text-[10px]">
-            {isSuperAdmin ? 'Platform Admin' : (profile?.role === 'owner' ? 'Store Owner' : 'Shop Staff')}
-          </p>
-          <div className="flex gap-2 mt-2">
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">
-              {isSuperAdmin ? 'Global Access' : (tenant?.name || 'Registered Store')}
+        <div className="flex-1 z-10 min-w-0">
+          <h2 className="text-xl font-black uppercase tracking-tight truncate leading-tight">{profile?.name || 'Authorized User'}</h2>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="text-[8px] bg-white/20 px-3 py-1 rounded-full font-black uppercase tracking-widest backdrop-blur-md">
+              {isSuperAdmin ? 'PLATFORM OWNER' : (profile?.role === 'owner' ? 'BUSINESS OWNER' : 'STORE STAFF')}
+            </span>
+            <span className="text-[8px] bg-black/20 px-3 py-1 rounded-full font-black uppercase tracking-widest backdrop-blur-md">
+              {isSuperAdmin ? 'GENESIS' : (tenant?.name || 'REGISTERED NODE')}
             </span>
           </div>
         </div>
       </div>
 
+      {/* STAFF ONBOARDING (OWNER ONLY) */}
       {isOwner && tenant && (
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pl-1">Store Onboarding</h3>
-          <Card className="border-none shadow-sm bg-blue-50/50 rounded-2xl">
-            <CardContent className="p-5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Your Store ID</p>
-                <p className="text-sm font-mono font-bold text-blue-900 mt-1">{tenant.id}</p>
-                <p className="text-[9px] text-blue-700/60 mt-1">Staff need this to register & join your store.</p>
+        <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Expansion Tools</h3>
+          <Card className="border-none shadow-xl bg-accent/5 rounded-[32px] overflow-hidden">
+            <CardContent className="p-8 flex items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2 text-accent">
+                  <UserPlus className="h-4 w-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Store ID for Staff</p>
+                </div>
+                <p className="text-2xl font-black font-mono tracking-tighter text-foreground select-all">{tenant.id}</p>
+                <p className="text-[9px] text-muted-foreground font-bold mt-2 uppercase tracking-widest opacity-60">
+                  Staff need this code to join your shop.
+                </p>
               </div>
-              <Button size="icon" variant="ghost" className="h-12 w-12 rounded-xl text-blue-600 bg-blue-100" onClick={copyTenantId}>
-                <Copy className="h-5 w-5" />
+              <Button 
+                size="icon" 
+                className="h-16 w-16 rounded-[24px] bg-accent hover:bg-accent/90 shadow-lg active:scale-90 transition-all shrink-0" 
+                onClick={copyTenantId}
+              >
+                <Copy className="h-7 w-7" />
               </Button>
             </CardContent>
           </Card>
         </section>
       )}
 
-      <div className="space-y-6">
+      {/* SYSTEM CONFIGURATION */}
+      <div className="space-y-8">
         <section className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pl-1">Configuration</h3>
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Operational Node</h3>
           <div className="space-y-2">
             {[
-              { icon: Store, label: "Profile", description: "Name, logo, and location", color: "text-blue-500", roles: ['owner', 'super_admin'] },
-              { icon: ShieldCheck, label: "Security", description: "Manage roles & access", color: "text-purple-500", roles: ['owner', 'super_admin'] },
-              { icon: CreditCard, label: "Payments", description: "Configure terminal settings", color: "text-green-500", roles: ['owner'] },
+              { icon: Store, label: "Profile", description: "Identity and metadata", color: "text-blue-500", roles: ['owner', 'super_admin'] },
+              { icon: ShieldCheck, label: "Access Control", description: "Roles and permissions", color: "text-purple-500", roles: ['owner', 'super_admin'] },
+              { icon: CreditCard, label: "Financials", description: "Payment node config", color: "text-green-500", roles: ['owner'] },
             ].filter(item => !item.roles || item.roles.includes(profile?.role || '')).map((item) => (
-              <button key={item.label} className="w-full bg-card p-4 rounded-2xl flex items-center justify-between shadow-sm active:scale-[0.98] transition-all">
+              <button key={item.label} className="w-full bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm active:scale-[0.98] transition-all border border-gray-50">
                 <div className="flex items-center gap-4">
-                  <div className={cn("h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center", item.color)}>
-                    <item.icon className="h-5 w-5" />
+                  <div className={cn("h-12 w-12 rounded-2xl bg-gray-50 flex items-center justify-center", item.color)}>
+                    <item.icon className="h-6 w-6" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-bold">{item.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.description}</p>
+                    <p className="text-sm font-black uppercase tracking-tight">{item.label}</p>
+                    <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">{item.description}</p>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground/30" />
               </button>
             ))}
           </div>
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pl-1">App Preferences</h3>
-          <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Environment</h3>
+          <Card className="border-none shadow-sm rounded-[32px] overflow-hidden bg-white">
             <CardContent className="p-0">
-              <div className="p-4 flex items-center justify-between border-b border-border">
-                <div className="flex items-center gap-3">
-                  <Bell className="h-4 w-4 text-muted-foreground" />
-                  <Label htmlFor="notifications" className="text-sm font-semibold">Push Notifications</Label>
+              <div className="p-6 flex items-center justify-between border-b border-gray-50">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center">
+                    <Bell className="h-5 w-5" />
+                  </div>
+                  <Label htmlFor="notifications" className="text-xs font-black uppercase tracking-widest">Push Dispatch</Label>
                 </div>
                 <Switch id="notifications" defaultChecked />
               </div>
-              <div className="p-4 flex items-center justify-between border-b border-border">
-                <div className="flex items-center gap-3">
-                  <Moon className="h-4 w-4 text-muted-foreground" />
-                  <Label htmlFor="dark-mode" className="text-sm font-semibold">Dark Mode Appearance</Label>
+              <div className="p-6 flex items-center justify-between border-b border-gray-50">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center">
+                    <Moon className="h-5 w-5" />
+                  </div>
+                  <Label htmlFor="dark-mode" className="text-xs font-black uppercase tracking-widest">Shadow Mode</Label>
                 </div>
                 <Switch id="dark-mode" />
               </div>
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-semibold">Region & Currency</Label>
+              <div className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <Label className="text-xs font-black uppercase tracking-widest">Node Region</Label>
                 </div>
-                <span className="text-xs text-muted-foreground font-bold">{tenant?.currency || 'PHP'} (₱)</span>
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full">
+                  {tenant?.currency || 'PHP'} (₱)
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -158,11 +186,11 @@ export default function SettingsPage() {
 
         <Button 
           variant="destructive" 
-          className="w-full h-14 rounded-2xl font-bold uppercase tracking-widest shadow-lg shadow-red-100"
+          className="w-full h-20 rounded-[32px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-red-100 active:scale-95 transition-all"
           onClick={handleSignOut}
         >
-          <LogOut className="h-5 w-5 mr-2" />
-          Sign Out Account
+          <LogOut className="h-6 w-6 mr-3" />
+          TERMINATE SESSION
         </Button>
       </div>
 

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, LogIn, Store, Upload, Users } from "lucide-react"
+import { ShieldCheck, LogIn, Store, Upload, Users, ArrowRight } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 export default function AuthPage() {
@@ -57,6 +57,7 @@ export default function AuthPage() {
 
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         
+        // GENESIS ADMIN CHECK
         const adminEmail = "jomsjovelo@gmail.com"
         if (user.email === adminEmail) {
           await setDoc(doc(db, "userProfiles", user.uid), {
@@ -64,10 +65,11 @@ export default function AuthPage() {
             email: user.email,
             role: "super_admin",
             tenantId: null,
-            name: ownerName || "Platform Admin",
+            name: ownerName || "System Owner",
             createdAt: serverTimestamp()
           })
-          router.push("/super-admin")
+          toast({ title: "Genesis Active", description: "System Owner privileges granted." })
+          router.push("/")
           return
         }
 
@@ -103,10 +105,10 @@ export default function AuthPage() {
           createdAt: serverTimestamp()
         })
 
-        toast({ title: "Welcome Owner", description: `${businessName} is online.` })
+        toast({ title: "Store Created", description: `${businessName} is now live.` })
         router.push("/")
       } else if (authMode === "join_staff") {
-        if (!tenantIdInput.trim()) throw new Error("Tenant ID is required.")
+        if (!tenantIdInput.trim()) throw new Error("Store ID is required to join.")
         
         // Verify tenant exists
         const tenantDoc = await getDoc(doc(db, "tenants", tenantIdInput))
@@ -119,16 +121,16 @@ export default function AuthPage() {
           email: user.email,
           role: "staff",
           tenantId: tenantIdInput,
-          name: ownerName || "Staff Member",
+          name: ownerName || "Shop Staff",
           createdAt: serverTimestamp()
         })
 
-        toast({ title: "Welcome Staff", description: `Joined ${tenantDoc.data().name}.` })
+        toast({ title: "Welcome to the Team", description: `Successfully joined ${tenantDoc.data().name}.` })
         router.push("/")
       }
     } catch (error: any) {
       toast({
-        title: "Authentication Error",
+        title: "Access Denied",
         description: error.message,
         variant: "destructive"
       })
@@ -139,36 +141,37 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
-      <div className="w-full max-sm bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
-        <div className="text-center pt-10 pb-6 bg-primary text-white px-6 shrink-0">
-          <div className="h-16 w-16 bg-white/20 rounded-[20px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+      <div className="w-full max-w-sm bg-white rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[95vh]">
+        <div className="text-center pt-10 pb-6 bg-primary text-white px-8 shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+          <div className="h-16 w-16 bg-white/20 rounded-[20px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md relative z-10">
             <ShieldCheck className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter leading-none">
-            {authMode === "login" ? "Access Terminal" : "FreshTally Registration"}
+          <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
+            {authMode === "login" ? "Terminal Access" : "Market Entry"}
           </h1>
-          <p className="text-white/70 text-[9px] font-black uppercase tracking-widest mt-2">
-            Professional B2B SaaS Platform
+          <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2 relative z-10">
+            FreshTally SaaS • B2B Solutions
           </p>
         </div>
 
-        <div className="p-8 pt-4 space-y-6 overflow-y-auto">
+        <div className="p-8 pt-6 space-y-6 overflow-y-auto">
           <Tabs value={authMode} onValueChange={(v: any) => setAuthMode(v)} className="w-full">
-            <TabsList className="grid grid-cols-3 h-12 bg-gray-100 rounded-xl p-1 mb-6">
-              <TabsTrigger value="login" className="rounded-lg text-[9px] font-black uppercase">Login</TabsTrigger>
-              <TabsTrigger value="register_owner" className="rounded-lg text-[9px] font-black uppercase">Owner</TabsTrigger>
-              <TabsTrigger value="join_staff" className="rounded-lg text-[9px] font-black uppercase">Staff</TabsTrigger>
+            <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
+              <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
+              <TabsTrigger value="register_owner" className="rounded-xl text-[10px] font-black uppercase">OWNER</TabsTrigger>
+              <TabsTrigger value="join_staff" className="rounded-xl text-[10px] font-black uppercase">STAFF</TabsTrigger>
             </TabsList>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {authMode !== "login" && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="space-y-5 animate-in fade-in slide-in-from-top-2">
                   {authMode === "join_staff" && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store ID (Provided by Manager)</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store ID (from Manager)</Label>
                       <Input 
                         placeholder="e.g. tenant_abc123" 
-                        className="h-12 rounded-xl border-none bg-gray-100 font-bold"
+                        className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                         value={tenantIdInput}
                         onChange={(e) => setTenantIdInput(e.target.value)}
                         required
@@ -176,13 +179,13 @@ export default function AuthPage() {
                     </div>
                   )}
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                      {authMode === "register_owner" ? "Owner Full Name" : "Your Full Name"}
+                      Full Legal Name
                     </Label>
                     <Input 
                       placeholder="e.g. Juan Dela Cruz" 
-                      className="h-12 rounded-xl border-none bg-gray-100 font-bold"
+                      className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
                       required
@@ -191,23 +194,14 @@ export default function AuthPage() {
 
                   {authMode === "register_owner" && (
                     <>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Entity Name</Label>
                         <Input 
                           placeholder="e.g. Metro Roast Coffee" 
-                          className="h-12 rounded-xl border-none bg-gray-100 font-bold"
+                          className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                           value={businessName}
                           onChange={(e) => setBusinessName(e.target.value)}
                           required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Address</Label>
-                        <Input 
-                          placeholder="123 Market St, City, Province" 
-                          className="h-12 rounded-xl border-none bg-gray-100 font-bold"
-                          value={storeAddress}
-                          onChange={(e) => setStoreAddress(e.target.value)}
                         />
                       </div>
                     </>
@@ -215,24 +209,24 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Account Email</Label>
                 <Input 
                   type="email" 
                   placeholder="name@business.com" 
-                  className="h-12 rounded-xl border-none bg-gray-100 font-bold"
+                  className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
                 <Input 
                   type="password" 
                   placeholder="••••••••" 
-                  className="h-12 rounded-xl border-none bg-gray-100 font-bold"
+                  className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -240,12 +234,12 @@ export default function AuthPage() {
               </div>
 
               {authMode !== "login" && (
-                <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Identity</Label>
                   <Input 
                     type="password" 
-                    placeholder="••••••••" 
-                    className="h-12 rounded-xl border-none bg-gray-100 font-bold"
+                    placeholder="Repeat Password" 
+                    className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -254,10 +248,10 @@ export default function AuthPage() {
               )}
 
               <Button 
-                className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm shadow-lg shadow-primary/20 active:scale-[0.98] transition-all mt-4" 
+                className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 active:scale-[0.98] transition-all mt-6" 
                 disabled={loading}
               >
-                {loading ? "PROCESSING..." : authMode === "login" ? "LOGIN ACCESS" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF"}
+                {loading ? "AUTHENTICATING..." : authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF"}
                 {authMode === "login" ? <LogIn className="ml-2 h-4 w-4" /> : authMode === "register_owner" ? <Store className="ml-2 h-4 w-4" /> : <Users className="ml-2 h-4 w-4" />}
               </Button>
             </form>
