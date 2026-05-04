@@ -10,7 +10,7 @@
         "name": { "type": "string" },
         "address": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "suspended"] },
-        "subscriptionPlan": { "type": "string", "enum": ["basic", "pro", "enterprise"] },
+        "subscriptionPlan": { "type": "string", "enum": ["free", "basic", "pro", "enterprise"] },
         "expiryDate": { "type": "string", "format": "date-time" },
         "ownerEmail": { "type": "string", "format": "email" },
         "ownerName": { "type": "string" },
@@ -30,9 +30,64 @@
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["super_admin", "owner", "staff"] },
         "tenantId": { "type": "string", "description": "Null if super_admin" },
-        "name": { "type": "string" }
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "role", "email"]
+    },
+    "Product": {
+      "title": "Product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "minStock": { "type": "number", "default": 10 },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "stock"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["Sale", "Refund"] },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "totalAmount": { "type": "number" },
+        "paymentType": { "type": "string", "enum": ["cash", "card", "credit"] },
+        "clientId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "totalAmount", "createdAt"]
+    },
+    "B2BClient": {
+      "title": "B2BClient",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "outstandingBalance": { "type": "number", "default": 0 },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Reconciliation": {
+      "title": "Reconciliation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "amountPaid": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientId", "amountPaid", "date"]
     },
     "PlatformBroadcast": {
       "title": "PlatformBroadcast",
@@ -62,39 +117,37 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/tenants/{tenantId}",
-        "definition": {
-          "entityName": "Tenant",
-          "schema": { "$ref": "#/backend/entities/Tenant" },
-          "description": "Root tenant configuration."
-        }
-      },
-      {
-        "path": "/userProfiles/{uid}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "Global user profiles."
-        }
-      },
-      {
-        "path": "/platform_broadcasts/{broadcastId}",
-        "definition": {
-          "entityName": "PlatformBroadcast",
-          "schema": { "$ref": "#/backend/entities/PlatformBroadcast" },
-          "description": "System-wide announcements."
-        }
-      },
-      {
-        "path": "/subscription_plans/{planId}",
-        "definition": {
-          "entityName": "SubscriptionPlan",
-          "schema": { "$ref": "#/backend/entities/SubscriptionPlan" },
-          "description": "Available billing tiers."
-        }
-      }
-    ]
+    "/tenants/{tenantId}": {
+      "schema": { "$ref": "#/backend/entities/Tenant" },
+      "description": "Root tenant configuration."
+    },
+    "/userProfiles/{uid}": {
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Global user profiles."
+    },
+    "/platform_broadcasts/{broadcastId}": {
+      "schema": { "$ref": "#/backend/entities/PlatformBroadcast" },
+      "description": "System-wide announcements."
+    },
+    "/subscription_plans/{planId}": {
+      "schema": { "$ref": "#/backend/entities/SubscriptionPlan" },
+      "description": "Available billing tiers."
+    },
+    "/tenants/{tenantId}/products/{productId}": {
+      "schema": { "$ref": "#/backend/entities/Product" },
+      "description": "Tenant inventory."
+    },
+    "/tenants/{tenantId}/transactions/{txId}": {
+      "schema": { "$ref": "#/backend/entities/Transaction" },
+      "description": "Sales and ledger history."
+    },
+    "/tenants/{tenantId}/b2bClients/{clientId}": {
+      "schema": { "$ref": "#/backend/entities/B2BClient" },
+      "description": "B2B client debt tracking."
+    },
+    "/tenants/{tenantId}/reconciliations/{recId}": {
+      "schema": { "$ref": "#/backend/entities/Reconciliation" },
+      "description": "Payment history for B2B settlements."
+    }
   }
 }
