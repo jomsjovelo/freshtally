@@ -39,10 +39,11 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    // EXTRA GUARD: Ensure both profile and tenant are present, matched, and fully stable before querying sub-collections.
+    // FRESHTALLY V2: Extreme Gating
+    // Do NOT fire sub-collection queries until the whole business context is stabilized and verified.
     if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId || isSuperAdmin) return null
     
-    // Safety check: ensure the profile and tenant documents are in sync before querying.
+    // Safety check: ensure the profile and tenant documents are perfectly in sync before querying.
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
 
     return query(
@@ -80,7 +81,7 @@ export default function DashboardPage() {
   if (isUserLoading) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12 flex flex-col items-center gap-4">
       <ShieldCheck className="h-10 w-10 animate-bounce" />
-      Syncing Environment...
+      Finalizing Terminal Node...
     </div>
   )
 

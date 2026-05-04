@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     let settlingTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Cleanup previous listeners and timeouts
+      // Immediate cleanup
       if (retryTimeout) clearTimeout(retryTimeout);
       if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
@@ -93,6 +93,7 @@ export const FirebaseProvider: React.FC<{
         
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
+            // Document creation delay handling
             if (retryTimeout) clearTimeout(retryTimeout);
             retryTimeout = setTimeout(setupSync, 2000);
             return;
@@ -106,8 +107,8 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // Propagation Guard: Increased to allow Security Rules 
-                // to fully recognize documents created during registration/login.
+                // FRESHTALLY V2: Hardened settling period (5s) for global rules propagation
+                // This ensures sub-collection queries (transactions) don't fire until rules engine is live.
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -117,7 +118,7 @@ export const FirebaseProvider: React.FC<{
                     isUserLoading: false,
                     userError: null
                   });
-                }, 3000);
+                }, 5000);
               } else {
                 if (retryTimeout) clearTimeout(retryTimeout);
                 retryTimeout = setTimeout(setupSync, 2000);
