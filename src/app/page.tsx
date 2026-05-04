@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect } from "react"
@@ -11,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, limit, where } from "firebase/firestore"
+import { collection, query, orderBy, limit } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 
 export default function DashboardPage() {
@@ -40,7 +39,7 @@ export default function DashboardPage() {
     }
   }, [profile, user, isUserLoading, router])
 
-  if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary">SYNCING SAAS STATE...</div>
+  if (isUserLoading) return <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12">Synchronizing State...</div>
 
   if (tenant?.status === 'suspended') {
     return (
@@ -65,9 +64,9 @@ export default function DashboardPage() {
     <div className="p-4 space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">FreshTally</h1>
+          <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">Intelligence</h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-            {tenant?.name || 'STORE MANAGER'}
+            Real-time shop metrics
           </p>
         </div>
         <div className="flex gap-2">
@@ -101,7 +100,7 @@ export default function DashboardPage() {
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Recent Activity</h3>
         <div className="space-y-2">
           {isTxLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse">Reading Ledger...</div>
+            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Reading Ledger...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
               <div key={tx.id} className="bg-card p-4 rounded-[24px] flex items-center justify-between shadow-sm border-none">

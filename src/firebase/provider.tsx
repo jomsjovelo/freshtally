@@ -1,10 +1,10 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface UserProfile {
@@ -21,6 +21,7 @@ interface TenantData {
   subscriptionPlan: string;
   expiryDate: string;
   name: string;
+  logoUrl?: string;
 }
 
 interface UserAuthState {
@@ -36,6 +37,7 @@ export interface FirebaseContextState extends UserAuthState {
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
+  storage: FirebaseStorage | null;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -45,7 +47,8 @@ export const FirebaseProvider: React.FC<{
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-}> = ({ children, firebaseApp, firestore, auth }) => {
+  storage: FirebaseStorage;
+}> = ({ children, firebaseApp, firestore, auth, storage }) => {
   const [authState, setAuthState] = useState<UserAuthState>({
     user: null,
     profile: null,
@@ -74,7 +77,6 @@ export const FirebaseProvider: React.FC<{
 
         const profileData = profileSnap.data() as UserProfile;
         
-        // Clean up previous tenant listener if it exists
         if (unsubTenant) {
           unsubTenant();
           unsubTenant = null;
@@ -115,11 +117,12 @@ export const FirebaseProvider: React.FC<{
 
   const contextValue = useMemo(() => ({
     ...authState,
-    areServicesAvailable: !!(firebaseApp && firestore && auth),
+    areServicesAvailable: !!(firebaseApp && firestore && auth && storage),
     firebaseApp,
     firestore,
     auth,
-  }), [firebaseApp, firestore, auth, authState]);
+    storage,
+  }), [firebaseApp, firestore, auth, storage, authState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -142,6 +145,7 @@ export const useUser = () => {
 
 export const useFirestore = () => useFirebase().firestore!;
 export const useAuth = () => useFirebase().auth!;
+export const useStorage = () => useFirebase().storage!;
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T & { __memo?: boolean } {
   const memoized = useMemo(factory, deps);
