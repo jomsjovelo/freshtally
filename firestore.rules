@@ -3,6 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Audit: Mathematical isolation for multi-tenant SaaS
+    // Version: 2.1.0 (Heartbeat update to resolve deployment 409)
+    
     function isSignedIn() { return request.auth != null; }
     function getUserProfile() { return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data; }
     

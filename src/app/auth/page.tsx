@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, LogIn, Store, Users, MapPin, Loader2 } from "lucide-react"
+import { ShieldCheck, LogIn, Store, Users, MapPin, Loader2, AlertCircle } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
@@ -26,6 +27,7 @@ export default function AuthPage() {
   const [storeAddress, setStoreAddress] = useState("")
   const [tenantIdInput, setTenantIdInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const auth = getAuth()
@@ -33,6 +35,7 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     
     // Validation
     if (authMode !== "login") {
@@ -121,14 +124,18 @@ export default function AuthPage() {
         toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
         router.push("/")
       }
-    } catch (error: any) {
-      let message = error.message
-      if (error.code === 'auth/email-already-in-use') {
-        message = "Account already exists. Please login instead."
-      } else if (error.code === 'auth/weak-password') {
+    } catch (err: any) {
+      let message = err.message
+      if (err.code === 'auth/email-already-in-use') {
+        message = "This email is already registered. Please switch to the LOGIN tab to access your account."
+        setAuthMode("login")
+      } else if (err.code === 'auth/weak-password') {
         message = "Password is too weak. Min 6 characters."
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        message = "Invalid email or password. Please try again."
       }
       
+      setError(message)
       toast({
         title: "Authentication Failed",
         description: message,
@@ -156,7 +163,17 @@ export default function AuthPage() {
         </div>
 
         <div className="p-8 pt-6 space-y-6 overflow-y-auto">
-          <Tabs value={authMode} onValueChange={(v: any) => setAuthMode(v)} className="w-full">
+          {error && (
+            <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700 animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="text-[10px] font-black uppercase tracking-widest">Auth Error</AlertTitle>
+              <AlertDescription className="text-xs font-bold leading-tight">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Tabs value={authMode} onValueChange={(v: any) => { setAuthMode(v); setError(null); }} className="w-full">
             <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
               <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
               <TabsTrigger value="register_owner" className="rounded-xl text-[10px] font-black uppercase">OWNER</TabsTrigger>
@@ -181,7 +198,7 @@ export default function AuthPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Legal Name</Label>
+                    <Label className="text-[10px) font-black uppercase tracking-widest text-muted-foreground ml-1">Full Legal Name</Label>
                     <Input 
                       placeholder="e.g. Juan Dela Cruz" 
                       className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
