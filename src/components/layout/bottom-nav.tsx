@@ -1,5 +1,7 @@
+
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, ShoppingCart, Package, Settings, CreditCard } from "lucide-react"
@@ -9,8 +11,13 @@ import { useUser } from "@/firebase/provider"
 export function BottomNav() {
   const pathname = usePathname()
   const { profile, tenant, isUserLoading } = useUser()
+  const [mounted, setMounted] = useState(false)
 
-  if (pathname === '/auth') return null;
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || pathname === '/auth') return null;
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') return null;
 
   const navItems = [

@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -45,14 +45,19 @@ export default function SuperAdminPage() {
   
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTenant, setSelectedTenant] = useState<any>(null)
-  const [expiryDate, setExpiryDate] = useState<Date>(new Date())
+  const [expiryDate, setExpiryDate] = useState<Date | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<string>("basic")
   const [isProcessing, setIsProcessing] = useState(false)
 
   const [broadcastTitle, setBroadcastTitle] = useState("")
   const [broadcastMessage, setBroadcastMessage] = useState("")
   const [broadcastPriority, setBroadcastPriority] = useState("info")
-  const [broadcastExpiry, setBroadcastExpiry] = useState<Date>(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+  const [broadcastExpiry, setBroadcastExpiry] = useState<Date | null>(null)
+
+  useEffect(() => {
+    setExpiryDate(new Date())
+    setBroadcastExpiry(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+  }, [])
 
   const tenantsQuery = useMemoFirebase(() => {
     if (!db || isUserLoading || !user || profile?.role !== 'super_admin') return null
@@ -75,7 +80,7 @@ export default function SuperAdminPage() {
     )
   }, [tenants, searchQuery])
 
-  if (isUserLoading) return <div className="p-20 text-center animate-pulse font-black text-primary uppercase text-xs tracking-widest">Verifying...</div>
+  if (isUserLoading || !expiryDate || !broadcastExpiry) return <div className="p-20 text-center animate-pulse font-black text-primary uppercase text-xs tracking-widest">Verifying...</div>
 
   if (profile?.role !== 'super_admin') {
     return (
@@ -88,7 +93,7 @@ export default function SuperAdminPage() {
   }
 
   const handleCreateBroadcast = async () => {
-    if (!broadcastTitle || !broadcastMessage) return
+    if (!broadcastTitle || !broadcastMessage || !broadcastExpiry) return
     setIsProcessing(true)
     try {
       await addDoc(collection(db, "platform_broadcasts"), {
@@ -119,9 +124,9 @@ export default function SuperAdminPage() {
         updateData = { status: selectedTenant.status === 'active' ? 'suspended' : 'active' }
       } else if (action === 'verify') {
         updateData = { isVerified: !selectedTenant.isVerified }
-      } else if (action === 'expiry') {
+      } else if (action === 'expiry' && expiryDate) {
         updateData = { expiryDate: expiryDate.toISOString() }
-      } else if (action === 'plan') {
+      } else if (action === 'plan' && expiryDate) {
         updateData = { 
           subscriptionPlan: selectedPlan,
           status: selectedTenant.status,
@@ -252,7 +257,7 @@ export default function SuperAdminPage() {
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-[32px] overflow-hidden">
-                              <Calendar mode="single" selected={expiryDate} onSelect={(d) => d && setExpiryDate(d)} />
+                              <Calendar mode="single" selected={expiryDate || undefined} onSelect={(d) => d && setExpiryDate(d)} />
                             </PopoverContent>
                           </Popover>
                         </div>

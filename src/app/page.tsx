@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
@@ -25,15 +26,16 @@ export default function DashboardPage() {
   const { profile, tenant, isUserLoading, user } = useUser()
   const router = useRouter()
   const db = useFirestore()
+  const [stableNow, setStableNow] = useState<string | null>(null)
 
   const isSuperAdmin = profile?.role === 'super_admin'
   const isOwner = profile?.role === 'owner'
   const isStaff = profile?.role === 'staff'
 
-  const stableNow = useMemo(() => {
+  useEffect(() => {
     const d = new Date()
     d.setSeconds(0, 0)
-    return d.toISOString()
+    setStableNow(d.toISOString())
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
@@ -46,7 +48,7 @@ export default function DashboardPage() {
   }, [db, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
+    if (!db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
@@ -64,7 +66,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router])
 
-  if (isUserLoading) return (
+  if (isUserLoading || !stableNow) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12 flex flex-col items-center gap-4">
       <ShieldCheck className="h-10 w-10 animate-bounce" />
       Syncing Intelligence...
@@ -84,7 +86,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Handle case where profile exists but no business context found
   if (!isSuperAdmin && !profile?.tenantId && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">

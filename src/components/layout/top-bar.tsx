@@ -1,5 +1,7 @@
+
 "use client"
 
+import { useState, useEffect } from "react"
 import { useUser } from "@/firebase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Store, Loader2, ShieldCheck } from "lucide-react"
@@ -8,8 +10,13 @@ import { usePathname } from "next/navigation"
 export function TopBar() {
   const { tenant, isUserLoading, profile } = useUser()
   const pathname = usePathname()
+  const [mounted, setMounted] = useState(false)
 
-  if (pathname === '/auth') return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || pathname === '/auth') return null
 
   const isSuperAdmin = profile?.role === 'super_admin'
 

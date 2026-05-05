@@ -19,13 +19,17 @@ import { cn } from "@/lib/utils"
 export default function OnboardingPage() {
   const [storeName, setStoreName] = useState("")
   const [storeAddress, setStoreAddress] = useState("")
-  const [startDate, setStartDate] = useState<Date>(new Date())
+  const [startDate, setStartDate] = useState<Date | null>(null)
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
   const { toast } = useToast()
   const db = getFirestore()
   const auth = getAuth()
+
+  useEffect(() => {
+    setStartDate(new Date())
+  }, [])
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -84,7 +88,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (!user) return null
+  if (!user || !startDate) return null
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
