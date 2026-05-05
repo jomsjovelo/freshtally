@@ -74,8 +74,8 @@ export const FirebaseProvider: React.FC<{
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Auth exists but no profile yet
-          setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
+          // Auth exists but no profile yet - proceed to allow re-initialization
+          setState(prev => ({ ...prev, user: firebaseUser, profile: null, tenant: null, isUserLoading: false }));
           return;
         }
 
@@ -92,7 +92,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Permission error or missing tenant
+            // Permission error or missing tenant document - handle as zombie session
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -112,7 +112,7 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
+        setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, userError: err }));
       });
 
       return () => unsubscribeProfile();

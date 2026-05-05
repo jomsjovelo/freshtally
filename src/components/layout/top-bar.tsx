@@ -17,7 +17,7 @@ export function TopBar() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // Always render header tag to ensure structural consistency for Next.js hydration
+  // Hydration Stability: Always render the parent header tag to ensure structural consistency across SSR/CSR
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && (
@@ -43,10 +43,10 @@ export function TopBar() {
                 </Avatar>
                 <div className="min-w-0">
                   <h2 className="text-sm font-black uppercase tracking-tighter truncate leading-none text-foreground">
-                    {isSuperAdmin ? 'GENESIS TERMINAL' : (tenant?.name || 'MY STORE')}
+                    {isSuperAdmin ? 'GENESIS STATION' : (tenant?.name || 'STATION NODE')}
                   </h2>
                   <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1 truncate">
-                    {isSuperAdmin ? 'PLATFORM OVERVIEW' : (profile?.role || 'STAFF')}
+                    {isSuperAdmin ? 'PLATFORM OVERVIEW' : (profile?.role || 'AUTHORIZED')}
                   </p>
                 </div>
               </>

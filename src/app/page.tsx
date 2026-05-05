@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { Bell, ShoppingCart, Package, ShieldX, Megaphone, TrendingDown, Store, Loader2 } from "lucide-react"
+import { Bell, ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2 } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -35,9 +35,10 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // CRITICAL GUARD: Only query if context is fully stable and verified
+  // CRITICAL GUARD: Only query if context is fully stable and verified to avoid permission loops
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
+    // Ensure we only query if the tenant ID is consistent across profile and tenant state
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -66,13 +67,13 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration Structural Protection
+  // Hydration structural protection
   if (!mounted) return <div className="min-h-screen bg-background" />
 
   if (isUserLoading || !stableNow) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin" />
-      Synchronizing Terminal...
+      Synchronizing Station...
     </div>
   )
 
@@ -86,8 +87,8 @@ export default function DashboardPage() {
           <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Station Offline</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Your business configuration could not be verified. Initialize your node to proceed.</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">Your business configuration could not be verified. Initialize your terminal to proceed.</p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 

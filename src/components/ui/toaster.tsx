@@ -19,7 +19,7 @@ export function Toaster() {
     setMounted(true)
   }, [])
 
-  // Fix hydration issues by always providing the ToastProvider tag
+  // Fix hydration issues by always providing the parent ToastProvider tag across SSR/CSR
   return (
     <ToastProvider>
       {mounted && toasts.map(function ({ id, title, description, action, ...props }) {

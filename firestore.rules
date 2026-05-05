@@ -11,25 +11,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function isSuperAdmin() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && 
+             exists(userPath) && 
+             get(userPath).data.get('role', 'staff') == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().tenantId == tenantId;
+             exists(userPath) && 
+             get(userPath).data.get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isTenantMember(tenantId) && 
-             getUserData().get('role', 'staff') == 'owner';
-    }
-
-    function isSuperAdmin() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().get('role', 'staff') == 'super_admin';
+             get(userPath).data.get('role', 'staff') == 'owner';
     }
 
     // --- Collection Rules ---
