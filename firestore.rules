@@ -73,7 +73,7 @@ service cloud.firestore {
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
       allow update: if isTenantOwner(tenantId) || isSuperAdmin();
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || isTenantOwner(tenantId);
     }
 
     /**

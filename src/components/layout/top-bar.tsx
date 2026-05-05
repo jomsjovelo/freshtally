@@ -15,6 +15,7 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
+  // Do not hide the component shell on SSR/Client mismatch
   if (pathname === '/auth') return null
 
   const isSuperAdmin = profile?.role === 'super_admin'

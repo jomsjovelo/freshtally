@@ -16,7 +16,9 @@ export function BottomNav() {
     setMounted(true)
   }, [])
 
-  if (!mounted || pathname === '/auth') return null;
+  // Ensure consistent rendering on SSR and Client mount
+  if (pathname === '/auth') return null;
+  if (!mounted) return <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 h-20 z-50 rounded-t-[32px]" />;
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') return null;
 
   const navItems = [

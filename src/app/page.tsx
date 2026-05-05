@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { Bell, ShoppingCart, Package, ShieldX, ShieldCheck, Megaphone, TrendingDown, Store, AlertCircle, Loader2 } from "lucide-react"
+import { Bell, ShoppingCart, Package, ShieldX, Megaphone, TrendingDown, Store, Loader2 } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -36,16 +36,17 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    // CRITICAL: Ensure tenant and tenant.id exist before querying
-    if (!db || !tenant?.id) return null
+    // CRITICAL: Ensure tenant and tenant.id exist before querying to avoid permission errors
+    if (!db || !tenant?.id || !user) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id])
+  }, [db, tenant?.id, user])
 
   const broadcastsQuery = useMemoFirebase(() => {
+    // Only query broadcasts for authenticated users
     if (!db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),

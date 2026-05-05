@@ -85,7 +85,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, profile: null, tenant: null }));
+            setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
             return;
           }
 
@@ -123,7 +123,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             });
           }
         }, (err) => {
-          setState(prev => ({ ...prev, userError: err, isUserLoading: false }));
+          setState(prev => ({ ...prev, user: firebaseUser, userError: err, isUserLoading: false }));
         });
 
         return () => unsubscribeProfile();
