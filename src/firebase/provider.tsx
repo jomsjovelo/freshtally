@@ -81,6 +81,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           return;
         }
 
+        // Keep isUserLoading true until profile and potentially tenant snapshots are resolved
         setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
         const userRef = doc(firestore, 'users', firebaseUser.uid);
