@@ -1,14 +1,14 @@
-
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  onAuthStateChanged
 } from "firebase/auth"
-import { doc, getFirestore, serverTimestamp, writeBatch } from "firebase/firestore"
+import { doc, getFirestore, serverTimestamp, writeBatch, getDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ShieldCheck, Loader2, AlertCircle, MapPin } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useUser } from "@/firebase"
 
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
@@ -28,10 +29,19 @@ export default function AuthPage() {
   const [tenantIdInput, setTenantIdInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
   const router = useRouter()
   const { toast } = useToast()
   const auth = getAuth()
   const db = getFirestore()
+  const { user: currentUser, profile } = useUser()
+
+  // If user is already logged in and has a tenant, redirect to dashboard
+  useEffect(() => {
+    if (currentUser && profile?.tenantId) {
+      router.push("/")
+    }
+  }, [currentUser, profile, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,9 +70,15 @@ export default function AuthPage() {
         if (!ownerName.trim()) throw new Error("Full name is required.")
         if (!storeAddress.trim()) throw new Error("Business address is required.")
 
-        const { user } = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
-        const batch = writeBatch(db)
+        let user;
+        if (currentUser) {
+          user = currentUser;
+        } else {
+          const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+          user = res.user;
+        }
 
+        const batch = writeBatch(db)
         const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
         const tenantRef = doc(db, "tenants", tenantId)
         const profileRef = doc(db, "users", user.uid)
@@ -94,11 +110,20 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        router.push("/")
+        
+        // Short delay to allow rules propagation
+        setTimeout(() => router.push("/"), 1500)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
-        const { user } = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+        let user;
+        if (currentUser) {
+          user = currentUser;
+        } else {
+          const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+          user = res.user;
+        }
+
         const profileRef = doc(db, "users", user.uid)
 
         await writeBatch(db)
@@ -114,7 +139,7 @@ export default function AuthPage() {
           .commit()
 
         toast({ title: "Access Granted", description: `Joining team...` })
-        router.push("/")
+        setTimeout(() => router.push("/"), 1000)
       }
     } catch (err: any) {
       setError(err.message)
@@ -214,31 +239,35 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
-                <Input 
-                  type="email" 
-                  placeholder="name@business.com" 
-                  className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+              {!currentUser && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
+                    <Input 
+                      type="email" 
+                      placeholder="name@business.com" 
+                      className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
-                <Input 
-                  type="password" 
-                  placeholder="Min 6 characters" 
-                  className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
+                    <Input 
+                      type="password" 
+                      placeholder="Min 6 characters" 
+                      className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
+              )}
 
-              {authMode !== "login" && (
+              {authMode !== "login" && !currentUser && (
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
                   <Input 

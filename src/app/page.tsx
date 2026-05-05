@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { Bell, ShoppingCart, Package, ShieldX, ShieldCheck, Megaphone, TrendingDown, Store, AlertCircle } from "lucide-react"
+import { Bell, ShoppingCart, Package, ShieldX, ShieldCheck, Megaphone, TrendingDown, Store, AlertCircle, Loader2 } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -25,10 +25,11 @@ export default function DashboardPage() {
   const { profile, tenant, isUserLoading, user } = useUser()
   const router = useRouter()
   const db = useFirestore()
+  const [mounted, setMounted] = useState(false)
   const [stableNow, setStableNow] = useState<string | null>(null)
 
   useEffect(() => {
-    // Standard hydration fix for dynamic dates
+    setMounted(true)
     const d = new Date()
     d.setSeconds(0, 0)
     setStableNow(d.toISOString())
@@ -57,14 +58,14 @@ export default function DashboardPage() {
   const { data: broadcasts } = useCollection(broadcastsQuery)
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (mounted && !isUserLoading && !user) {
       router.push("/auth")
     }
-  }, [user, isUserLoading, router])
+  }, [user, isUserLoading, router, mounted])
 
-  if (isUserLoading || !stableNow) return (
-    <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12 flex flex-col items-center gap-4">
-      <ShieldCheck className="h-10 w-10 animate-bounce" />
+  if (!mounted || isUserLoading || !stableNow) return (
+    <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
+      <Loader2 className="h-10 w-10 animate-spin" />
       Syncing Intelligence...
     </div>
   )
@@ -82,7 +83,7 @@ export default function DashboardPage() {
     )
   }
 
-  // Improved role/tenant check for a smoother onboarding experience
+  // Handle case where user is logged in but has no associated business yet
   if (!profile?.tenantId && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
@@ -90,14 +91,14 @@ export default function DashboardPage() {
           <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Welcome to FreshTally</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Initialize your business workspace to begin tracking metrics.</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter">New Station Detected</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">Register your business to initialize the intelligence dashboard.</p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          SETUP BUSINESS
+          INITIALIZE BUSINESS
         </Button>
       </div>
     )
@@ -124,10 +125,10 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">
-            {isStaff ? "Workstation" : "Intelligence"}
+            {isStaff ? "Terminal" : "Intelligence"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-            {isStaff ? "Operational Hub" : "Real-time shop metrics"}
+            {isStaff ? "Operational Node" : "Real-time shop metrics"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -195,7 +196,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-black text-sm uppercase tracking-tighter leading-none">{tx.type}</p>
                     <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase tracking-widest">
-                      {tx.createdAt ? new Date(tx.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                      {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                     </p>
                   </div>
                 </div>

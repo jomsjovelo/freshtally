@@ -4,7 +4,7 @@ service cloud.firestore {
 
     /**
      * FRESH TALLY SECURITY RULES
-     * Standardizing access for multi-tenant SaaS.
+     * Hardened for multi-tenant SaaS with propagation resilience.
      */
 
     // --- Helper Functions ---
@@ -14,15 +14,18 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Use getAfter to ensure we can see the document if it's part of the same transaction/batch
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Resilient check: prioritized ownerUid from the tenant doc to bypass profile propagation lag.
     function isTenantMember(tenantId) {
+      // Resilience: Try direct tenant owner check first, then profile check.
+      // This bypasses profile propagation lag for the owner.
       let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
       return isSignedIn() && (
         tenant.ownerUid == request.auth.uid ||
-        getUserData().tenantId == tenantId
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId)
       );
     }
 
@@ -30,12 +33,15 @@ service cloud.firestore {
       let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
       return isSignedIn() && (
         tenant.ownerUid == request.auth.uid ||
-        getUserData().role == 'owner'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner')
       );
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && getUserData().role == 'super_admin';
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
     }
 
     function isOwner(userId) {

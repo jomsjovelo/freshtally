@@ -15,7 +15,6 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
-  // Avoid total layout shift by always rendering the header container
   if (pathname === '/auth') return null
 
   const isSuperAdmin = profile?.role === 'super_admin'
@@ -25,12 +24,12 @@ export function TopBar() {
       <div className="flex items-center gap-3 overflow-hidden">
         {!mounted || isUserLoading ? (
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gray-100 animate-pulse flex items-center justify-center">
+            <div className="h-9 w-9 rounded-xl bg-gray-100 flex items-center justify-center">
                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
             </div>
             <div className="space-y-1">
-              <div className="h-3 w-20 bg-gray-100 animate-pulse rounded" />
-              <div className="h-2 w-12 bg-gray-100 animate-pulse rounded" />
+              <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+              <div className="h-2 w-12 bg-gray-100 rounded animate-pulse" />
             </div>
           </div>
         ) : (
