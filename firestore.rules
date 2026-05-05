@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V3
+     * FRESH TALLY ARCHITECTURAL STABILITY V4
      * Synchronized for multi-tenant data isolation and role-based access.
      */
 
@@ -11,27 +11,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isTenantMember(tenantId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
              exists(userPath) && 
-             getUserData().get('tenantId', '') == tenantId;
+             get(userPath).data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isTenantMember(tenantId) && 
-             getUserData().get('role', 'staff') == 'owner';
+             get(userPath).data.get('role', 'staff') == 'owner';
     }
 
     function isSuperAdmin() {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
              exists(userPath) && 
-             getUserData().get('role', 'staff') == 'super_admin';
+             get(userPath).data.get('role', 'staff') == 'super_admin';
     }
 
     // --- Collection Rules ---

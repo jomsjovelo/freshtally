@@ -17,7 +17,7 @@ export function TopBar() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // HYDRATION GUARD: Always render header shell to match server-side structural consistency
+  // HYDRATION GUARD: Always render the structural header tag to match server/client DOM expectations
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && (
@@ -37,10 +37,10 @@ export function TopBar() {
                 </Avatar>
                 <div className="min-w-0">
                   <h2 className="text-sm font-black uppercase tracking-tighter truncate leading-none text-foreground">
-                    {isSuperAdmin ? 'GENESIS STATION' : (tenant?.name || 'STATION NODE')}
+                    {isSuperAdmin ? 'CENTRAL HUB' : (tenant?.name || 'STATION')}
                   </h2>
                   <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1 truncate">
-                    {isSuperAdmin ? 'PLATFORM OVERVIEW' : (profile?.role || 'AUTHORIZED')}
+                    {isSuperAdmin ? 'ADMIN OVERVIEW' : (profile?.role || 'NODE')}
                   </p>
                 </div>
               </>
@@ -49,7 +49,7 @@ export function TopBar() {
           
           <div className="flex items-center gap-2">
             <div className="h-8 px-3 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-[9px] font-black text-primary uppercase tracking-widest">LIVE</span>
+              <span className="text-[9px] font-black text-primary uppercase tracking-widest">ONLINE</span>
             </div>
           </div>
         </>

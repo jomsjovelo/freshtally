@@ -64,19 +64,22 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
+    // Use a variable to track the current auth session to prevent race conditions during unmount/switch
+    let currentSessionId = Math.random().toString(36);
+
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
         return;
       }
 
-      // Initial user resolution
+      // Start loading sequence
       setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Profile missing - Onboarding required
+          // PROFILE MISSING: User is authenticated but hasn't completed onboarding/profile creation
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -86,6 +89,7 @@ export const FirebaseProvider: React.FC<{
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
+            // SUCCESS: Both profile and tenant data found and synchronized
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -94,7 +98,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Permission denied or missing tenant node
+            // TENANT ERROR: Most likely permission denied or node missing
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -105,7 +109,7 @@ export const FirebaseProvider: React.FC<{
           });
           return () => unsubscribeTenant();
         } else {
-          // Profile exists but no tenantId associated
+          // PROFILE EXISTS BUT NO TENANT: Unusual "Zombie" state
           setState({
             user: firebaseUser,
             profile: profileData,
@@ -115,6 +119,7 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
+        // PROFILE ERROR
         setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
       });
 

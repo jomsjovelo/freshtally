@@ -35,12 +35,12 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // RIGID SYNCHRONIZATION GUARD: Only query sub-collections if context is fully stable and verified
+  // RIGID SYNCHRONIZATION GUARD: Only fire queries when the security context is absolute
   const transactionsQuery = useMemoFirebase(() => {
-    // 1. Structural Guards: Must be mounted, authenticated, and loading must be complete
+    // 1. Availability Guards
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
     
-    // 2. Security Guard: Ensure Auth Profile and DB Node match perfectly before list operation
+    // 2. Consistency Guard: Ensure the application state profile and verified DB tenant match
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -69,19 +69,21 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration safety mount
+  // Hydration protection
   if (!mounted) return <div className="min-h-screen bg-background" />
 
-  if (isUserLoading || !stableNow) return (
-    <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
-      <Loader2 className="h-10 w-10 animate-spin" />
-      Synchronizing Station...
-    </div>
-  )
+  if (isUserLoading || !stableNow) {
+    return (
+      <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin" />
+        Synchronizing Node...
+      </div>
+    )
+  }
 
   if (!user) return null
 
-  // ZOMBIE PROTECTION: Authenticated but missing business node
+  // ZOMBIE PROTECTION: User is authenticated but profile/tenant context is missing
   if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
@@ -90,7 +92,10 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Your business node configuration could not be verified. Initialize your terminal to proceed.</p>
+          <p className="text-muted-foreground text-sm font-medium px-4">
+            Your business node configuration could not be verified. 
+            Initialize your terminal to proceed.
+          </p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
@@ -114,7 +119,7 @@ export default function DashboardPage() {
         )}>
           <Megaphone className="h-6 w-6 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">System Dispatch</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">System Broadcast</p>
             <p className="text-sm font-black uppercase truncate mt-0.5">{broadcasts[0].title}</p>
           </div>
         </div>
@@ -123,7 +128,7 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">
-            {isStaff ? "Terminal" : "Intelligence"}
+            {isStaff ? "Terminal" : "Dashboard"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
             {tenant.name} • {profile.role}
@@ -138,7 +143,7 @@ export default function DashboardPage() {
             className="bg-primary p-6 rounded-[32px] text-white shadow-xl flex flex-col items-center gap-3 active:scale-95 transition-all"
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="text-[10px] font-black uppercase tracking-widest">POS</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Launch POS</span>
           </button>
           <button 
             onClick={() => router.push('/inventory')}
@@ -161,10 +166,10 @@ export default function DashboardPage() {
       )}
 
       <section className="space-y-4 pb-4">
-        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Recent Ledger</h3>
+        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Recent Activity</h3>
         <div className="space-y-3">
           {isTxLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase">Auditing Ledger...</div>
+            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Auditing...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
               <div key={tx.id} className="bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm border border-gray-50">
@@ -178,7 +183,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-black text-sm uppercase leading-none">{tx.type}</p>
                     <p className="text-[9px] text-muted-foreground font-bold mt-1.5 uppercase tracking-widest">
-                      {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                      {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Processing'}
                     </p>
                   </div>
                 </div>
@@ -189,7 +194,7 @@ export default function DashboardPage() {
             ))
           ) : (
             <div className="bg-gray-50 rounded-[32px] p-10 text-center border-2 border-dashed border-gray-200">
-              <p className="text-[10px] font-black text-muted-foreground uppercase">No transactions found</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Empty Ledger</p>
             </div>
           )}
         </div>
