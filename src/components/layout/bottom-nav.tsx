@@ -2,45 +2,31 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, ShoppingCart, Package, Settings, ShieldAlert, LogOut, ChartBar, Users } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { LayoutDashboard, ShoppingCart, Package, Settings, CreditCard, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase/provider"
-import { getAuth, signOut } from "firebase/auth"
 
 export function BottomNav() {
   const pathname = usePathname()
-  const router = useRouter()
-  const { profile, tenant, isUserLoading, user } = useUser()
+  const { profile, tenant, isUserLoading } = useUser()
 
   if (pathname === '/auth' || pathname === '/onboarding') return null;
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') return null;
 
-  const handleSignOut = async () => {
-    await signOut(getAuth())
-    router.push('/auth')
-  }
-
-  // Tenant/Owner/Staff Nav
-  const tenantNav = [
-    { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff'] },
+  // Resilient Nav Logic: If profile is loading, show placeholders. 
+  // Once loaded, filter by role.
+  const navItems = [
+    { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
     { href: "/pos", label: "POS", icon: ShoppingCart, roles: ['staff', 'owner'] },
     { href: "/inventory", label: "Stock", icon: Package, roles: ['staff', 'owner'] },
-    { href: "/settings", label: "Set", icon: Settings, roles: ['owner', 'staff'] },
+    { href: "/expenses", label: "Bills", icon: CreditCard, roles: ['owner', 'staff'] },
+    { href: "/settings", label: "Set", icon: Settings, roles: ['owner', 'staff', 'super_admin'] },
   ]
 
-  // Super Admin Nav
-  const adminNav = [
-    { href: "/", label: "Hub", icon: LayoutDashboard, roles: ['super_admin'] },
-    { href: "/super-admin", label: "Tenants", icon: Users, roles: ['super_admin'] },
-    { href: "/settings", label: "Config", icon: Settings, roles: ['super_admin'] },
-  ]
-
-  const navItems = profile?.role === 'super_admin' ? adminNav : tenantNav
-
-  const filteredItems = (!profile || isUserLoading) 
-    ? [] 
-    : navItems.filter(item => item.roles.includes(profile.role))
+  const filteredItems = isUserLoading 
+    ? navItems.filter(item => item.href === "/" || item.href === "/settings") // Safe defaults
+    : navItems.filter(item => !item.roles || item.roles.includes(profile?.role || ''))
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
@@ -66,16 +52,6 @@ export function BottomNav() {
           </Link>
         )
       })}
-
-      {user && (
-        <button
-          onClick={handleSignOut}
-          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground opacity-40 hover:opacity-100 transition-opacity"
-        >
-          <LogOut className="h-5 w-5" />
-          <span className="text-[9px] font-black mt-1 uppercase tracking-widest">EXIT</span>
-        </button>
-      )}
     </nav>
   )
 }
