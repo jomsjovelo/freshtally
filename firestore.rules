@@ -12,20 +12,25 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
+      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'staff') == 'super_admin';
+             exists(userDoc) &&
+             get(userDoc).data.get('role', 'staff') == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
+      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+             exists(userDoc) &&
+             get(userDoc).data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      return isTenantMember(tenantId) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'staff') == 'owner';
+      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && 
+             exists(userDoc) &&
+             get(userDoc).data.tenantId == tenantId &&
+             get(userDoc).data.get('role', 'staff') == 'owner';
     }
 
     // --- Collection Rules ---
