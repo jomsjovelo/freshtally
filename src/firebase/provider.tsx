@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     let settlingTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Cleanup previous listeners
+      // Cleanup all active timers and listeners on auth change
       if (retryTimeout) clearTimeout(retryTimeout);
       if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
@@ -86,16 +86,18 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
+      // Start loading sequence
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
       const setupSync = () => {
         const profileRef = doc(firestore, 'userProfiles', user.uid);
         
+        // Listen to Profile
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            // FRESHTALLY V4: Profile doc might still be propagating. Wait and retry.
+            // Document might be propagating. Retry.
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 2500);
+            retryTimeout = setTimeout(setupSync, 2000);
             return;
           }
 
@@ -107,7 +109,7 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // FRESHTALLY V4: Mandatory 7-second rules propagation buffer for cold nodes
+                // FRESHTALLY V4: Stabilize for 6 seconds to ensure Rules propagation for subcollections
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -117,22 +119,22 @@ export const FirebaseProvider: React.FC<{
                     isUserLoading: false,
                     userError: null
                   });
-                }, 7000);
+                }, 6000);
               } else {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 2500);
+                retryTimeout = setTimeout(setupSync, 2000);
               }
             }, (err) => {
-              // Handle transient permission-denied errors during indexing lag
+              // Handle transient permission errors during cold startup
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 3500);
+                retryTimeout = setTimeout(setupSync, 3000);
                 return;
               }
               setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
             });
           } else {
-            // Super Admin or Onboarding needed
+            // Super Admin or Onboarding Needed
             if (settlingTimeout) clearTimeout(settlingTimeout);
             settlingTimeout = setTimeout(() => {
               setAuthState({
@@ -142,12 +144,12 @@ export const FirebaseProvider: React.FC<{
                 isUserLoading: false,
                 userError: null
               });
-            }, 7000);
+            }, 6000);
           }
         }, (err) => {
           if (err.code === 'permission-denied') {
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 3500);
+            retryTimeout = setTimeout(setupSync, 3000);
             return;
           }
           setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));

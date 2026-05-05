@@ -13,23 +13,23 @@ service cloud.firestore {
       return isSignedIn() && exists(pPath) && get(pPath).data.role == 'super_admin';
     }
     
-    // Robust membership check with direct email ownership fallback.
+    // Robust membership check with immediate direct ownership fallback.
     // This bypasses propagation lag by verifying the user's email against the tenant root.
     function canAccessTenant(tId) {
       if (!isSignedIn()) { return false; }
       if (isSuperAdmin()) { return true; }
 
-      let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      let tPath = /databases/$(database)/documents/tenants/$(tId);
+      let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. Profile Check (Primary)
-      let hasProfileAccess = exists(pPath) && get(pPath).data.tenantId == tId;
+      let hasProfileAccess = exists(profilePath) && get(profilePath).data.tenantId == tId;
       
       // 2. Direct Ownership Fallback (Immediate/Resilient)
-      // We use lower() for case-insensitive comparison to handle registration variations.
-      let isOwnerFallback = exists(tPath) && 
+      // We check the ownerEmail directly on the tenant document.
+      let isOwnerFallback = exists(tenantPath) && 
                            request.auth.token.email != null && 
-                           get(tPath).data.ownerEmail.lower() == request.auth.token.email.lower();
+                           get(tenantPath).data.ownerEmail.lower() == request.auth.token.email.lower();
       
       return hasProfileAccess || isOwnerFallback;
     }
@@ -52,9 +52,9 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow create: if isSignedIn();
-      allow read, update: if canAccessTenant(tenantId);
+      // Apply the check at the root level and all sub-paths recursively.
+      allow read, write: if canAccessTenant(tenantId);
       
-      // RECURSIVE DATA ACCESS: Hardened for all store sub-collections.
       match /{allSubcollections=**} {
         allow read, write: if canAccessTenant(tenantId);
       }

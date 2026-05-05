@@ -53,7 +53,7 @@ export default function AuthPage() {
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-        // FRESHTALLY V4: stabilization delay to ensure rules engine and auth observer sync
+        // Stabilization delay to ensure rules engine and auth observer sync
         setTimeout(() => router.push("/"), 2000)
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
@@ -109,8 +109,8 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        // FRESHTALLY V4: Extended delay for global Firestore rules propagation
-        setTimeout(() => router.push("/"), 5000)
+        // Hardened delay for global Firestore rules propagation
+        setTimeout(() => router.push("/"), 6000)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
@@ -130,7 +130,7 @@ export default function AuthPage() {
         })
 
         toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
-        setTimeout(() => router.push("/"), 3500)
+        setTimeout(() => router.push("/"), 5000)
       }
     } catch (err: any) {
       let message = err.message
