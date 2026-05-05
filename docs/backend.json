@@ -12,6 +12,7 @@
         "status": { "type": "string", "enum": ["active", "suspended"] },
         "subscriptionPlan": { "type": "string", "enum": ["free", "basic", "pro", "enterprise"] },
         "expiryDate": { "type": "string", "format": "date-time" },
+        "ownerUid": { "type": "string", "description": "The UID of the primary business owner." },
         "ownerEmail": { "type": "string", "format": "email" },
         "ownerName": { "type": "string" },
         "isVerified": { "type": "boolean", "default": false },
@@ -19,7 +20,7 @@
         "currency": { "type": "string", "default": "PHP" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "name", "status", "subscriptionPlan", "expiryDate"]
+      "required": ["id", "name", "status", "subscriptionPlan", "expiryDate", "ownerUid"]
     },
     "UserProfile": {
       "title": "UserProfile",

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -52,6 +53,7 @@ export default function OnboardingPage() {
         status: "active",
         subscriptionPlan: "basic",
         expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 day trial
+        ownerUid: user.uid,
         ownerEmail: normalizedEmail,
         currency: "PHP",
         createdAt: serverTimestamp()
@@ -71,8 +73,8 @@ export default function OnboardingPage() {
         title: "Store Created!",
         description: `Welcome to FreshTally. Your Store ID is ${tenantId}.`
       })
-      // HARDENED REDIRECT: V6 - 6 seconds for global security rules propagation
-      setTimeout(() => router.push("/"), 6000)
+      // HARDENED REDIRECT: V7 - 10 seconds for global security rules propagation
+      setTimeout(() => router.push("/"), 10000)
     } catch (error: any) {
       toast({
         title: "Setup Failed",

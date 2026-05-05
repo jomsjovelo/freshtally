@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
+import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
@@ -59,94 +60,109 @@ export const FirebaseProvider: React.FC<{
     userError: null,
   });
 
-  useEffect(() => {
-    if (!auth || !firestore) return;
-
+  const syncEnvironment = useCallback((user: User) => {
     let unsubProfile: (() => void) | null = null;
     let unsubTenant: (() => void) | null = null;
     let settlingTimeout: NodeJS.Timeout | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Immediate cleanup
+    const cleanup = () => {
       if (settlingTimeout) clearTimeout(settlingTimeout);
+      if (retryTimeout) clearTimeout(retryTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
-      unsubProfile = null;
-      unsubTenant = null;
+    };
 
+    const attemptSync = () => {
+      const profileRef = doc(firestore, 'userProfiles', user.uid);
+      
+      unsubProfile = onSnapshot(profileRef, (profileSnap) => {
+        if (!profileSnap.exists()) {
+          // If profile doesn't exist yet, we wait. Onboarding might still be happening.
+          return;
+        }
+
+        // Wait for document to be fully synced to server
+        if (profileSnap.metadata.hasPendingWrites) return;
+
+        const profileData = profileSnap.data() as UserProfile;
+        
+        if (profileData.role === 'super_admin') {
+          if (settlingTimeout) clearTimeout(settlingTimeout);
+          settlingTimeout = setTimeout(() => {
+            setAuthState({ user, profile: profileData, tenant: null, isUserLoading: false, userError: null });
+          }, 1000);
+          return;
+        }
+
+        if (profileData.tenantId) {
+          const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
+          
+          if (unsubTenant) unsubTenant();
+          unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
+            if (!tenantSnap.exists()) return;
+            if (tenantSnap.metadata.hasPendingWrites) return;
+
+            // FINAL SETTLING BUFFER: V7 - Increased to 8s for absolute security rules propagation
+            // This ensures that sub-collection list operations (transactions) are authorized.
+            if (settlingTimeout) clearTimeout(settlingTimeout);
+            settlingTimeout = setTimeout(() => {
+              setAuthState({
+                user,
+                profile: profileData,
+                tenant: tenantSnap.data() as TenantData,
+                isUserLoading: false,
+                userError: null
+              });
+            }, 8000);
+          }, (err) => {
+            if (err.code === 'permission-denied') {
+              // Rules might not have propagated yet. Retry after a short delay.
+              if (retryTimeout) clearTimeout(retryTimeout);
+              retryTimeout = setTimeout(attemptSync, 2000);
+            } else {
+              setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
+            }
+          });
+        }
+      }, (err) => {
+        if (err.code === 'permission-denied') {
+          if (retryTimeout) clearTimeout(retryTimeout);
+          retryTimeout = setTimeout(attemptSync, 2000);
+        } else {
+          setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
+        }
+      });
+    };
+
+    attemptSync();
+    return cleanup;
+  }, [firestore]);
+
+  useEffect(() => {
+    if (!auth || !firestore) return;
+
+    let syncCleanup: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (syncCleanup) syncCleanup();
+      
       if (!user) {
         setAuthState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
         return;
       }
 
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
-
-      // Synchronized initialization sequence
-      const syncEnvironment = () => {
-        const profileRef = doc(firestore, 'userProfiles', user.uid);
-        
-        // 1. Listen to Profile
-        unsubProfile = onSnapshot(profileRef, (profileSnap) => {
-          if (!profileSnap.exists()) return; // Wait for document creation
-
-          // CRITICAL: Ensure document is synced to server before releasing UI
-          // This avoids querying subcollections before Rules propagation is ready.
-          if (profileSnap.metadata.hasPendingWrites) return;
-
-          const profileData = profileSnap.data() as UserProfile;
-          
-          if (profileData.role === 'super_admin') {
-            if (settlingTimeout) clearTimeout(settlingTimeout);
-            settlingTimeout = setTimeout(() => {
-              setAuthState({ user, profile: profileData, tenant: null, isUserLoading: false, userError: null });
-            }, 1000);
-            return;
-          }
-
-          if (profileData.tenantId) {
-            const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
-            
-            if (unsubTenant) unsubTenant();
-            unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
-              if (!tenantSnap.exists()) return;
-              if (tenantSnap.metadata.hasPendingWrites) return;
-
-              // FINAL SETTLING BUFFER: V6 - Increased to 5s for absolute security rules propagation
-              if (settlingTimeout) clearTimeout(settlingTimeout);
-              settlingTimeout = setTimeout(() => {
-                setAuthState({
-                  user,
-                  profile: profileData,
-                  tenant: tenantSnap.data() as TenantData,
-                  isUserLoading: false,
-                  userError: null
-                });
-              }, 5000);
-            }, (err) => {
-              if (err.code !== 'permission-denied') {
-                setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
-              }
-            });
-          }
-        }, (err) => {
-          if (err.code !== 'permission-denied') {
-            setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
-          }
-        });
-      };
-
-      syncEnvironment();
+      syncCleanup = syncEnvironment(user);
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });
 
     return () => {
       unsubscribeAuth();
-      if (settlingTimeout) clearTimeout(settlingTimeout);
-      if (unsubProfile) unsubProfile();
-      if (unsubTenant) unsubTenant();
+      if (syncCleanup) syncCleanup();
     };
-  }, [auth, firestore]);
+  }, [auth, firestore, syncEnvironment]);
 
   const contextValue = useMemo(() => ({
     ...authState,

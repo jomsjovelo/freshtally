@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -93,6 +94,7 @@ export default function AuthPage() {
           status: "active",
           subscriptionPlan: "basic",
           expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          ownerUid: user.uid,
           ownerEmail: normalizedEmail,
           currency: "PHP",
           createdAt: serverTimestamp()
@@ -109,8 +111,8 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        // HARDENED REDIRECT: V6 - 8 seconds for global security rules propagation
-        setTimeout(() => router.push("/"), 8000)
+        // HARDENED REDIRECT: V7 - 10 seconds for global security rules propagation
+        setTimeout(() => router.push("/"), 10000)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
@@ -130,7 +132,7 @@ export default function AuthPage() {
         })
 
         toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
-        setTimeout(() => router.push("/"), 6000)
+        setTimeout(() => router.push("/"), 8000)
       }
     } catch (err: any) {
       let message = err.message
