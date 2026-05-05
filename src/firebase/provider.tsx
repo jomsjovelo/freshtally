@@ -81,6 +81,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           return;
         }
 
+        // Reset state but keep loading true while we fetch profile/tenant
+        setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
+
         // Fetch User Profile
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
@@ -104,7 +107,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               });
             }, (err) => {
               // Gracefully handle permission errors or missing documents
-              // This ensures the loading state finishes even if a rule check fails
               setState({
                 user: firebaseUser,
                 profile: profileData,

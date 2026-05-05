@@ -38,6 +38,7 @@ export default function DashboardPage() {
   // Defensively guard all Firestore queries to prevent permission errors during transitions
   const transactionsQuery = useMemoFirebase(() => {
     // CRITICAL: Ensure we have a valid user, profile, and tenant ID that match before querying
+    // This prevents "Missing or insufficient permissions" during initial hydration or document transitions
     if (!db || !user || isUserLoading || !profile?.tenantId || !tenant?.id) return null
     if (profile.tenantId !== tenant.id) return null
     
@@ -49,14 +50,14 @@ export default function DashboardPage() {
   }, [db, user?.uid, isUserLoading, profile?.tenantId, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user || !stableNow) return null
+    if (!db || !user || !stableNow || isUserLoading) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user?.uid, stableNow])
+  }, [db, user?.uid, stableNow, isUserLoading])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -77,18 +78,6 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Suspended account handling
-  if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
-        <ShieldX className="h-20 w-20 text-destructive animate-bounce" />
-        <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter">Access Denied</h1>
-        <p className="text-muted-foreground text-sm font-medium">Subscription restricted.</p>
-        <Button className="w-full h-16 rounded-[24px] bg-primary" onClick={() => window.open('mailto:support@freshtally.com')}>CONTACT SUPPORT</Button>
-      </div>
-    )
-  }
-
   // Zombie session handling: user exists but their business node is gone or profile is uninitialized
   const isZombie = (!profile?.tenantId || !tenant) && !isUserLoading;
   if (isZombie) {
@@ -107,6 +96,18 @@ export default function DashboardPage() {
         >
           INITIALIZE TERMINAL
         </Button>
+      </div>
+    )
+  }
+
+  // Suspended account handling
+  if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
+        <ShieldX className="h-20 w-20 text-destructive animate-bounce" />
+        <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter">Access Denied</h1>
+        <p className="text-muted-foreground text-sm font-medium">Subscription restricted.</p>
+        <Button className="w-full h-16 rounded-[24px] bg-primary" onClick={() => window.open('mailto:support@freshtally.com')}>CONTACT SUPPORT</Button>
       </div>
     )
   }

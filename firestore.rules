@@ -11,26 +11,27 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isSuperAdmin() {
-      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(userDoc) &&
-             get(userDoc).data.get('role', 'staff') == 'super_admin';
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().get('role', 'staff') == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
-      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(userDocPath) &&
-             get(userDocPath).data.tenantId == tenantId;
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(userDocPath) &&
-             get(userDocPath).data.tenantId == tenantId &&
-             get(userDocPath).data.get('role', 'staff') == 'owner';
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().tenantId == tenantId &&
+             getUserData().get('role', 'staff') == 'owner';
     }
 
     // --- Collection Rules ---
@@ -51,11 +52,12 @@ service cloud.firestore {
       allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
-      allow update, delete: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
+      allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
+      allow delete: if isSuperAdmin();
 
+      // Deeply nested subcollection rule for multi-tenant isolation
       match /{allSubcollections=**} {
-        allow read: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
-        allow write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
+        allow read, write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }
     }
   }

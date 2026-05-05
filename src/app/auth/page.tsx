@@ -37,7 +37,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     // Only redirect to dashboard if user HAS a valid, existing tenant node.
-    // This prevents infinite loops if a tenant document was deleted.
+    // This prevents infinite loops and permission errors if a tenant document was deleted.
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
