@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AuthPage() {
-  const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
+  const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff" >("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -53,8 +53,8 @@ export default function AuthPage() {
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-        // Small delay to ensure auth state observer finishes initial checks
-        setTimeout(() => router.push("/"), 500)
+        // Stabilization delay to ensure rules engine and auth observer sync
+        setTimeout(() => router.push("/"), 1500)
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
         if (!ownerName.trim()) throw new Error("Full name is required.")
@@ -77,7 +77,7 @@ export default function AuthPage() {
           })
           await batch.commit()
           toast({ title: "Genesis Activated", description: "Welcome back, System Owner." })
-          setTimeout(() => router.push("/"), 800)
+          setTimeout(() => router.push("/"), 2000)
           return
         }
 
@@ -109,8 +109,8 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        // Crucial stabilization delay before redirecting to dashboard
-        setTimeout(() => router.push("/"), 1500)
+        // Mandatory stabilization delay for Firestore rules propagation
+        setTimeout(() => router.push("/"), 3000)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
@@ -130,7 +130,7 @@ export default function AuthPage() {
         })
 
         toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
-        setTimeout(() => router.push("/"), 1500)
+        setTimeout(() => router.push("/"), 2500)
       }
     } catch (err: any) {
       let message = err.message
@@ -222,7 +222,7 @@ export default function AuthPage() {
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input 
-                            placeholder="e.g. Makati City" 
+                            placeholder=" Makati City" 
                             className="h-14 pl-10 rounded-2xl border-none bg-gray-100 font-bold"
                             value={storeAddress}
                             onChange={(e) => setStoreAddress(e.target.value)}

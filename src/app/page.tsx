@@ -38,11 +38,11 @@ export default function DashboardPage() {
     return d.toISOString()
   }, [])
 
-  // FRESHTALLY V3: Hardened gating to prevent permission errors during synchronization
+  // FRESHTALLY V4: Hardened defensive gating for sub-collection queries
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId) return null
     
-    // Strict match validation: The query tenant ID must match the verified profile tenant ID
+    // Strict identity match to prevent permission leaks
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
     
     return query(
@@ -80,7 +80,7 @@ export default function DashboardPage() {
   if (isUserLoading) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-12 flex flex-col items-center gap-4">
       <ShieldCheck className="h-10 w-10 animate-bounce" />
-      Stabilizing Context...
+      Syncing Intelligence...
     </div>
   )
 

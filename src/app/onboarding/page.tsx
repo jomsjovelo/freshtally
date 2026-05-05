@@ -71,7 +71,8 @@ export default function OnboardingPage() {
         title: "Store Created!",
         description: `Welcome to FreshTally. Your Store ID is ${tenantId}.`
       })
-      router.push("/")
+      // Stabilization buffer before dashboard initialization
+      setTimeout(() => router.push("/"), 2500)
     } catch (error: any) {
       toast({
         title: "Setup Failed",
@@ -113,7 +114,7 @@ export default function OnboardingPage() {
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
-                  placeholder="e.g. Makati Ave, Makati City" 
+                  placeholder=" Makati Ave, Makati City" 
                   className="h-16 pl-12 rounded-2xl border-none bg-gray-100 font-bold text-lg"
                   value={storeAddress}
                   onChange={(e) => setStoreAddress(e.target.value)}
