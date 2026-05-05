@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
@@ -28,11 +27,8 @@ export default function DashboardPage() {
   const db = useFirestore()
   const [stableNow, setStableNow] = useState<string | null>(null)
 
-  const isSuperAdmin = profile?.role === 'super_admin'
-  const isOwner = profile?.role === 'owner'
-  const isStaff = profile?.role === 'staff'
-
   useEffect(() => {
+    // Standard hydration fix for dynamic dates
     const d = new Date()
     d.setSeconds(0, 0)
     setStableNow(d.toISOString())
@@ -75,7 +71,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  if (tenant?.status === 'suspended' && !isSuperAdmin) {
+  if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
         <ShieldX className="h-20 w-20 text-destructive animate-bounce" />
@@ -86,26 +82,29 @@ export default function DashboardPage() {
     )
   }
 
-  if (!isSuperAdmin && !profile?.tenantId && !isUserLoading) {
+  // Improved role/tenant check for a smoother onboarding experience
+  if (!profile?.tenantId && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
-        <div className="h-24 w-24 bg-red-50 rounded-[32px] flex items-center justify-center text-destructive">
-          <AlertCircle className="h-12 w-12" />
+        <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary">
+          <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Identity Error</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Your account is not associated with a business tenant. Please contact your store owner or administrator.</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter">Welcome to FreshTally</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">Initialize your business workspace to begin tracking metrics.</p>
         </div>
         <Button 
-          variant="outline"
-          className="w-full h-16 rounded-[24px] font-black uppercase" 
+          className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          Return to Login
+          SETUP BUSINESS
         </Button>
       </div>
     )
   }
+
+  const isStaff = profile?.role === 'staff'
+  const isOwner = profile?.role === 'owner'
 
   return (
     <div className="p-4 space-y-6">

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -16,15 +15,24 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
-  if (!mounted || pathname === '/auth') return null
+  // Avoid total layout shift by always rendering the header container
+  if (pathname === '/auth') return null
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       <div className="flex items-center gap-3 overflow-hidden">
-        {isUserLoading ? (
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        {!mounted || isUserLoading ? (
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gray-100 animate-pulse flex items-center justify-center">
+               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
+            </div>
+            <div className="space-y-1">
+              <div className="h-3 w-20 bg-gray-100 animate-pulse rounded" />
+              <div className="h-2 w-12 bg-gray-100 animate-pulse rounded" />
+            </div>
+          </div>
         ) : (
           <>
             <Avatar className="h-9 w-9 rounded-xl border border-gray-200 shadow-sm">
@@ -34,7 +42,7 @@ export function TopBar() {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <h2 className="text-sm font-black uppercase tracking-tighter truncate leading-none">
+              <h2 className="text-sm font-black uppercase tracking-tighter truncate leading-none text-foreground">
                 {isSuperAdmin ? 'GENESIS TERMINAL' : (tenant?.name || 'MY STORE')}
               </h2>
               <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-0.5 truncate">

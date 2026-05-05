@@ -17,17 +17,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    // Resilient check: prioritized ownerUid from the tenant doc to bypass profile propagation lag.
     function isTenantMember(tenantId) {
+      let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
       return isSignedIn() && (
-        getUserData().tenantId == tenantId || 
-        get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerUid == request.auth.uid
+        tenant.ownerUid == request.auth.uid ||
+        getUserData().tenantId == tenantId
       );
     }
 
     function isTenantOwner(tenantId) {
+      let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
       return isSignedIn() && (
-        getUserData().role == 'owner' || 
-        get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerUid == request.auth.uid
+        tenant.ownerUid == request.auth.uid ||
+        getUserData().role == 'owner'
       );
     }
 
