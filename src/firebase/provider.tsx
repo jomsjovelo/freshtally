@@ -81,7 +81,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           return;
         }
 
-        // Keep isUserLoading true until profile and potentially tenant snapshots are resolved
+        // Start loading sequence for profile
         setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
         const userRef = doc(firestore, 'users', firebaseUser.uid);
@@ -100,7 +100,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 user: firebaseUser,
                 profile: profileData,
                 tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-                isUserLoading: false,
+                isUserLoading: false, // Only set loading false once tenant is resolved
                 userError: null
               });
             }, (err) => {
@@ -114,6 +114,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             });
             return () => unsubscribeTenant();
           } else {
+            // Profile exists but no tenantId associated yet
             setState({
               user: firebaseUser,
               profile: profileData,

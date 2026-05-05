@@ -36,16 +36,18 @@ export default function DashboardPage() {
   }, [])
 
   // CRITICAL: Strict guarding for sub-collection queries to prevent permission errors
+  // Ensure we have a valid user AND a valid tenant context before firing queries
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !user || isUserLoading || !profile?.tenantId || !tenant?.id) return null
-    if (profile.tenantId !== tenant.id) return null
+    // Double check that the user's profile tenant matches the current active tenant
+    if (profile.tenantId !== tenant.id && profile.role !== 'super_admin') return null
     
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, user?.uid, isUserLoading, profile?.tenantId, tenant?.id])
+  }, [db, user?.uid, isUserLoading, profile?.tenantId, tenant?.id, profile?.role])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!db || !user || !stableNow || isUserLoading) return null
@@ -76,7 +78,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Handle sessions where business node is missing
+  // Handle sessions where business node is missing or uninitialized
   const isZombie = (!profile?.tenantId || !tenant) && !isUserLoading;
   if (isZombie) {
     return (

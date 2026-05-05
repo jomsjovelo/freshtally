@@ -55,7 +55,18 @@ service cloud.firestore {
       allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
       allow delete: if isSuperAdmin();
 
-      // Multi-tenant subcollection isolation
+      // Explicit subcollection matching for better list/query authorization
+      match /products/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
+      match /inventoryItems/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
+      match /transactions/{id} { 
+        allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); 
+        match /saleItems/{itemId} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
+      }
+      match /expenses/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
+      match /b2bClients/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
+      match /reconciliations/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
+
+      // Catch-all for any other nested paths
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }
