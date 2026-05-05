@@ -16,7 +16,7 @@ export function BottomNav() {
     setMounted(true)
   }, [])
 
-  // HYDRATION GUARD: Always render the nav structural tag to avoid mismatches
+  // HYDRATION GUARD: Always render the structural nav tag to match server/client expectations
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
       {mounted && pathname !== '/auth' && !isUserLoading && (tenant || profile?.role === 'super_admin') && (

@@ -35,9 +35,10 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // RIGID SYNCHRONIZATION GUARD: Prevents queries from firing until context is absolute
+  // RIGID SYNCHRONIZATION GUARD: Absolute protection against unauthorized query firing
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
+    // Ensure the tenant identity is identical between profile and resolved tenant node
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -79,7 +80,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // ZOMBIE PROTECTION: User is logged in but missing business node
+  // ZOMBIE PROTECTION: Authenticated session but missing business station
   if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">

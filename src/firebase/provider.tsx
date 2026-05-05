@@ -64,19 +64,21 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
+    // ROOT AUTH LISTENER
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
         return;
       }
 
-      // Keep isUserLoading: true while we fetch profile and tenant
+      // Keep loading active while fetching the rest of the node
       setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
+      // USER PROFILE LISTENER
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // PROFILE MISSING: Authenticated user with no Firestore profile
+          // PROFILE MISSING: Authenticated user with no Firestore profile (Prompt Setup)
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -84,9 +86,10 @@ export const FirebaseProvider: React.FC<{
         const profileData = profileSnap.data() as UserProfile;
 
         if (profileData.tenantId) {
+          // TENANT LISTENER
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            // SYNC SUCCESS: Complete chain verified
+            // SUCCESSFUL CONTEXT RESOLUTION
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -95,7 +98,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // TENANT ACCESS ERROR
+            // TENANT ACCESS ERROR (Evaluation fail or node missing)
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -106,7 +109,7 @@ export const FirebaseProvider: React.FC<{
           });
           return () => unsubscribeTenant();
         } else {
-          // PROFILE EXISTS BUT NO TENANT (Zombie state)
+          // PROFILE EXISTS BUT NO TENANT LINK (Registration transition)
           setState({
             user: firebaseUser,
             profile: profileData,
