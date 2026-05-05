@@ -12,6 +12,7 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Direct access to user document to check tenant and role
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
@@ -55,7 +56,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
       allow delete: if isSuperAdmin();
 
-      // Explicit subcollection matching for better list/query authorization
+      // Subcollections are strictly scoped to tenant members
       match /products/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
       match /inventoryItems/{id} { allow read, write: if isTenantMember(tenantId) || isSuperAdmin(); }
       match /transactions/{id} { 

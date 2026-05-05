@@ -81,7 +81,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           return;
         }
 
-        // Start loading sequence for profile
+        // Keep loading state until profile and tenant are resolved
         setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
         const userRef = doc(firestore, 'users', firebaseUser.uid);
@@ -100,10 +100,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 user: firebaseUser,
                 profile: profileData,
                 tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-                isUserLoading: false, // Only set loading false once tenant is resolved
+                isUserLoading: false,
                 userError: null
               });
             }, (err) => {
+              // Gracefully handle tenant read errors (e.g. permission denied)
               setState({
                 user: firebaseUser,
                 profile: profileData,
@@ -124,6 +125,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             });
           }
         }, (err) => {
+          // Gracefully handle profile read errors
           setState(prev => ({ ...prev, user: firebaseUser, userError: err, isUserLoading: false }));
         });
 
