@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V10
+     * FRESH TALLY ARCHITECTURAL STABILITY V11
      * Resilient multi-tenant isolation with atomic verification.
      */
 
@@ -11,31 +11,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Atomic helper to get user data from the source of truth
-    function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    // Atomic helper to get user data directly from the source of truth
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isTenantMember(tenantId) {
-      let user = getUserDoc();
-      return isSignedIn() && 
-             user != null && 
-             user.data.tenantId == tenantId;
+      let data = getUserData();
+      return isSignedIn() && data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let user = getUserDoc();
-      return isSignedIn() && 
-             user != null && 
-             user.data.tenantId == tenantId &&
-             user.data.role == 'owner';
+      let data = getUserData();
+      return isSignedIn() && data.tenantId == tenantId && data.role == 'owner';
     }
 
     function isSuperAdmin() {
-      let user = getUserDoc();
-      return isSignedIn() && 
-             user != null && 
-             user.data.role == 'super_admin';
+      let data = getUserData();
+      return isSignedIn() && data.role == 'super_admin';
     }
 
     // --- Collection Rules ---

@@ -81,7 +81,6 @@ export const FirebaseProvider: React.FC<{
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // If auth exists but profile doesn't, allow UI to handle onboarding/recovery
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
