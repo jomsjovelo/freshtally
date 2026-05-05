@@ -71,8 +71,8 @@ export default function OnboardingPage() {
         title: "Store Created!",
         description: `Welcome to FreshTally. Your Store ID is ${tenantId}.`
       })
-      // Stabilization buffer before dashboard initialization
-      setTimeout(() => router.push("/"), 2500)
+      // HARDENED REDIRECT: V6 - 6 seconds for global security rules propagation
+      setTimeout(() => router.push("/"), 6000)
     } catch (error: any) {
       toast({
         title: "Setup Failed",

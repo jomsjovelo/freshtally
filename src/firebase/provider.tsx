@@ -111,7 +111,7 @@ export const FirebaseProvider: React.FC<{
               if (!tenantSnap.exists()) return;
               if (tenantSnap.metadata.hasPendingWrites) return;
 
-              // Final settling buffer for Security Rules engine indexing
+              // FINAL SETTLING BUFFER: V6 - Increased to 5s for absolute security rules propagation
               if (settlingTimeout) clearTimeout(settlingTimeout);
               settlingTimeout = setTimeout(() => {
                 setAuthState({
@@ -121,7 +121,7 @@ export const FirebaseProvider: React.FC<{
                   isUserLoading: false,
                   userError: null
                 });
-              }, 2500);
+              }, 5000);
             }, (err) => {
               if (err.code !== 'permission-denied') {
                 setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { ShieldCheck, LogIn, Store, Users, MapPin, Loader2, AlertCircle } from "lucide-react"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AuthPage() {
@@ -109,8 +109,8 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        // Hardened delay for global Firestore rules propagation
-        setTimeout(() => router.push("/"), 6000)
+        // HARDENED REDIRECT: V6 - 8 seconds for global security rules propagation
+        setTimeout(() => router.push("/"), 8000)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
@@ -130,7 +130,7 @@ export default function AuthPage() {
         })
 
         toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
-        setTimeout(() => router.push("/"), 5000)
+        setTimeout(() => router.push("/"), 6000)
       }
     } catch (err: any) {
       let message = err.message

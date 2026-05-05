@@ -3,7 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // CORE AUTHORIZATION HELPERS
+    // REDEPLOY TRIGGER: V6 - RECURSIVE AUTHORIZATION HARDENING
+    
     function isSignedIn() { 
       return request.auth != null; 
     }
@@ -15,18 +16,21 @@ service cloud.firestore {
       let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // 1. Profile Check (Source of truth for all users)
-      // We use exists() to avoid errors on cold startup
-      let hasProfileAccess = exists(profilePath) && 
-                            (get(profilePath).data.role == 'super_admin' || 
-                             get(profilePath).data.tenantId == tId);
+      // 1. Direct Ownership Fallback (Most resilient to replication lag for Owners)
+      let isOwner = exists(tenantPath) && 
+                    request.auth.token.email != null && 
+                    get(tenantPath).data.ownerEmail.lower() == request.auth.token.email.lower();
       
-      // 2. Direct Ownership Fallback (Resilient path for owners during propagation lag)
-      let isOwnerFallback = exists(tenantPath) && 
-                           request.auth.token.email != null && 
-                           get(tenantPath).data.ownerEmail.lower() == request.auth.token.email.lower();
+      if (isOwner) return true;
+
+      // 2. Profile Check (Source of truth for staff and super admins)
+      let hasProfile = exists(profilePath);
+      if (hasProfile) {
+        let profile = get(profilePath).data;
+        return profile.role == 'super_admin' || profile.tenantId == tId;
+      }
       
-      return hasProfileAccess || isOwnerFallback;
+      return false;
     }
 
     match /userProfiles/{userId} {
