@@ -35,29 +35,27 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // CRITICAL: Strict guarding for sub-collection queries to prevent permission errors
+  // CRITICAL GUARD: Only query if context is fully stable and verified
   const transactionsQuery = useMemoFirebase(() => {
-    // Only fire query if security context is fully established
-    if (!db || !user || isUserLoading || !profile?.tenantId || !tenant?.id) return null
-    // Ensure user profile actually belongs to the active tenant being queried
-    if (profile.tenantId !== tenant.id && profile.role !== 'super_admin') return null
+    if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
+    if (profile.tenantId !== tenant.id) return null
     
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, user?.uid, isUserLoading, profile?.tenantId, tenant?.id, profile?.role])
+  }, [mounted, isUserLoading, db, user?.uid, profile?.tenantId, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user || !stableNow || isUserLoading) return null
+    if (!mounted || isUserLoading || !db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user?.uid, stableNow, isUserLoading])
+  }, [mounted, isUserLoading, db, user?.uid, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -68,27 +66,28 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration and loading guards
-  if (!mounted || isUserLoading || !stableNow) return (
+  // Hydration Structural Protection
+  if (!mounted) return <div className="min-h-screen bg-background" />
+
+  if (isUserLoading || !stableNow) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin" />
-      Syncing Intelligence...
+      Synchronizing Terminal...
     </div>
   )
 
   if (!user) return null
 
-  // Handle uninitialized business nodes
-  const isZombie = (!profile?.tenantId || !tenant) && !isUserLoading;
-  if (isZombie) {
+  // Handle Missing Business Node (Zombie Protection)
+  if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
         <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary">
           <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Station Offline</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Your business node could not be found. Initialize your terminal to proceed.</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Station Offline</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">Your business configuration could not be verified. Initialize your node to proceed.</p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
@@ -96,18 +95,6 @@ export default function DashboardPage() {
         >
           INITIALIZE TERMINAL
         </Button>
-      </div>
-    )
-  }
-
-  // Account suspension logic
-  if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
-        <ShieldX className="h-20 w-20 text-destructive animate-bounce" />
-        <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter">Access Denied</h1>
-        <p className="text-muted-foreground text-sm font-medium">Subscription restricted.</p>
-        <Button className="w-full h-16 rounded-[24px] bg-primary" onClick={() => window.open('mailto:support@freshtally.com')}>CONTACT SUPPORT</Button>
       </div>
     )
   }
@@ -136,7 +123,7 @@ export default function DashboardPage() {
             {isStaff ? "Terminal" : "Intelligence"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-            {isStaff ? "Operational Node" : "Real-time metrics"}
+            {tenant.name} • {profile.role}
           </p>
         </div>
         <div className="flex gap-2">

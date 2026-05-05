@@ -6,14 +6,6 @@ import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-}
-
-// User Profile entity from backend.json
 interface UserProfile {
   id: string;
   tenantId: string;
@@ -24,7 +16,6 @@ interface UserProfile {
   updatedAt: any;
 }
 
-// Tenant entity from backend.json
 interface Tenant {
   id: string;
   name: string;
@@ -56,12 +47,12 @@ export interface UserHookResult extends UserAuthState {}
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
-  children,
-  firebaseApp,
-  firestore,
-  auth,
-}) => {
+export const FirebaseProvider: React.FC<{
+  children: ReactNode;
+  firebaseApp: FirebaseApp;
+  firestore: Firestore;
+  auth: Auth;
+}> = ({ children, firebaseApp, firestore, auth }) => {
   const [state, setState] = useState<UserAuthState>({
     user: null,
     profile: null,
@@ -73,68 +64,61 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   useEffect(() => {
     if (!auth || !firestore) return;
 
-    const unsubscribeAuth = onAuthStateChanged(
-      auth,
-      (firebaseUser) => {
-        if (!firebaseUser) {
-          setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
+        return;
+      }
+
+      // Start fetching profile
+      const userRef = doc(firestore, 'users', firebaseUser.uid);
+      const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
+        if (!profileSnap.exists()) {
+          // Auth exists but no profile yet
+          setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
 
-        // Keep loading state until profile and tenant are resolved
-        setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
+        const profileData = profileSnap.data() as UserProfile;
 
-        const userRef = doc(firestore, 'users', firebaseUser.uid);
-        const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
-          if (!profileSnap.exists()) {
-            setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
-            return;
-          }
-
-          const profileData = profileSnap.data() as UserProfile;
-
-          if (profileData.tenantId) {
-            const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
-            const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-              setState({
-                user: firebaseUser,
-                profile: profileData,
-                tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-                isUserLoading: false,
-                userError: null
-              });
-            }, (err) => {
-              // Gracefully handle tenant read errors (e.g. permission denied)
-              setState({
-                user: firebaseUser,
-                profile: profileData,
-                tenant: null,
-                isUserLoading: false,
-                userError: err
-              });
+        if (profileData.tenantId) {
+          const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
+          const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
+            setState({
+              user: firebaseUser,
+              profile: profileData,
+              tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
+              isUserLoading: false,
+              userError: null
             });
-            return () => unsubscribeTenant();
-          } else {
-            // Profile exists but no tenantId associated yet
+          }, (err) => {
+            // Permission error or missing tenant
             setState({
               user: firebaseUser,
               profile: profileData,
               tenant: null,
               isUserLoading: false,
-              userError: null
+              userError: err
             });
-          }
-        }, (err) => {
-          // Gracefully handle profile read errors
-          setState(prev => ({ ...prev, user: firebaseUser, userError: err, isUserLoading: false }));
-        });
+          });
+          return () => unsubscribeTenant();
+        } else {
+          setState({
+            user: firebaseUser,
+            profile: profileData,
+            tenant: null,
+            isUserLoading: false,
+            userError: null
+          });
+        }
+      }, (err) => {
+        setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
+      });
 
-        return () => unsubscribeProfile();
-      },
-      (error) => {
-        setState(prev => ({ ...prev, userError: error, isUserLoading: false }));
-      }
-    );
+      return () => unsubscribeProfile();
+    }, (err) => {
+      setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: err });
+    });
 
     return () => unsubscribeAuth();
   }, [auth, firestore]);
@@ -157,9 +141,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
 export const useFirebase = () => {
   const context = useContext(FirebaseContext);
-  if (context === undefined) {
-    throw new Error('useFirebase must be used within a FirebaseProvider.');
-  }
+  if (context === undefined) throw new Error('useFirebase must be used within a FirebaseProvider.');
   return context;
 };
 

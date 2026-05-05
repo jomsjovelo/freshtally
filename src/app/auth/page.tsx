@@ -36,8 +36,7 @@ export default function AuthPage() {
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
-    // Only redirect to dashboard if user HAS a valid, existing tenant node.
-    // This prevents infinite loops and permission errors if a tenant document was deleted.
+    // Redirect only if context is fully verified and consistent
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
@@ -54,10 +53,6 @@ export default function AuthPage() {
         toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
         return
       }
-      if (password.length < 6) {
-        toast({ title: "Weak Password", description: "Password must be at least 6 characters.", variant: "destructive" })
-        return
-      }
     }
 
     setLoading(true)
@@ -65,10 +60,6 @@ export default function AuthPage() {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
       } else if (authMode === "register_owner") {
-        if (!businessName.trim()) throw new Error("Business name is required.")
-        if (!ownerName.trim()) throw new Error("Full name is required.")
-        if (!storeAddress.trim()) throw new Error("Business address is required.")
-
         let user = currentUser;
         if (!user) {
           const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
@@ -83,13 +74,9 @@ export default function AuthPage() {
         batch.set(tenantRef, {
           id: tenantId,
           name: businessName,
-          ownerName: ownerName,
-          address: storeAddress,
+          ownerUid: user.uid,
           status: "active",
           subscriptionPlan: "basic",
-          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          ownerUid: user.uid,
-          ownerEmail: user.email || normalizedEmail,
           currency: "PHP",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -106,11 +93,9 @@ export default function AuthPage() {
         }, { merge: true })
 
         await batch.commit()
-        toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
+        toast({ title: "Node Initialized" })
         router.push("/")
       } else if (authMode === "join_staff") {
-        if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
-        
         let user = currentUser;
         if (!user) {
           const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
@@ -118,7 +103,6 @@ export default function AuthPage() {
         }
 
         const profileRef = doc(db, "users", user.uid)
-
         await writeBatch(db)
           .set(profileRef, {
             id: user.uid,
@@ -131,19 +115,19 @@ export default function AuthPage() {
           }, { merge: true })
           .commit()
 
-        toast({ title: "Access Granted", description: `Joining team...` })
+        toast({ title: "Node Joining..." })
         router.push("/")
       }
     } catch (err: any) {
       setError(err.message)
-      toast({ title: "Authentication Failed", description: err.message, variant: "destructive" })
+      toast({ title: "Operation Failed", description: err.message, variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
 
-  // Detect session where user has no associated business node
-  const isZombieSession = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
+  // Detect Zombie State (Auth exists but configuration node missing)
+  const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
@@ -151,10 +135,10 @@ export default function AuthPage() {
         <div className="text-center pt-10 pb-6 bg-primary text-white px-8 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
           <div className="h-16 w-16 bg-white/20 rounded-[20px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md relative z-10">
-            {isZombieSession ? <Store className="h-8 w-8 text-white" /> : <ShieldCheck className="h-8 w-8 text-white" />}
+            {isZombie ? <Store className="h-8 w-8 text-white" /> : <ShieldCheck className="h-8 w-8 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
-            {isZombieSession ? "Re-Initialize" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
+            {isZombie ? "Re-Initialize" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
           </h1>
           <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2 relative z-10">
             FreshTally SaaS • Multi-Tenant
@@ -170,8 +154,8 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs value={isZombieSession ? "register_owner" : authMode} onValueChange={(v: any) => { setAuthMode(v as any); setError(null); }} className="w-full">
-            {!isZombieSession && (
+          <Tabs value={isZombie ? "register_owner" : authMode} onValueChange={(v: any) => { setAuthMode(v as any); setError(null); }} className="w-full">
+            {!isZombie && (
               <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
                 <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
                 <TabsTrigger value="register_owner" className="rounded-xl text-[10px] font-black uppercase">OWNER</TabsTrigger>
@@ -180,9 +164,9 @@ export default function AuthPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {(authMode !== "login" || isZombieSession) && (
+              {(authMode !== "login" || isZombie) && (
                 <div className="space-y-5">
-                  {(authMode === "join_staff" && !isZombieSession) && (
+                  {(authMode === "join_staff" && !isZombie) && (
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">5-Digit Store ID</Label>
                       <Input 
@@ -207,32 +191,17 @@ export default function AuthPage() {
                     />
                   </div>
 
-                  {(authMode === "register_owner" || isZombieSession) && (
-                    <>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
-                        <Input 
-                          placeholder="e.g. JMJ Foods" 
-                          className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
-                          value={businessName}
-                          onChange={(e) => setBusinessName(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Address</Label>
-                        <div className="relative">
-                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            placeholder=" Makati City" 
-                            className="h-14 pl-10 rounded-2xl border-none bg-gray-100 font-bold"
-                            value={storeAddress}
-                            onChange={(e) => setStoreAddress(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                    </>
+                  {(authMode === "register_owner" || isZombie) && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
+                      <Input 
+                        placeholder="e.g. JMJ Foods" 
+                        className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        required
+                      />
+                    </div>
                   )}
                 </div>
               )}
@@ -265,20 +234,6 @@ export default function AuthPage() {
                 </>
               )}
 
-              {authMode !== "login" && !currentUser && (
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
-                  <Input 
-                    type="password" 
-                    placeholder="Repeat Password" 
-                    className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-
               <Button 
                 type="submit"
                 className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl active:scale-[0.98] transition-all mt-6" 
@@ -288,7 +243,7 @@ export default function AuthPage() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>
-                    {isZombieSession ? "INITIALIZE BUSINESS" : (authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF")}
+                    {isZombie ? "INITIALIZE BUSINESS" : (authMode === "login" ? "OPEN TERMINAL" : "REGISTER BUSINESS")}
                   </>
                 )}
               </Button>
