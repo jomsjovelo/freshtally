@@ -41,40 +41,38 @@ export default function OnboardingPage() {
 
     setLoading(true)
     try {
-      // Generate a 5-digit unique numeric Store ID
       const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
       const normalizedEmail = user.email.toLowerCase()
       
-      // Create Tenant
       await setDoc(doc(db, "tenants", tenantId), {
         id: tenantId,
         name: storeName,
         address: storeAddress,
         status: "active",
         subscriptionPlan: "basic",
-        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 day trial
+        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         ownerUid: user.uid,
         ownerEmail: normalizedEmail,
         currency: "PHP",
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       })
 
-      // Create User Profile
-      await setDoc(doc(db, "userProfiles", user.uid), {
-        uid: user.uid,
+      await setDoc(doc(db, "users", user.uid), {
+        id: user.uid,
         email: normalizedEmail,
         role: "owner",
         tenantId: tenantId,
-        name: user.displayName || storeName + " Owner",
-        createdAt: serverTimestamp()
+        displayName: user.displayName || storeName + " Owner",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       })
 
       toast({
         title: "Store Created!",
         description: `Welcome to FreshTally. Your Store ID is ${tenantId}.`
       })
-      // HARDENED REDIRECT: V7 - 10 seconds for global security rules propagation
-      setTimeout(() => router.push("/"), 10000)
+      router.push("/")
     } catch (error: any) {
       toast({
         title: "Setup Failed",

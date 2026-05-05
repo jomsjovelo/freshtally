@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -7,13 +8,13 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from "firebase/auth"
-import { doc, getFirestore, serverTimestamp, getDoc, writeBatch, setDoc } from "firebase/firestore"
+import { doc, getFirestore, serverTimestamp, writeBatch } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, LogIn, Store, Users, MapPin, Loader2, AlertCircle } from "lucide-react"
-import { Tabs, TabsList, TabsTrigger } from "@/components/tabs"
+import { ShieldCheck, Loader2, AlertCircle, MapPin } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AuthPage() {
@@ -53,8 +54,7 @@ export default function AuthPage() {
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-        // Stabilization delay to ensure rules engine and auth observer sync
-        setTimeout(() => router.push("/"), 2000)
+        router.push("/")
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
         if (!ownerName.trim()) throw new Error("Full name is required.")
@@ -63,27 +63,9 @@ export default function AuthPage() {
         const { user } = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
         const batch = writeBatch(db)
 
-        // GENESIS ADMIN CHECK
-        const adminEmail = "jomsjovelo@gmail.com"
-        if (user.email?.toLowerCase() === adminEmail) {
-          const profileRef = doc(db, "userProfiles", user.uid)
-          batch.set(profileRef, {
-            uid: user.uid,
-            email: user.email.toLowerCase(),
-            role: "super_admin",
-            tenantId: null,
-            name: ownerName || "System Owner",
-            createdAt: serverTimestamp()
-          })
-          await batch.commit()
-          toast({ title: "Genesis Activated", description: "Welcome back, System Owner." })
-          setTimeout(() => router.push("/"), 3000)
-          return
-        }
-
         const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
         const tenantRef = doc(db, "tenants", tenantId)
-        const profileRef = doc(db, "userProfiles", user.uid)
+        const profileRef = doc(db, "users", user.uid)
 
         batch.set(tenantRef, {
           id: tenantId,
@@ -96,51 +78,47 @@ export default function AuthPage() {
           ownerUid: user.uid,
           ownerEmail: normalizedEmail,
           currency: "PHP",
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         })
 
         batch.set(profileRef, {
-          uid: user.uid,
+          id: user.uid,
           email: normalizedEmail,
           role: "owner",
           tenantId: tenantId,
-          name: ownerName,
-          createdAt: serverTimestamp()
+          displayName: ownerName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         })
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        // HARDENED REDIRECT: V9 - 12 seconds for global security rules propagation
-        setTimeout(() => router.push("/"), 12000)
+        router.push("/")
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
-        const tenantDoc = await getDoc(doc(db, "tenants", tenantIdInput))
-        if (!tenantDoc.exists()) throw new Error("Invalid Store ID. Check with your manager.")
-
         const { user } = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
-        const profileRef = doc(db, "userProfiles", user.uid)
+        const profileRef = doc(db, "users", user.uid)
 
-        await setDoc(profileRef, {
-          uid: user.uid,
-          email: normalizedEmail,
-          role: "staff",
-          tenantId: tenantIdInput,
-          name: ownerName || "Shop Staff",
-          createdAt: serverTimestamp()
-        })
+        await writeBatch(db)
+          .set(profileRef, {
+            id: user.uid,
+            email: normalizedEmail,
+            role: "staff",
+            tenantId: tenantIdInput,
+            displayName: ownerName || "Shop Staff",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          })
+          .commit()
 
-        toast({ title: "Access Granted", description: `Joined ${tenantDoc.data().name} team.` })
-        setTimeout(() => router.push("/"), 8000)
+        toast({ title: "Access Granted", description: `Joining team...` })
+        router.push("/")
       }
     } catch (err: any) {
-      let message = err.message
-      if (err.code === 'auth/email-already-in-use') {
-        message = "This email is already registered. Please switch to the LOGIN tab."
-        setAuthMode("login")
-      }
-      setError(message)
-      toast({ title: "Authentication Failed", description: message, variant: "destructive" })
+      setError(err.message)
+      toast({ title: "Authentication Failed", description: err.message, variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -164,7 +142,7 @@ export default function AuthPage() {
 
         <div className="p-8 pt-6 space-y-6 overflow-y-auto">
           {error && (
-            <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700 animate-in fade-in slide-in-from-top-1">
+            <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="text-[10px] font-black uppercase tracking-widest">Auth Error</AlertTitle>
               <AlertDescription className="text-xs font-bold">{error}</AlertDescription>
@@ -180,7 +158,7 @@ export default function AuthPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {authMode !== "login" && (
-                <div className="space-y-5 animate-in fade-in slide-in-from-top-2">
+                <div className="space-y-5">
                   {authMode === "join_staff" && (
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">5-Digit Store ID</Label>
@@ -261,7 +239,7 @@ export default function AuthPage() {
               </div>
 
               {authMode !== "login" && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
+                <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
                   <Input 
                     type="password" 
