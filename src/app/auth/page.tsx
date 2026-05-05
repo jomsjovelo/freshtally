@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -18,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AuthPage() {
-  const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff" >("login")
+  const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -111,8 +110,8 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        // HARDENED REDIRECT: V7 - 10 seconds for global security rules propagation
-        setTimeout(() => router.push("/"), 10000)
+        // HARDENED REDIRECT: V9 - 12 seconds for global security rules propagation
+        setTimeout(() => router.push("/"), 12000)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         

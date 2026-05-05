@@ -1,16 +1,15 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // REDEPLOY TRIGGER: V8 - DEFINITIVE PROPAGATION HARDENING
+    // REDEPLOY TRIGGER: V9 - PROPAGATION HARDENING & NULL DEFENSE
     
     function isSignedIn() { 
       return request.auth != null; 
     }
     
-    // Optimized tenant access check
+    // Optimized tenant access check with resilient field verification
     function canAccessTenant(tId) {
       if (!isSignedIn()) { return false; }
 
@@ -20,10 +19,13 @@ service cloud.firestore {
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
       // 1. DIRECT OWNERSHIP CHECK (Fastest, most resilient to lag)
-      // We check the tenant document for UID or Email match.
       if (exists(tenantPath)) {
         let tenant = get(tenantPath).data;
-        if (tenant.ownerUid == uid || (email != null && tenant.ownerEmail.lower() == email.lower())) {
+        // Defensive field checks to prevent rule crashes during propagation
+        let isOwnerUid = ("ownerUid" in tenant) && tenant.ownerUid == uid;
+        let isOwnerEmail = ("ownerEmail" in tenant) && email != null && tenant.ownerEmail.lower() == email.lower();
+        
+        if (isOwnerUid || isOwnerEmail) {
           return true;
         }
       }
@@ -31,7 +33,10 @@ service cloud.firestore {
       // 2. PROFILE-BASED AUTHORIZATION (Fallback for staff/admins)
       if (exists(profilePath)) {
         let profile = get(profilePath).data;
-        return profile.role == 'super_admin' || profile.tenantId == tId;
+        let isSuperAdmin = ("role" in profile) && profile.role == 'super_admin';
+        let isTenantMember = ("tenantId" in profile) && profile.tenantId == tId;
+        
+        return isSuperAdmin || isTenantMember;
       }
       
       return false;

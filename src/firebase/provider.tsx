@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback } from 'react';
@@ -63,31 +62,23 @@ export const FirebaseProvider: React.FC<{
   const syncEnvironment = useCallback((user: User) => {
     let unsubProfile: (() => void) | null = null;
     let unsubTenant: (() => void) | null = null;
-    let settlingTimeout: NodeJS.Timeout | null = null;
     let retryTimeout: NodeJS.Timeout | null = null;
 
     const cleanup = () => {
-      if (settlingTimeout) clearTimeout(settlingTimeout);
       if (retryTimeout) clearTimeout(retryTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
     };
 
     const verifyAccessAndFinalize = async (profileData: UserProfile, tenantData: TenantData) => {
-      // ACTIVE STABILIZATION AUDIT: V8
-      // Instead of a fixed delay, we perform a silent test query.
-      // If this fails, the rules engine is NOT ready yet.
+      // ACTIVE STABILIZATION AUDIT: V9
+      // We perform a silent test query on a subcollection.
+      // If this fails, the Security Rules engine is not yet aware of the new tenant link.
       const testAccess = async () => {
         try {
           const tId = tenantData.id;
-          // Test 1: Parent Doc
-          const tDoc = await getDoc(doc(firestore, 'tenants', tId));
-          if (!tDoc.exists()) return false;
-          
-          // Test 2: Subcollection (The most sensitive propagation point)
           const txQuery = query(collection(firestore, 'tenants', tId, 'transactions'), limit(1));
           await getDocs(txQuery);
-          
           return true;
         } catch (e) {
           return false;
@@ -100,13 +91,16 @@ export const FirebaseProvider: React.FC<{
       const poll = async () => {
         const isReady = await testAccess();
         if (isReady || attempts >= maxAttempts) {
-          setAuthState({
-            user,
-            profile: profileData,
-            tenant: tenantData,
-            isUserLoading: false,
-            userError: null
-          });
+          // Add a final 1s settling delay to ensure SDK cache is aligned
+          setTimeout(() => {
+            setAuthState({
+              user,
+              profile: profileData,
+              tenant: tenantData,
+              isUserLoading: false,
+              userError: null
+            });
+          }, 1000);
         } else {
           attempts++;
           retryTimeout = setTimeout(poll, 2000);
