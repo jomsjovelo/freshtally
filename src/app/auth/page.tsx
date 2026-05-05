@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound, CheckCircle2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser } from "@/firebase"
@@ -45,9 +45,16 @@ export default function AuthPage() {
     setError(null)
     const normalizedEmail = email.trim().toLowerCase()
     
-    if (authMode !== "login" && !currentUser && password !== confirmPassword) {
-      toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
-      return
+    // Validation for registration/recovery
+    if (authMode !== "login" || (!currentUser && authMode !== "login")) {
+      if (password !== confirmPassword) {
+        setError("Passwords do not match. Please verify your entries.")
+        return
+      }
+      if (password.length < 6) {
+        setError("Security policy requires at least 6 characters.")
+        return
+      }
     }
 
     setLoading(true)
@@ -148,7 +155,10 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs value={isZombie ? "register_owner" : authMode} onValueChange={(v: any) => setAuthMode(v as any)} className="w-full">
+          <Tabs value={isZombie ? "register_owner" : authMode} onValueChange={(v: any) => {
+            setAuthMode(v as any);
+            setError(null);
+          }} className="w-full">
             {!isZombie && (
               <TabsList className="grid grid-cols-3 h-12 bg-gray-50 border border-gray-100 rounded-2xl p-1 mb-6">
                 <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">LOGIN</TabsTrigger>
@@ -215,7 +225,7 @@ export default function AuthPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Secure Password</Label>
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
                     <div className="relative">
                       <Input 
                         type="password" 
@@ -228,6 +238,23 @@ export default function AuthPage() {
                       <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                     </div>
                   </div>
+
+                  {authMode !== "login" && (
+                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
+                      <div className="relative">
+                        <Input 
+                          type="password" 
+                          placeholder="Repeat password" 
+                          className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                        />
+                        <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
