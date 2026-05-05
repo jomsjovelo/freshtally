@@ -36,6 +36,7 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
+    // CRITICAL: Ensure tenant and tenant.id exist before querying
     if (!db || !tenant?.id) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
@@ -83,8 +84,8 @@ export default function DashboardPage() {
     )
   }
 
-  // Handle case where user is logged in but has no associated business yet
-  if (!profile?.tenantId && !isUserLoading) {
+  // Handle case where user is logged in but has no associated business yet, or business was deleted
+  if ((!profile?.tenantId || !tenant) && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
         <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary">

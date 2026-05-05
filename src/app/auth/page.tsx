@@ -34,14 +34,15 @@ export default function AuthPage() {
   const { toast } = useToast()
   const auth = getAuth()
   const db = getFirestore()
-  const { user: currentUser, profile } = useUser()
+  const { user: currentUser, profile, tenant } = useUser()
 
-  // If user is already logged in and has a tenant, redirect to dashboard
+  // Only redirect if the user is logged in AND has a valid business context
+  // This prevents infinite loops if the tenant was deleted but the profile is stale
   useEffect(() => {
-    if (currentUser && profile?.tenantId) {
+    if (currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
-  }, [currentUser, profile, router])
+  }, [currentUser, profile, tenant, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,7 +65,7 @@ export default function AuthPage() {
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-        router.push("/")
+        // Redirection handled by useEffect
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
         if (!ownerName.trim()) throw new Error("Full name is required.")
@@ -110,9 +111,6 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
-        
-        // Short delay to allow rules propagation
-        setTimeout(() => router.push("/"), 1500)
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
@@ -139,7 +137,6 @@ export default function AuthPage() {
           .commit()
 
         toast({ title: "Access Granted", description: `Joining team...` })
-        setTimeout(() => router.push("/"), 1000)
       }
     } catch (err: any) {
       setError(err.message)

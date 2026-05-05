@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -86,7 +85,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
           if (!profileSnap.exists()) {
-            setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false }));
+            setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, profile: null, tenant: null }));
             return;
           }
 
@@ -104,7 +103,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 userError: null
               });
             }, (err) => {
-              setState(prev => ({ ...prev, userError: err, isUserLoading: false }));
+              // Gracefully handle permission errors or missing tenant docs
+              setState({
+                user: firebaseUser,
+                profile: profileData,
+                tenant: null,
+                isUserLoading: false,
+                userError: err
+              });
             });
             return () => unsubscribeTenant();
           } else {

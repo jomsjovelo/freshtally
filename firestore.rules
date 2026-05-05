@@ -4,7 +4,7 @@ service cloud.firestore {
 
     /**
      * FRESH TALLY SECURITY RULES
-     * Hardened for multi-tenant SaaS with propagation resilience.
+     * Hardened for multi-tenant SaaS with propagation resilience and missing document handling.
      */
 
     // --- Helper Functions ---
@@ -13,35 +13,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserData() {
-      // Use getAfter to ensure we can see the document if it's part of the same transaction/batch
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isTenantMember(tenantId) {
-      // Resilience: Try direct tenant owner check first, then profile check.
-      // This bypasses profile propagation lag for the owner.
-      let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
+      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      
       return isSignedIn() && (
-        tenant.ownerUid == request.auth.uid ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId)
+        // Check 1: User is the explicit owner recorded on the tenant doc (if it exists)
+        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid) ||
+        // Check 2: User profile document links them to this tenant
+        (exists(userPath) && get(userPath).data.tenantId == tenantId)
       );
     }
 
     function isTenantOwner(tenantId) {
-      let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
+      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+
       return isSignedIn() && (
-        tenant.ownerUid == request.auth.uid ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner')
+        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid) ||
+        (exists(userPath) && get(userPath).data.role == 'owner' && get(userPath).data.tenantId == tenantId)
       );
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && exists(userPath) && get(userPath).data.role == 'super_admin';
     }
 
     function isOwner(userId) {
@@ -54,8 +50,8 @@ service cloud.firestore {
      * @description System broadcasts visible to all signed-in users.
      */
     match /platform_broadcasts/{broadcastId} {
-      allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
     }
 
     /**
