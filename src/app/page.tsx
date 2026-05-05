@@ -35,9 +35,10 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // CRITICAL GUARD: Only query if context is fully stable and verified
+  // CRITICAL GUARD: Only query if context is fully stable and verified across profile and tenant nodes
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
+    // Rigid synchronization: ensure both state pieces match exactly before authorizing a sub-collection query
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -66,7 +67,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration protection
+  // Hydration structural protection
   if (!mounted) return <div className="min-h-screen bg-background" />
 
   if (isUserLoading || !stableNow) return (

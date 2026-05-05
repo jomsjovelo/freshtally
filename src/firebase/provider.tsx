@@ -70,11 +70,13 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Start fetching profile
+      // Keep loading true while fetching profile
+      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
+
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Profile missing - possible new registration or deletion
+          // Profile missing - allows UI to handle initialization
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -103,6 +105,7 @@ export const FirebaseProvider: React.FC<{
           });
           return () => unsubscribeTenant();
         } else {
+          // Profile exists but no tenantId assigned
           setState({
             user: firebaseUser,
             profile: profileData,
