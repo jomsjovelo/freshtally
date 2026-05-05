@@ -64,27 +64,36 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+    let profileUnsub: (() => void) | null = null;
+    let tenantUnsub: (() => void) | null = null;
+
+    const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
+      // Clear previous subs on auth change
+      if (profileUnsub) profileUnsub();
+      if (tenantUnsub) tenantUnsub();
+
       if (!firebaseUser) {
         setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
         return;
       }
 
-      // Profile Listener
+      // Sync Profile
       const userRef = doc(firestore, 'users', firebaseUser.uid);
-      const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
+      profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // New user, likely onboarding
+          // If auth exists but profile doesn't, allow UI to handle onboarding/recovery
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
 
         const profileData = profileSnap.data() as UserProfile;
 
+        // If user has a tenant, sync tenant data before ending loading state
         if (profileData.tenantId) {
-          // Tenant Listener - Scoped within the auth context
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
-          const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
+          if (tenantUnsub) tenantUnsub();
+          
+          tenantUnsub = onSnapshot(tenantRef, (tenantSnap) => {
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -93,7 +102,6 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Permission error or tenant missing
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -102,13 +110,8 @@ export const FirebaseProvider: React.FC<{
               userError: err
             });
           });
-          
-          // Cleanup handled by onAuthStateChanged returning the unsubscribe function
-          // however, in React we should be careful. We'll store the profile unsub
-          // and the inner unsub will be cleaned up if the profile listener re-runs.
-          return () => unsubscribeTenant();
         } else {
-          // Super admin or broken profile
+          // No tenant (e.g. super admin)
           setState({
             user: firebaseUser,
             profile: profileData,
@@ -120,13 +123,15 @@ export const FirebaseProvider: React.FC<{
       }, (err) => {
         setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
       });
-
-      return () => unsubscribeProfile();
     }, (err) => {
       setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: err });
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      authUnsub();
+      if (profileUnsub) profileUnsub();
+      if (tenantUnsub) tenantUnsub();
+    };
   }, [auth, firestore]);
 
   const contextValue = useMemo((): FirebaseContextState => ({

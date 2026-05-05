@@ -35,18 +35,18 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // RIGID SYNCHRONIZATION GUARD: Sub-collection queries strictly conditional on tenant resolution
+  // RIGID SYNCHRONIZATION GUARD: Sub-collection queries strictly conditional on security context stability
   const transactionsQuery = useMemoFirebase(() => {
-    // Only fire queries when the entire context tree is fully resolved and matches
+    // Only initiate queries when Auth, Profile, and Tenant are fully consistent and verified
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    if (profile.tenantId !== tenant.id) return null
+    if (profile.tenantId !== tenant.id || profile.id !== user.uid) return null
     
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [mounted, isUserLoading, db, user?.uid, profile?.tenantId, tenant?.id])
+  }, [mounted, isUserLoading, db, user?.uid, profile?.tenantId, profile?.id, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !stableNow) return null
@@ -80,7 +80,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // ZOMBIE PROTECTION: Handle authenticated session with missing business node
+  // ZOMBIE PROTECTION: Handle authenticated session with missing/inconsistent business node
   if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
@@ -90,14 +90,14 @@ export default function DashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
           <p className="text-muted-foreground text-sm font-medium px-4">
-            Your business node could not be verified. Initialize your terminal to proceed.
+            Your business node could not be verified. Initialize your terminal or contact support.
           </p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          INITIALIZE TERMINAL
+          ENTER TERMINAL
         </Button>
       </div>
     )
@@ -124,7 +124,7 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">
-            {isStaff ? "Terminal" : "Dashboard"}
+            {isStaff ? "Operations" : "Dashboard"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
             {tenant.name} • {profile.role}
@@ -139,7 +139,7 @@ export default function DashboardPage() {
             className="bg-primary p-6 rounded-[32px] text-white shadow-xl flex flex-col items-center gap-3 active:scale-95 transition-all"
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Launch POS</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Open Terminal</span>
           </button>
           <button 
             onClick={() => router.push('/inventory')}
@@ -162,7 +162,7 @@ export default function DashboardPage() {
       )}
 
       <section className="space-y-4 pb-4">
-        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Recent Activity</h3>
+        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Recent activity</h3>
         <div className="space-y-3">
           {isTxLoading ? (
             <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Auditing...</div>

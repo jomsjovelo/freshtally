@@ -3,40 +3,39 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V9
-     * Resilient multi-tenant isolation with defensive exists() verification.
+     * FRESH TALLY ARCHITECTURAL STABILITY V10
+     * Resilient multi-tenant isolation with atomic verification.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive helper to get user data only if it exists
-    function getUserData() {
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
+    // Atomic helper to get user data from the source of truth
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function isTenantMember(tenantId) {
-      let data = getUserData();
+      let user = getUserDoc();
       return isSignedIn() && 
-             data != null && 
-             data.get('tenantId', '') == tenantId;
+             user != null && 
+             user.data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let data = getUserData();
+      let user = getUserDoc();
       return isSignedIn() && 
-             data != null && 
-             data.get('tenantId', '') == tenantId &&
-             data.get('role', 'staff') == 'owner';
+             user != null && 
+             user.data.tenantId == tenantId &&
+             user.data.role == 'owner';
     }
 
     function isSuperAdmin() {
-      let data = getUserData();
+      let user = getUserDoc();
       return isSignedIn() && 
-             data != null && 
-             data.get('role', 'staff') == 'super_admin';
+             user != null && 
+             user.data.role == 'super_admin';
     }
 
     // --- Collection Rules ---

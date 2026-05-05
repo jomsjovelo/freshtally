@@ -121,10 +121,10 @@ export default function AuthPage() {
 
   const getButtonText = () => {
     if (loading) return null
-    if (isZombie) return "RECONNECT STORE"
-    if (authMode === "login") return "SECURE LOGIN"
-    if (authMode === "register_owner") return "CREATE STORE"
-    return "JOIN TEAM"
+    if (isZombie) return "SYNCHRONIZE TERMINAL"
+    if (authMode === "login") return "ENTER TERMINAL"
+    if (authMode === "register_owner") return "INITIALIZE MARKET"
+    return "JOIN STATION"
   }
 
   return (
@@ -136,10 +136,10 @@ export default function AuthPage() {
             {isZombie ? <Store className="h-7 w-7 text-white" /> : <ShieldCheck className="h-7 w-7 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
-            {isZombie ? "Account Recovery" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
+            {isZombie ? "Terminal Recovery" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
           </h1>
           <p className="text-[10px] font-bold text-white/70 mt-2 uppercase tracking-[0.2em] relative z-10">
-            {isZombie ? "Re-syncing your business node" : "FreshTally Business Cloud"}
+            {isZombie ? "Re-syncing your business node" : "FreshTally Cloud Ledger"}
           </p>
         </div>
 
@@ -172,7 +172,7 @@ export default function AuthPage() {
                 <div className="space-y-4">
                   {(authMode === "join_staff" && !isZombie) && (
                     <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store ID</Label>
+                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Terminal ID</Label>
                       <Input 
                         placeholder="5-DIGIT CODE" 
                         maxLength={5}
@@ -197,7 +197,7 @@ export default function AuthPage() {
 
                   {(authMode === "register_owner" || isZombie) && (
                     <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
+                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
                       <Input 
                         placeholder="e.g. Metro Roast" 
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
@@ -213,7 +213,7 @@ export default function AuthPage() {
               {!currentUser && (
                 <>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
                     <Input 
                       type="email" 
                       placeholder="name@business.com" 
@@ -271,7 +271,7 @@ export default function AuthPage() {
         
         <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
           <p className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-[0.2em]">
-            Authorized Access Only • FreshTally V1.2
+            Authorized Access Only • Cloud Terminal V1.2
           </p>
         </div>
       </div>

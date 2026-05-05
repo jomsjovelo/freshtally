@@ -17,7 +17,7 @@ export function TopBar() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // HYDRATION GUARD: Always render structural header shell
+  // HYDRATION GUARD: Always render structural header shell to prevent Next.js mismatches
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && (
