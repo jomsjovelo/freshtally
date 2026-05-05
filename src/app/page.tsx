@@ -35,24 +35,26 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
+  // Defensively guard the transaction query to prevent permission errors during session transitions
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id || !user) return null
+    if (!db || !tenant?.id || !user || !profile) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id, user])
+  }, [db, tenant?.id, user, !!profile])
 
+  // Defensively guard the broadcast query
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user || !stableNow) return null
+    if (!db || !user || !stableNow || !profile) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user, stableNow])
+  }, [db, user, stableNow, !!profile])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -83,6 +85,7 @@ export default function DashboardPage() {
     )
   }
 
+  // Handle "Zombie" sessions where user profile exists but tenant doc is missing
   if ((!profile?.tenantId || !tenant) && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">

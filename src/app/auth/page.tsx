@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, MapPin } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, MapPin, Store } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useUser } from "@/firebase"
@@ -36,8 +36,7 @@ export default function AuthPage() {
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
-    // Only redirect to dashboard if user HAS a tenant.
-    // If they have a profile but tenant is null, it means their store was deleted.
+    // Only redirect to dashboard if user HAS a valid, existing tenant.
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
@@ -49,7 +48,7 @@ export default function AuthPage() {
     
     const normalizedEmail = email.trim().toLowerCase()
     
-    if (authMode !== "login") {
+    if (authMode !== "login" && !currentUser) {
       if (password !== confirmPassword) {
         toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
         return
@@ -69,10 +68,8 @@ export default function AuthPage() {
         if (!ownerName.trim()) throw new Error("Full name is required.")
         if (!storeAddress.trim()) throw new Error("Business address is required.")
 
-        let user;
-        if (currentUser) {
-          user = currentUser;
-        } else {
+        let user = currentUser;
+        if (!user) {
           const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
           user = res.user;
         }
@@ -91,7 +88,7 @@ export default function AuthPage() {
           subscriptionPlan: "basic",
           expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           ownerUid: user.uid,
-          ownerEmail: normalizedEmail,
+          ownerEmail: user.email || normalizedEmail,
           currency: "PHP",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -99,13 +96,13 @@ export default function AuthPage() {
 
         batch.set(profileRef, {
           id: user.uid,
-          email: normalizedEmail,
+          email: user.email || normalizedEmail,
           role: "owner",
           tenantId: tenantId,
           displayName: ownerName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
-        })
+        }, { merge: true })
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
@@ -113,10 +110,8 @@ export default function AuthPage() {
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
-        let user;
-        if (currentUser) {
-          user = currentUser;
-        } else {
+        let user = currentUser;
+        if (!user) {
           const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
           user = res.user;
         }
@@ -126,7 +121,7 @@ export default function AuthPage() {
         await writeBatch(db)
           .set(profileRef, {
             id: user.uid,
-            email: normalizedEmail,
+            email: user.email || normalizedEmail,
             role: "staff",
             tenantId: tenantIdInput,
             displayName: ownerName || "Shop Staff",
@@ -146,16 +141,19 @@ export default function AuthPage() {
     }
   }
 
+  // If user is logged in but missing a business node, simplify the UI
+  const isZombieSession = !!currentUser && (!profile?.tenantId || !tenant)
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
       <div className="w-full max-w-sm bg-white rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[95vh]">
         <div className="text-center pt-10 pb-6 bg-primary text-white px-8 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
           <div className="h-16 w-16 bg-white/20 rounded-[20px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md relative z-10">
-            <ShieldCheck className="h-8 w-8 text-white" />
+            {isZombieSession ? <Store className="h-8 w-8 text-white" /> : <ShieldCheck className="h-8 w-8 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
-            {authMode === "login" ? "Terminal Access" : "Market Entry"}
+            {isZombieSession ? "Create Business" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
           </h1>
           <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2 relative z-10">
             FreshTally SaaS • Multi-Tenant
@@ -171,17 +169,19 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs value={authMode} onValueChange={(v: any) => { setAuthMode(v as any); setError(null); }} className="w-full">
-            <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
-              <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
-              <TabsTrigger value="register_owner" className="rounded-xl text-[10px] font-black uppercase">OWNER</TabsTrigger>
-              <TabsTrigger value="join_staff" className="rounded-xl text-[10px] font-black uppercase">STAFF</TabsTrigger>
-            </TabsList>
+          <Tabs value={isZombieSession ? "register_owner" : authMode} onValueChange={(v: any) => { setAuthMode(v as any); setError(null); }} className="w-full">
+            {!isZombieSession && (
+              <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
+                <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
+                <TabsTrigger value="register_owner" className="rounded-xl text-[10px] font-black uppercase">OWNER</TabsTrigger>
+                <TabsTrigger value="join_staff" className="rounded-xl text-[10px] font-black uppercase">STAFF</TabsTrigger>
+              </TabsList>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {authMode !== "login" && (
+              {(authMode !== "login" || isZombieSession) && (
                 <div className="space-y-5">
-                  {authMode === "join_staff" && (
+                  {(authMode === "join_staff" && !isZombieSession) && (
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">5-Digit Store ID</Label>
                       <Input 
@@ -206,7 +206,7 @@ export default function AuthPage() {
                     />
                   </div>
 
-                  {authMode === "register_owner" && (
+                  {(authMode === "register_owner" || isZombieSession) && (
                     <>
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
@@ -287,7 +287,7 @@ export default function AuthPage() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>
-                    {authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF"}
+                    {isZombieSession ? "INITIALIZE BUSINESS" : (authMode === "login" ? "OPEN TERMINAL" : authMode === "register_owner" ? "REGISTER BUSINESS" : "JOIN AS STAFF")}
                   </>
                 )}
               </Button>

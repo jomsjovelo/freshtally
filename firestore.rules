@@ -24,7 +24,10 @@ service cloud.firestore {
     }
 
     function isTenantMember(tenantId) {
-      return userExists() && getUserData().tenantId == tenantId;
+      // Use isSignedIn first for fast rejection, then check user profile for authorization
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {

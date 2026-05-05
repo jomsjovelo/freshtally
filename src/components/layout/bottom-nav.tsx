@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingCart, Package, Settings, Receipt } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Package, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase/provider"
 
@@ -16,11 +16,10 @@ export function BottomNav() {
     setMounted(true)
   }, [])
 
-  if (pathname === '/auth') return null;
-  
+  // Hydration guard: Always render nav tag to maintain consistent DOM structure
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-      {mounted && !isUserLoading && (tenant?.status !== 'suspended' || profile?.role === 'super_admin') && (
+      {mounted && pathname !== '/auth' && !isUserLoading && (tenant?.status !== 'suspended' || profile?.role === 'super_admin') && (
         <>
           {[
             { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
