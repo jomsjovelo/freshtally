@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation"
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  onAuthStateChanged
+  createUserWithEmailAndPassword
 } from "firebase/auth"
-import { doc, getFirestore, serverTimestamp, writeBatch, getDoc } from "firebase/firestore"
+import { doc, getFirestore, serverTimestamp, writeBatch } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,15 +33,14 @@ export default function AuthPage() {
   const { toast } = useToast()
   const auth = getAuth()
   const db = getFirestore()
-  const { user: currentUser, profile, tenant } = useUser()
+  const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
-  // Only redirect if the user is logged in AND has a valid business context
-  // This prevents infinite loops if the tenant was deleted but the profile is stale
+  // Only redirect if the user is logged in AND has a verified, existing business context
   useEffect(() => {
-    if (currentUser && profile?.tenantId && tenant) {
+    if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
-  }, [currentUser, profile, tenant, router])
+  }, [currentUser, profile, tenant, isUserLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,7 +63,6 @@ export default function AuthPage() {
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-        // Redirection handled by useEffect
       } else if (authMode === "register_owner") {
         if (!businessName.trim()) throw new Error("Business name is required.")
         if (!ownerName.trim()) throw new Error("Full name is required.")
@@ -111,6 +108,7 @@ export default function AuthPage() {
 
         await batch.commit()
         toast({ title: "Store Created", description: `${businessName} is live with ID: ${tenantId}.` })
+        router.push("/")
       } else if (authMode === "join_staff") {
         if (!tenantIdInput.trim()) throw new Error("5-Digit Store ID is required.")
         
@@ -137,6 +135,7 @@ export default function AuthPage() {
           .commit()
 
         toast({ title: "Access Granted", description: `Joining team...` })
+        router.push("/")
       }
     } catch (err: any) {
       setError(err.message)

@@ -4,7 +4,7 @@ service cloud.firestore {
 
     /**
      * FRESH TALLY SECURITY RULES
-     * Hardened for multi-tenant SaaS with propagation resilience and missing document handling.
+     * Hardened for multi-tenant SaaS with propagation resilience.
      */
 
     // --- Helper Functions ---
@@ -13,31 +13,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isTenantMember(tenantId) {
-      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
+    function isSuperAdmin() {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && exists(userPath) && get(userPath).data.role == 'super_admin';
+    }
+
+    function isTenantMember(tenantId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
       
       return isSignedIn() && (
-        // Check 1: User is the explicit owner recorded on the tenant doc (if it exists)
-        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid) ||
-        // Check 2: User profile document links them to this tenant
-        (exists(userPath) && get(userPath).data.tenantId == tenantId)
+        // Check 1: User profile links them to this tenant
+        (exists(userPath) && get(userPath).data.tenantId == tenantId) ||
+        // Check 2: User is the explicit owner on the tenant doc (fallback)
+        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid)
       );
     }
 
     function isTenantOwner(tenantId) {
-      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
 
       return isSignedIn() && (
-        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid) ||
-        (exists(userPath) && get(userPath).data.role == 'owner' && get(userPath).data.tenantId == tenantId)
+        (exists(userPath) && get(userPath).data.role == 'owner' && get(userPath).data.tenantId == tenantId) ||
+        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid)
       );
-    }
-
-    function isSuperAdmin() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && get(userPath).data.role == 'super_admin';
     }
 
     function isOwner(userId) {
@@ -77,37 +77,9 @@ service cloud.firestore {
     }
 
     /**
-     * @description Product catalog.
+     * @description Tenant sub-collections.
      */
-    match /tenants/{tenantId}/products/{productId} {
-      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId);
-      allow update, delete: if isTenantMember(tenantId);
-    }
-
-    /**
-     * @description Business expenses.
-     */
-    match /tenants/{tenantId}/expenses/{expenseId} {
-      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId);
-      allow update: if isTenantMember(tenantId);
-      allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
-    }
-
-    /**
-     * @description Point-of-Sale Transactions.
-     */
-    match /tenants/{tenantId}/transactions/{transactionId} {
-      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId);
-      allow update, delete: if isTenantOwner(tenantId) || isSuperAdmin();
-    }
-
-    /**
-     * @description B2B Clients.
-     */
-    match /tenants/{tenantId}/b2bClients/{clientId} {
+    match /tenants/{tenantId}/{allSubcollections=**} {
       allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
       allow create, update: if isTenantMember(tenantId);
       allow delete: if isTenantOwner(tenantId) || isSuperAdmin();

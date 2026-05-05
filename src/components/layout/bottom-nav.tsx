@@ -16,7 +16,7 @@ export function BottomNav() {
     setMounted(true)
   }, [])
 
-  if (pathname === '/auth') return null;
+  if (!mounted || pathname === '/auth') return null;
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') return null;
 
   const navItems = [
@@ -27,7 +27,7 @@ export function BottomNav() {
     { href: "/settings", label: "Set", icon: Settings, roles: ['owner', 'staff', 'super_admin'] },
   ]
 
-  const filteredItems = !mounted || isUserLoading 
+  const filteredItems = isUserLoading 
     ? navItems.filter(item => item.href === "/" || item.href === "/settings")
     : navItems.filter(item => !item.roles || item.roles.includes(profile?.role || ''))
 
