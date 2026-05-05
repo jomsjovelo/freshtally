@@ -35,10 +35,9 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // CRITICAL GUARD: Only query if context is fully stable and verified to avoid permission loops
+  // CRITICAL GUARD: Only query if context is fully stable and verified
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    // Ensure we only query if the tenant ID is consistent across profile and tenant state
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -67,7 +66,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration structural protection
+  // Hydration protection
   if (!mounted) return <div className="min-h-screen bg-background" />
 
   if (isUserLoading || !stableNow) return (
@@ -127,32 +126,23 @@ export default function DashboardPage() {
             {tenant.name} • {profile.role}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="h-12 w-12 flex items-center justify-center rounded-2xl bg-gray-100 text-primary active:scale-90 transition-all">
-            <Bell className="h-5 w-5" />
-          </button>
-        </div>
       </header>
 
       {isStaff && (
         <div className="grid grid-cols-2 gap-4">
           <button 
             onClick={() => router.push('/pos')}
-            className="bg-primary p-6 rounded-[32px] text-white shadow-xl shadow-primary/20 flex flex-col items-center gap-3 active:scale-95 transition-all"
+            className="bg-primary p-6 rounded-[32px] text-white shadow-xl flex flex-col items-center gap-3 active:scale-95 transition-all"
           >
-            <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center">
-              <ShoppingCart className="h-6 w-6" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest">POS Terminal</span>
+            <ShoppingCart className="h-6 w-6" />
+            <span className="text-[10px] font-black uppercase tracking-widest">POS</span>
           </button>
           <button 
             onClick={() => router.push('/inventory')}
-            className="bg-white border-2 border-primary/10 p-6 rounded-[32px] flex flex-col items-center gap-3 active:scale-95 transition-all"
+            className="bg-white border-2 border-primary/10 p-6 rounded-[32px] flex flex-col items-center gap-3 active:scale-95 transition-all text-primary"
           >
-            <div className="h-12 w-12 bg-gray-50 rounded-2xl flex items-center justify-center text-primary">
-              <Package className="h-6 w-6" />
-            </div>
-            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Inventory</span>
+            <Package className="h-6 w-6" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Inventory</span>
           </button>
         </div>
       )}
@@ -161,10 +151,6 @@ export default function DashboardPage() {
         <>
           <DashboardStats />
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Revenue Growth</h3>
-              <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[8px] font-black uppercase">Live Node</span>
-            </div>
             <RevenueChart />
           </div>
           <ExpenseAITool />
@@ -172,16 +158,13 @@ export default function DashboardPage() {
       )}
 
       <section className="space-y-4 pb-4">
-        <div className="flex justify-between items-center px-1">
-          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Recent Ledger</h3>
-          <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-primary" onClick={() => router.push('/pos')}>View All</Button>
-        </div>
+        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Recent Ledger</h3>
         <div className="space-y-3">
           {isTxLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Auditing Ledger...</div>
+            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase">Auditing Ledger...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
-              <div key={tx.id} className="bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm border border-gray-50 active:scale-[0.98] transition-all">
+              <div key={tx.id} className="bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm border border-gray-50">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "h-12 w-12 rounded-[18px] flex items-center justify-center",
@@ -190,23 +173,20 @@ export default function DashboardPage() {
                     {tx.type === "Sale" ? <ShoppingCart className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                   </div>
                   <div>
-                    <p className="font-black text-sm uppercase tracking-tighter leading-none">{tx.type}</p>
+                    <p className="font-black text-sm uppercase leading-none">{tx.type}</p>
                     <p className="text-[9px] text-muted-foreground font-bold mt-1.5 uppercase tracking-widest">
                       {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={cn("font-black text-sm tracking-tight", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
-                    {tx.type === "Sale" ? "+" : "-"}{formatCurrency(tx.totalAmount || 0)}
-                  </p>
-                </div>
+                <p className={cn("font-black text-sm tracking-tight", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
+                  {tx.type === "Sale" ? "+" : "-"}{formatCurrency(tx.totalAmount || 0)}
+                </p>
               </div>
             ))
           ) : (
             <div className="bg-gray-50 rounded-[32px] p-10 text-center border-2 border-dashed border-gray-200">
-              <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No transactions found</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase">No transactions found</p>
             </div>
           )}
         </div>

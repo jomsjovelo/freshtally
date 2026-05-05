@@ -74,8 +74,8 @@ export const FirebaseProvider: React.FC<{
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Auth exists but no profile yet - proceed to allow re-initialization
-          setState(prev => ({ ...prev, user: firebaseUser, profile: null, tenant: null, isUserLoading: false }));
+          // Profile missing - possible new registration or deletion
+          setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
 
@@ -112,7 +112,7 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, userError: err }));
+        setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
       });
 
       return () => unsubscribeProfile();

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, MapPin, Store } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, Store } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useUser } from "@/firebase"
@@ -24,7 +24,6 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [businessName, setBusinessName] = useState("")
   const [ownerName, setOwnerName] = useState("")
-  const [storeAddress, setStoreAddress] = useState("")
   const [tenantIdInput, setTenantIdInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +35,7 @@ export default function AuthPage() {
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
-    // Redirect only if context is fully verified and consistent
+    // Redirect only if context is fully stable and consistent
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
@@ -45,21 +44,18 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    
     const normalizedEmail = email.trim().toLowerCase()
     
-    if (authMode !== "login" && !currentUser) {
-      if (password !== confirmPassword) {
-        toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
-        return
-      }
+    if (authMode !== "login" && !currentUser && password !== confirmPassword) {
+      toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" })
+      return
     }
 
     setLoading(true)
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-      } else if (authMode === "register_owner") {
+      } else {
         let user = currentUser;
         if (!user) {
           const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
@@ -67,44 +63,34 @@ export default function AuthPage() {
         }
 
         const batch = writeBatch(db)
-        const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
-        const tenantRef = doc(db, "tenants", tenantId)
         const profileRef = doc(db, "users", user.uid)
 
-        batch.set(tenantRef, {
-          id: tenantId,
-          name: businessName,
-          ownerUid: user.uid,
-          status: "active",
-          subscriptionPlan: "basic",
-          currency: "PHP",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        })
+        if (authMode === "register_owner") {
+          const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
+          const tenantRef = doc(db, "tenants", tenantId)
 
-        batch.set(profileRef, {
-          id: user.uid,
-          email: user.email || normalizedEmail,
-          role: "owner",
-          tenantId: tenantId,
-          displayName: ownerName,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }, { merge: true })
+          batch.set(tenantRef, {
+            id: tenantId,
+            name: businessName,
+            ownerUid: user.uid,
+            status: "active",
+            subscriptionPlan: "basic",
+            currency: "PHP",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          })
 
-        await batch.commit()
-        toast({ title: "Node Initialized" })
-        router.push("/")
-      } else if (authMode === "join_staff") {
-        let user = currentUser;
-        if (!user) {
-          const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
-          user = res.user;
-        }
-
-        const profileRef = doc(db, "users", user.uid)
-        await writeBatch(db)
-          .set(profileRef, {
+          batch.set(profileRef, {
+            id: user.uid,
+            email: user.email || normalizedEmail,
+            role: "owner",
+            tenantId: tenantId,
+            displayName: ownerName,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }, { merge: true })
+        } else {
+          batch.set(profileRef, {
             id: user.uid,
             email: user.email || normalizedEmail,
             role: "staff",
@@ -113,25 +99,23 @@ export default function AuthPage() {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           }, { merge: true })
-          .commit()
+        }
 
-        toast({ title: "Node Joining..." })
+        await batch.commit()
         router.push("/")
       }
     } catch (err: any) {
       setError(err.message)
-      toast({ title: "Operation Failed", description: err.message, variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
 
-  // Detect Zombie State (Auth exists but configuration node missing)
   const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
-      <div className="w-full max-w-sm bg-white rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[95vh]">
+      <div className="w-full max-w-sm bg-white rounded-[48px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         <div className="text-center pt-10 pb-6 bg-primary text-white px-8 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
           <div className="h-16 w-16 bg-white/20 rounded-[20px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md relative z-10">
@@ -140,21 +124,17 @@ export default function AuthPage() {
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
             {isZombie ? "Re-Initialize" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
           </h1>
-          <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2 relative z-10">
-            FreshTally SaaS • Multi-Tenant
-          </p>
         </div>
 
         <div className="p-8 pt-6 space-y-6 overflow-y-auto">
           {error && (
             <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle className="text-[10px] font-black uppercase tracking-widest">Auth Error</AlertTitle>
               <AlertDescription className="text-xs font-bold">{error}</AlertDescription>
             </Alert>
           )}
 
-          <Tabs value={isZombie ? "register_owner" : authMode} onValueChange={(v: any) => { setAuthMode(v as any); setError(null); }} className="w-full">
+          <Tabs value={isZombie ? "register_owner" : authMode} onValueChange={(v: any) => setAuthMode(v as any)} className="w-full">
             {!isZombie && (
               <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
                 <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
@@ -168,9 +148,9 @@ export default function AuthPage() {
                 <div className="space-y-5">
                   {(authMode === "join_staff" && !isZombie) && (
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">5-Digit Store ID</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store ID</Label>
                       <Input 
-                        placeholder="e.g. 54321" 
+                        placeholder="5-Digit ID" 
                         maxLength={5}
                         className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                         value={tenantIdInput}
@@ -195,7 +175,7 @@ export default function AuthPage() {
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
                       <Input 
-                        placeholder="e.g. JMJ Foods" 
+                        placeholder="e.g. Metro Roast" 
                         className="h-14 rounded-2xl border-none bg-gray-100 font-bold"
                         value={businessName}
                         onChange={(e) => setBusinessName(e.target.value)}
@@ -236,16 +216,10 @@ export default function AuthPage() {
 
               <Button 
                 type="submit"
-                className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl active:scale-[0.98] transition-all mt-6" 
+                className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl mt-6" 
                 disabled={loading}
               >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    {isZombie ? "INITIALIZE BUSINESS" : (authMode === "login" ? "OPEN TERMINAL" : "REGISTER BUSINESS")}
-                  </>
-                )}
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isZombie ? "INITIALIZE BUSINESS" : "SUBMIT")}
               </Button>
             </form>
           </Tabs>

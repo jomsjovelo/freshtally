@@ -17,21 +17,15 @@ export function TopBar() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // Hydration Stability: Always render the parent header tag to ensure structural consistency across SSR/CSR
+  // Always render header tag for structural consistency
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && (
         <>
           <div className="flex items-center gap-3 overflow-hidden">
             {isUserLoading ? (
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-gray-100 flex items-center justify-center">
-                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
-                </div>
-                <div className="space-y-1">
-                  <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                  <div className="h-2 w-12 bg-gray-100 rounded animate-pulse" />
-                </div>
+              <div className="h-9 w-9 rounded-xl bg-gray-100 flex items-center justify-center animate-pulse">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
               </div>
             ) : (
               <>

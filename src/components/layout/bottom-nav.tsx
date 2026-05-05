@@ -16,17 +16,17 @@ export function BottomNav() {
     setMounted(true)
   }, [])
 
-  // Hydration Stability: Always render the parent nav tag to ensure structural consistency across SSR/CSR
+  // Always render nav tag for structural consistency
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-      {mounted && pathname !== '/auth' && !isUserLoading && (tenant?.status !== 'suspended' || profile?.role === 'super_admin') && (
+      {mounted && pathname !== '/auth' && !isUserLoading && (tenant || profile?.role === 'super_admin') && (
         <>
           {[
             { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
             { href: "/pos", label: "POS", icon: ShoppingCart, roles: ['staff', 'owner'] },
             { href: "/inventory", label: "Inventory", icon: Package, roles: ['staff', 'owner'] },
             { href: "/settings", label: "Settings", icon: Settings, roles: ['owner', 'staff', 'super_admin'] },
-          ].filter(item => !item.roles || item.roles.includes(profile?.role || '')).map((item) => {
+          ].filter(item => item.roles.includes(profile?.role || '')).map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
             return (
