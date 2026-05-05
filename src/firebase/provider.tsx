@@ -93,8 +93,9 @@ export const FirebaseProvider: React.FC<{
         
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
           if (!profileSnap.exists()) {
+            // FRESHTALLY V4: Profile doc might still be propagating. Wait and retry.
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 2000); // Slower retry for propagation
+            retryTimeout = setTimeout(setupSync, 2500);
             return;
           }
 
@@ -106,7 +107,7 @@ export const FirebaseProvider: React.FC<{
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
               if (tenantSnap.exists()) {
-                // FRESHTALLY V4: Aggressive 6-second rules propagation buffer
+                // FRESHTALLY V4: Mandatory 7-second rules propagation buffer for cold nodes
                 if (settlingTimeout) clearTimeout(settlingTimeout);
                 settlingTimeout = setTimeout(() => {
                   setAuthState({
@@ -116,15 +117,16 @@ export const FirebaseProvider: React.FC<{
                     isUserLoading: false,
                     userError: null
                   });
-                }, 6000);
+                }, 7000);
               } else {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 2000);
+                retryTimeout = setTimeout(setupSync, 2500);
               }
             }, (err) => {
+              // Handle transient permission-denied errors during indexing lag
               if (err.code === 'permission-denied') {
                 if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 3000);
+                retryTimeout = setTimeout(setupSync, 3500);
                 return;
               }
               setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
@@ -140,12 +142,12 @@ export const FirebaseProvider: React.FC<{
                 isUserLoading: false,
                 userError: null
               });
-            }, 6000);
+            }, 7000);
           }
         }, (err) => {
           if (err.code === 'permission-denied') {
             if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 3000);
+            retryTimeout = setTimeout(setupSync, 3500);
             return;
           }
           setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
