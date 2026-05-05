@@ -45,7 +45,7 @@ export function TopBar() {
                   <h2 className="text-sm font-black uppercase tracking-tighter truncate leading-none text-foreground">
                     {isSuperAdmin ? 'GENESIS TERMINAL' : (tenant?.name || 'MY STORE')}
                   </h2>
-                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-0.5 truncate">
+                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1 truncate">
                     {isSuperAdmin ? 'PLATFORM OVERVIEW' : (profile?.role || 'STAFF')}
                   </p>
                 </div>

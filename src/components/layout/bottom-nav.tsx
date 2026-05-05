@@ -39,7 +39,7 @@ export function BottomNav() {
                 )}
               >
                 <Icon className={cn("h-6 w-6", isActive && "fill-current")} />
-                <span className="text-[9px] font-black mt-1 uppercase tracking-widest">
+                <span className="text-[9px] font-black mt-1.5 uppercase tracking-widest">
                   {item.label}
                 </span>
                 {isActive && (

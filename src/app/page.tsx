@@ -22,7 +22,7 @@ const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-to
 })
 
 export default function DashboardPage() {
-  const { profile, tenant, isUserLoading, user, userError } = useUser()
+  const { profile, tenant, isUserLoading, user } = useUser()
   const router = useRouter()
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
@@ -36,15 +36,17 @@ export default function DashboardPage() {
   }, [])
 
   // Defensively guard all Firestore queries to prevent permission errors during transitions
-  // Only create the query if the profile and tenant are fully valid.
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !user || !profile?.tenantId || !tenant?.id) return null
+    if (!db || !user || isUserLoading || !profile?.tenantId || !tenant?.id) return null
+    // Ensure the profile and tenant state are in sync before querying sub-collections
+    if (profile.tenantId !== tenant.id) return null
+    
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, user?.uid, profile?.tenantId, tenant?.id])
+  }, [db, user?.uid, isUserLoading, profile?.tenantId, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!db || !user || !stableNow) return null
@@ -169,10 +171,10 @@ export default function DashboardPage() {
       {isOwner && (
         <>
           <DashboardStats />
-          <div className="bg-white/50 backdrop-blur-[2px] rounded-[32px] p-5 shadow-sm border border-gray-100/50">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100/50">
+            <div className="flex items-center justify-between mb-6">
               <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Revenue Growth</h3>
-              <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[8px] font-black">LIVE</span>
+              <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[8px] font-black uppercase">Live Node</span>
             </div>
             <RevenueChart />
           </div>
@@ -185,37 +187,37 @@ export default function DashboardPage() {
           <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Recent Ledger</h3>
           <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-primary" onClick={() => router.push('/pos')}>View All</Button>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {isTxLoading ? (
             <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Auditing Ledger...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
-              <div key={tx.id} className="bg-card p-4 rounded-[24px] flex items-center justify-between shadow-sm border border-gray-50">
-                <div className="flex items-center gap-3">
+              <div key={tx.id} className="bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm border border-gray-50 active:scale-[0.98] transition-all">
+                <div className="flex items-center gap-4">
                   <div className={cn(
-                    "h-12 w-12 rounded-[16px] flex items-center justify-center",
+                    "h-12 w-12 rounded-[18px] flex items-center justify-center",
                     tx.type === "Sale" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
                   )}>
                     {tx.type === "Sale" ? <ShoppingCart className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                   </div>
                   <div>
                     <p className="font-black text-sm uppercase tracking-tighter leading-none">{tx.type}</p>
-                    <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase tracking-widest">
+                    <p className="text-[9px] text-muted-foreground font-bold mt-1.5 uppercase tracking-widest">
                       {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={cn("font-black text-sm", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
+                  <p className={cn("font-black text-sm tracking-tight", tx.type === "Sale" ? "text-green-600" : "text-red-600")}>
                     {tx.type === "Sale" ? "+" : "-"}{formatCurrency(tx.totalAmount || 0)}
                   </p>
                 </div>
               </div>
             ))
           ) : (
-            <div className="bg-gray-50 rounded-[32px] p-8 text-center border-2 border-dashed border-gray-200">
-              <Store className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No transactions logged</p>
+            <div className="bg-gray-50 rounded-[32px] p-10 text-center border-2 border-dashed border-gray-200">
+              <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No transactions found</p>
             </div>
           )}
         </div>

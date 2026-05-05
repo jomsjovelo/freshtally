@@ -11,31 +11,25 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userProfileExists() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isSuperAdmin() {
-      return userProfileExists() && getUserData().get('role', 'staff') == 'super_admin';
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isSignedIn() && profile.get('role', 'staff') == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
-      // Robust check: User must be signed in and have a profile matching the tenantId
-      return userProfileExists() && getUserData().get('tenantId', '') == tenantId;
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isSignedIn() && profile.get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      return isTenantMember(tenantId) && getUserData().get('role', 'staff') == 'owner';
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isTenantMember(tenantId) && profile.get('role', 'staff') == 'owner';
     }
 
     // --- Collection Rules ---
 
     match /platform_broadcasts/{broadcastId} {
-      allow read: if isSignedIn(); // All authorized users can see system updates
+      allow read: if isSignedIn();
       allow write: if isSuperAdmin();
     }
 
@@ -47,14 +41,12 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Allow reading the tenant document if you are a confirmed member
       allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
       allow update, delete: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
 
       match /{allSubcollections=**} {
-        // Explicit read/write for all subcollections (transactions, products, etc.)
         allow get, list: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
         allow create, update, delete: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }

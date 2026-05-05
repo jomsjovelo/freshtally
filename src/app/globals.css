@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,18 +12,18 @@
     --popover-foreground: 200 50% 10%;
     --primary: 200 60% 40%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 200 20% 90%;
+    --secondary: 200 20% 92%;
     --secondary-foreground: 200 60% 30%;
-    --muted: 200 10% 92%;
-    --muted-foreground: 200 20% 40%;
+    --muted: 200 10% 94%;
+    --muted-foreground: 200 20% 45%;
     --accent: 260 50% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 200 20% 88%;
-    --input: 200 20% 88%;
+    --border: 200 20% 90%;
+    --input: 200 20% 90%;
     --ring: 200 60% 40%;
-    --radius: 0.75rem;
+    --radius: 1rem;
     --chart-1: 200 60% 40%;
     --chart-2: 260 50% 50%;
     --chart-3: 180 50% 40%;
@@ -65,4 +64,13 @@
   input, button, select, textarea {
     @apply min-h-[48px];
   }
+}
+
+/* Custom UI Utilities */
+.shadow-soft {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+}
+
+.rounded-3xl-plus {
+  border-radius: 32px;
 }
