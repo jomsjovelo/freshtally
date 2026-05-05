@@ -9,8 +9,7 @@ export function TopBar() {
   const { tenant, isUserLoading, profile } = useUser()
   const pathname = usePathname()
 
-  // Hide on auth/onboarding
-  if (pathname === '/auth' || pathname === '/onboarding') return null
+  if (pathname === '/auth') return null
 
   const isSuperAdmin = profile?.role === 'super_admin'
 

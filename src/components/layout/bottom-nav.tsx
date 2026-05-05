@@ -1,9 +1,8 @@
-
 "use client"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingCart, Package, Settings, CreditCard, Loader2 } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Package, Settings, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase/provider"
 
@@ -11,11 +10,9 @@ export function BottomNav() {
   const pathname = usePathname()
   const { profile, tenant, isUserLoading } = useUser()
 
-  if (pathname === '/auth' || pathname === '/onboarding') return null;
+  if (pathname === '/auth') return null;
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') return null;
 
-  // Resilient Nav Logic: If profile is loading, show placeholders. 
-  // Once loaded, filter by role.
   const navItems = [
     { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
     { href: "/pos", label: "POS", icon: ShoppingCart, roles: ['staff', 'owner'] },
@@ -25,7 +22,7 @@ export function BottomNav() {
   ]
 
   const filteredItems = isUserLoading 
-    ? navItems.filter(item => item.href === "/" || item.href === "/settings") // Safe defaults
+    ? navItems.filter(item => item.href === "/" || item.href === "/settings")
     : navItems.filter(item => !item.roles || item.roles.includes(profile?.role || ''))
 
   return (

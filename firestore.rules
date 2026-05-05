@@ -4,7 +4,7 @@ service cloud.firestore {
 
     /**
      * FRESH TALLY SECURITY RULES
-     * Triggering deployment with an updated rule set.
+     * Standardizing access for multi-tenant SaaS.
      */
 
     // --- Helper Functions ---
@@ -18,11 +18,17 @@ service cloud.firestore {
     }
 
     function isTenantMember(tenantId) {
-      return isSignedIn() && getUserData().tenantId == tenantId;
+      return isSignedIn() && (
+        getUserData().tenantId == tenantId || 
+        get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerUid == request.auth.uid
+      );
     }
 
     function isTenantOwner(tenantId) {
-      return isTenantMember(tenantId) && getUserData().role == 'owner';
+      return isSignedIn() && (
+        getUserData().role == 'owner' || 
+        get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerUid == request.auth.uid
+      );
     }
 
     function isSuperAdmin() {
@@ -31,10 +37,6 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function exists() {
-      return resource != null;
     }
 
     // --- Collection Rules ---
@@ -53,7 +55,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
       allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if false;
     }
@@ -65,7 +67,7 @@ service cloud.firestore {
       allow get: if isTenantMember(tenantId) || isSuperAdmin();
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
-      allow update: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
+      allow update: if isTenantOwner(tenantId) || isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 
@@ -74,36 +76,8 @@ service cloud.firestore {
      */
     match /tenants/{tenantId}/products/{productId} {
       allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId;
-      allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if exists() && isTenantMember(tenantId);
-    }
-
-    /**
-     * @description Inventory tracking.
-     */
-    match /tenants/{tenantId}/inventoryItems/{inventoryItemId} {
-      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId;
-      allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if exists() && isTenantMember(tenantId);
-    }
-
-    /**
-     * @description Point-of-Sale Transactions.
-     */
-    match /tenants/{tenantId}/transactions/{transactionId} {
-      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.staffUserId == request.auth.uid;
-      allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
-
-      match /saleItems/{saleItemId} {
-        allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-        allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.transactionId == transactionId;
-        allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-        allow delete: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
-      }
+      allow create: if isTenantMember(tenantId);
+      allow update, delete: if isTenantMember(tenantId);
     }
 
     /**
@@ -111,9 +85,27 @@ service cloud.firestore {
      */
     match /tenants/{tenantId}/expenses/{expenseId} {
       allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-      allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId;
-      allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
+      allow create: if isTenantMember(tenantId);
+      allow update: if isTenantMember(tenantId);
+      allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
+    }
+
+    /**
+     * @description Point-of-Sale Transactions.
+     */
+    match /tenants/{tenantId}/transactions/{transactionId} {
+      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
+      allow create: if isTenantMember(tenantId);
+      allow update, delete: if isTenantOwner(tenantId) || isSuperAdmin();
+    }
+
+    /**
+     * @description B2B Clients.
+     */
+    match /tenants/{tenantId}/b2bClients/{clientId} {
+      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
+      allow create, update: if isTenantMember(tenantId);
+      allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
     }
   }
 }

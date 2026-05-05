@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useMemo } from "react"
@@ -6,13 +5,11 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Bell, Search, ShoppingCart, Package, ShieldX, PlusCircle, ShieldCheck, Megaphone, AlertTriangle, TrendingUp, Store } from "lucide-react"
+import { Bell, ShoppingCart, Package, ShieldX, ShieldCheck, Megaphone, TrendingDown, Store, AlertCircle } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 
 const RevenueChart = dynamic(() => import("@/components/dashboard/revenue-chart").then(mod => mod.RevenueChart), {
   ssr: false,
@@ -40,13 +37,13 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id || !profile?.tenantId) return null
+    if (!db || !tenant?.id) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id, profile])
+  }, [db, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -74,11 +71,7 @@ export default function DashboardPage() {
     </div>
   )
 
-  // Redirect to onboarding if profile exists but tenant is missing (for owners)
-  if (user && profile?.role === 'owner' && !tenant) {
-    router.push('/onboarding')
-    return null
-  }
+  if (!user) return null
 
   if (tenant?.status === 'suspended' && !isSuperAdmin) {
     return (
@@ -91,22 +84,23 @@ export default function DashboardPage() {
     )
   }
 
-  // Dashboard Empty State / Onboarding check
-  if (!isSuperAdmin && !isOwner && !isStaff && !isUserLoading) {
+  // Handle case where profile exists but no business context found
+  if (!isSuperAdmin && !profile?.tenantId && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
-        <div className="h-24 w-24 bg-gray-100 rounded-[32px] flex items-center justify-center text-primary/20">
-          <Store className="h-12 w-12" />
+        <div className="h-24 w-24 bg-red-50 rounded-[32px] flex items-center justify-center text-destructive">
+          <AlertCircle className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Welcome to FreshTally</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Your store profile is being initialized. If you just registered, please finish setting up your business.</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter">Identity Error</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">Your account is not associated with a business tenant. Please contact your store owner or administrator.</p>
         </div>
         <Button 
-          className="w-full h-16 rounded-[24px] bg-primary font-black uppercase" 
-          onClick={() => router.push('/onboarding')}
+          variant="outline"
+          className="w-full h-16 rounded-[24px] font-black uppercase" 
+          onClick={() => router.push('/auth')}
         >
-          Complete Setup
+          Return to Login
         </Button>
       </div>
     )
@@ -169,17 +163,13 @@ export default function DashboardPage() {
       {isOwner && (
         <>
           <DashboardStats />
-          <Card className="border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur-[2px] rounded-[32px]">
-            <CardHeader className="pb-2 px-5">
-              <CardTitle className="text-xs font-black flex items-center justify-between uppercase tracking-widest text-muted-foreground">
-                Revenue Growth
-                <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[8px]">LIVE</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-5">
-              <RevenueChart />
-            </CardContent>
-          </Card>
+          <div className="bg-white/50 backdrop-blur-[2px] rounded-[32px] p-5 shadow-sm border border-gray-100/50">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Revenue Growth</h3>
+              <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[8px] font-black">LIVE</span>
+            </div>
+            <RevenueChart />
+          </div>
           <ExpenseAITool />
         </>
       )}
@@ -218,7 +208,7 @@ export default function DashboardPage() {
             ))
           ) : (
             <div className="bg-gray-50 rounded-[32px] p-8 text-center border-2 border-dashed border-gray-200">
-              <PlusCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
+              <Store className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No transactions logged</p>
             </div>
           )}
