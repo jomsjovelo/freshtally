@@ -39,10 +39,11 @@ export default function DashboardPage() {
   }, [])
 
   // FRESHTALLY V4: Hardened defensive gating for sub-collection queries
+  // We strictly wait for profile and tenant to match and be non-null.
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || isUserLoading || !user || !tenant?.id || !profile?.tenantId) return null
     
-    // Strict identity match to prevent permission leaks
+    // Strict identity match to prevent permission leaks during propagation
     if (!isSuperAdmin && profile.tenantId !== tenant.id) return null
     
     return query(
