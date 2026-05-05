@@ -35,7 +35,6 @@ export default function AuthPage() {
   const db = getFirestore()
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
-  // Only redirect if the user is logged in AND has a verified, existing business context
   useEffect(() => {
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
@@ -170,7 +169,7 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs value={authMode} onValueChange={(v: any) => { setAuthMode(v); setError(null); }} className="w-full">
+          <Tabs value={authMode} onValueChange={(v: any) => { setAuthMode(v as any); setError(null); }} className="w-full">
             <TabsList className="grid grid-cols-3 h-14 bg-gray-100 rounded-2xl p-1 mb-8">
               <TabsTrigger value="login" className="rounded-xl text-[10px] font-black uppercase">LOGIN</TabsTrigger>
               <TabsTrigger value="register_owner" className="rounded-xl text-[10px] font-black uppercase">OWNER</TabsTrigger>

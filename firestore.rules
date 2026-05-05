@@ -4,33 +4,34 @@ service cloud.firestore {
 
     /**
      * FRESH TALLY SECURITY RULES
-     * Hardened for multi-tenant SaaS with propagation resilience.
+     * Hardened for multi-tenant SaaS resilience.
      */
-
-    // --- Helper Functions ---
 
     function isSignedIn() {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isSuperAdmin() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && get(userPath).data.role == 'super_admin';
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData().role == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      // Resilience: Rely on the user's profile to define membership.
-      // This ensures that even if the Tenant document is deleted, the user can 
-      // still access their data or see appropriate recovery UI.
-      return isSignedIn() && exists(userPath) && get(userPath).data.tenantId == tenantId;
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData().tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && 
-             get(userPath).data.role == 'owner' && 
-             get(userPath).data.tenantId == tenantId;
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData().role == 'owner' && 
+             getUserData().tenantId == tenantId;
     }
 
     function isOwner(userId) {
@@ -39,17 +40,11 @@ service cloud.firestore {
 
     // --- Collection Rules ---
 
-    /**
-     * @description System broadcasts visible to all signed-in users.
-     */
     match /platform_broadcasts/{broadcastId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSuperAdmin();
     }
 
-    /**
-     * @description User profiles.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
@@ -58,9 +53,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    /**
-     * @description Tenant metadata.
-     */
     match /tenants/{tenantId} {
       allow get: if isTenantMember(tenantId) || isSuperAdmin();
       allow list: if isSuperAdmin();
@@ -69,9 +61,6 @@ service cloud.firestore {
       allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
     }
 
-    /**
-     * @description Tenant sub-collections (Products, Transactions, Expenses, etc.)
-     */
     match /tenants/{tenantId}/{allSubcollections=**} {
       allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
       allow create, update: if isTenantMember(tenantId);

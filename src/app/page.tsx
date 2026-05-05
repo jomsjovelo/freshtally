@@ -36,7 +36,6 @@ export default function DashboardPage() {
   }, [])
 
   const transactionsQuery = useMemoFirebase(() => {
-    // CRITICAL: Ensure tenant and tenant.id exist before querying to avoid permission errors
     if (!db || !tenant?.id || !user) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
@@ -46,7 +45,6 @@ export default function DashboardPage() {
   }, [db, tenant?.id, user])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    // Only query broadcasts for authenticated users
     if (!db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
@@ -85,7 +83,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Handle case where user is logged in but has no associated business yet, or business was deleted
   if ((!profile?.tenantId || !tenant) && !isUserLoading) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
