@@ -70,7 +70,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Profile Listener
+      // Start Profile Listener
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {

@@ -37,6 +37,7 @@ export default function DashboardPage() {
 
   // RIGID SYNCHRONIZATION GUARD: Sub-collection queries strictly conditional on tenant resolution
   const transactionsQuery = useMemoFirebase(() => {
+    // Only fire queries when the entire context tree is fully resolved and matches
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
     if (profile.tenantId !== tenant.id) return null
     

@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V7
+     * FRESH TALLY ARCHITECTURAL STABILITY V8
      * Resilient multi-tenant isolation with defensive context verification.
      */
 
@@ -11,26 +11,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Helper to get user profile safely
+    function getUserData() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
+    }
+
     function isTenantMember(tenantId) {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let data = getUserData();
       return isSignedIn() && 
-             exists(userPath) && 
-             get(userPath).data.get('tenantId', '') == tenantId;
+             data != null && 
+             data.get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let data = getUserData();
       return isSignedIn() && 
-             exists(userPath) && 
-             get(userPath).data.get('tenantId', '') == tenantId &&
-             get(userPath).data.get('role', 'staff') == 'owner';
+             data != null && 
+             data.get('tenantId', '') == tenantId &&
+             data.get('role', 'staff') == 'owner';
     }
 
     function isSuperAdmin() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let data = getUserData();
       return isSignedIn() && 
-             exists(userPath) && 
-             get(userPath).data.get('role', 'staff') == 'super_admin';
+             data != null && 
+             data.get('role', 'staff') == 'super_admin';
     }
 
     // --- Collection Rules ---
