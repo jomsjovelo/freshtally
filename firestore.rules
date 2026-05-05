@@ -3,15 +3,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V8
-     * Resilient multi-tenant isolation with defensive context verification.
+     * FRESH TALLY ARCHITECTURAL STABILITY V9
+     * Resilient multi-tenant isolation with defensive exists() verification.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper to get user profile safely
+    // Defensive helper to get user data only if it exists
     function getUserData() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(path) ? get(path).data : null;
