@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot, collection, query, limit, getDocs, getDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
@@ -73,25 +73,60 @@ export const FirebaseProvider: React.FC<{
       if (unsubTenant) unsubTenant();
     };
 
+    const verifyAccessAndFinalize = async (profileData: UserProfile, tenantData: TenantData) => {
+      // ACTIVE STABILIZATION AUDIT: V8
+      // Instead of a fixed delay, we perform a silent test query.
+      // If this fails, the rules engine is NOT ready yet.
+      const testAccess = async () => {
+        try {
+          const tId = tenantData.id;
+          // Test 1: Parent Doc
+          const tDoc = await getDoc(doc(firestore, 'tenants', tId));
+          if (!tDoc.exists()) return false;
+          
+          // Test 2: Subcollection (The most sensitive propagation point)
+          const txQuery = query(collection(firestore, 'tenants', tId, 'transactions'), limit(1));
+          await getDocs(txQuery);
+          
+          return true;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      const poll = async () => {
+        const isReady = await testAccess();
+        if (isReady || attempts >= maxAttempts) {
+          setAuthState({
+            user,
+            profile: profileData,
+            tenant: tenantData,
+            isUserLoading: false,
+            userError: null
+          });
+        } else {
+          attempts++;
+          retryTimeout = setTimeout(poll, 2000);
+        }
+      };
+
+      poll();
+    };
+
     const attemptSync = () => {
       const profileRef = doc(firestore, 'userProfiles', user.uid);
       
       unsubProfile = onSnapshot(profileRef, (profileSnap) => {
-        if (!profileSnap.exists()) {
-          // If profile doesn't exist yet, we wait. Onboarding might still be happening.
-          return;
-        }
-
-        // Wait for document to be fully synced to server
+        if (!profileSnap.exists()) return;
         if (profileSnap.metadata.hasPendingWrites) return;
 
         const profileData = profileSnap.data() as UserProfile;
         
         if (profileData.role === 'super_admin') {
-          if (settlingTimeout) clearTimeout(settlingTimeout);
-          settlingTimeout = setTimeout(() => {
-            setAuthState({ user, profile: profileData, tenant: null, isUserLoading: false, userError: null });
-          }, 1000);
+          setAuthState({ user, profile: profileData, tenant: null, isUserLoading: false, userError: null });
           return;
         }
 
@@ -103,21 +138,10 @@ export const FirebaseProvider: React.FC<{
             if (!tenantSnap.exists()) return;
             if (tenantSnap.metadata.hasPendingWrites) return;
 
-            // FINAL SETTLING BUFFER: V7 - Increased to 8s for absolute security rules propagation
-            // This ensures that sub-collection list operations (transactions) are authorized.
-            if (settlingTimeout) clearTimeout(settlingTimeout);
-            settlingTimeout = setTimeout(() => {
-              setAuthState({
-                user,
-                profile: profileData,
-                tenant: tenantSnap.data() as TenantData,
-                isUserLoading: false,
-                userError: null
-              });
-            }, 8000);
+            const tenantData = tenantSnap.data() as TenantData;
+            verifyAccessAndFinalize(profileData, tenantData);
           }, (err) => {
             if (err.code === 'permission-denied') {
-              // Rules might not have propagated yet. Retry after a short delay.
               if (retryTimeout) clearTimeout(retryTimeout);
               retryTimeout = setTimeout(attemptSync, 2000);
             } else {

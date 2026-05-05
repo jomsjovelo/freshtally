@@ -4,13 +4,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // REDEPLOY TRIGGER: V7 - RECURSIVE AUTHORIZATION HARDENING
+    // REDEPLOY TRIGGER: V8 - DEFINITIVE PROPAGATION HARDENING
     
     function isSignedIn() { 
       return request.auth != null; 
     }
     
-    // Efficiently verify tenant access using profile data or direct ownership fallback
+    // Optimized tenant access check
     function canAccessTenant(tId) {
       if (!isSignedIn()) { return false; }
 
@@ -19,16 +19,16 @@ service cloud.firestore {
       let profilePath = /databases/$(database)/documents/userProfiles/$(uid);
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // 1. Direct Ownership Fallback (Most resilient to replication lag for Owners)
-      // We check both UID and Email for maximum reliability during account setup.
-      let isOwner = exists(tenantPath) && (
-                    get(tenantPath).data.ownerUid == uid ||
-                    (email != null && get(tenantPath).data.ownerEmail.lower() == email.lower())
-      );
-      
-      if (isOwner) return true;
+      // 1. DIRECT OWNERSHIP CHECK (Fastest, most resilient to lag)
+      // We check the tenant document for UID or Email match.
+      if (exists(tenantPath)) {
+        let tenant = get(tenantPath).data;
+        if (tenant.ownerUid == uid || (email != null && tenant.ownerEmail.lower() == email.lower())) {
+          return true;
+        }
+      }
 
-      // 2. Profile Check (Source of truth for staff and super admins)
+      // 2. PROFILE-BASED AUTHORIZATION (Fallback for staff/admins)
       if (exists(profilePath)) {
         let profile = get(profilePath).data;
         return profile.role == 'super_admin' || profile.tenantId == tId;
@@ -55,7 +55,6 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow create: if isSignedIn();
-      // Apply the check at the root level and all sub-paths recursively.
       allow read, write: if canAccessTenant(tenantId);
       
       match /{allSubcollections=**} {
