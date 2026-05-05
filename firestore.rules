@@ -3,38 +3,40 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY SECURITY RULES - ARCHITECTURAL STABILITY V2
+     * FRESH TALLY ARCHITECTURAL STABILITY V3
+     * Synchronized for multi-tenant data isolation and role-based access.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isSuperAdmin() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && 
-             exists(userPath) && 
-             get(userPath).data.get('role', 'staff') == 'super_admin';
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isTenantMember(tenantId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      // Defensive: Ensure user document exists before checking tenantId
       return isSignedIn() && 
              exists(userPath) && 
-             get(userPath).data.get('tenantId', '') == tenantId;
+             getUserData().get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isTenantMember(tenantId) && 
-             get(userPath).data.get('role', 'staff') == 'owner';
+             getUserData().get('role', 'staff') == 'owner';
+    }
+
+    function isSuperAdmin() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && 
+             exists(userPath) && 
+             getUserData().get('role', 'staff') == 'super_admin';
     }
 
     // --- Collection Rules ---
 
     match /platform_broadcasts/{broadcastId} {
-      // System broadcasts are readable by any authenticated node
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
     }

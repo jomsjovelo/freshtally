@@ -35,7 +35,7 @@ export default function AuthPage() {
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
-    // Redirect only if context is fully stable and consistent
+    // REDIRECTION GUARD: Only redirect if the context is fully stable and consistent
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }

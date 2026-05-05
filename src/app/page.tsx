@@ -37,8 +37,10 @@ export default function DashboardPage() {
 
   // RIGID SYNCHRONIZATION GUARD: Only query sub-collections if context is fully stable and verified
   const transactionsQuery = useMemoFirebase(() => {
+    // 1. Structural Guards: Must be mounted, authenticated, and loading must be complete
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    // Ensure Auth and DB nodes match perfectly before authorizing list operation
+    
+    // 2. Security Guard: Ensure Auth Profile and DB Node match perfectly before list operation
     if (profile.tenantId !== tenant.id) return null
     
     return query(
