@@ -64,21 +64,17 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
-    // ROOT AUTH LISTENER
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
         return;
       }
 
-      // Keep loading active while fetching the rest of the node
-      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
-
-      // USER PROFILE LISTENER
+      // Profile Listener
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // PROFILE MISSING: Authenticated user with no Firestore profile (Prompt Setup)
+          // No profile yet, likely onboarding
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -86,10 +82,9 @@ export const FirebaseProvider: React.FC<{
         const profileData = profileSnap.data() as UserProfile;
 
         if (profileData.tenantId) {
-          // TENANT LISTENER
+          // Tenant Listener
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            // SUCCESSFUL CONTEXT RESOLUTION
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -98,7 +93,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // TENANT ACCESS ERROR (Evaluation fail or node missing)
+            // Permission error on tenant or node missing
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -109,7 +104,7 @@ export const FirebaseProvider: React.FC<{
           });
           return () => unsubscribeTenant();
         } else {
-          // PROFILE EXISTS BUT NO TENANT LINK (Registration transition)
+          // Profile exists but no tenant ID (super admin or broken profile)
           setState({
             user: firebaseUser,
             profile: profileData,
@@ -119,7 +114,6 @@ export const FirebaseProvider: React.FC<{
           });
         }
       }, (err) => {
-        // PROFILE ACCESS ERROR
         setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
       });
 

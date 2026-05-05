@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V6
-     * Hardened multi-tenant isolation with resilient context verification.
+     * FRESH TALLY ARCHITECTURAL STABILITY V7
+     * Resilient multi-tenant isolation with defensive context verification.
      */
 
     function isSignedIn() {
