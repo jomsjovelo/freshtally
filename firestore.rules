@@ -20,18 +20,18 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return userExists() && getUserData().role == 'super_admin';
+      return userExists() && getUserData().get('role', 'staff') == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
       // Robust check: User must be signed in and have a profile matching the tenantId
       return isSignedIn() && 
              userExists() && 
-             getUserData().tenantId == tenantId;
+             getUserData().get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      return isTenantMember(tenantId) && getUserData().role == 'owner';
+      return isTenantMember(tenantId) && getUserData().get('role', 'staff') == 'owner';
     }
 
     // --- Collection Rules ---
@@ -42,22 +42,22 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if request.auth.uid == userId || isSuperAdmin();
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create, update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
 
     match /tenants/{tenantId} {
-      allow get: if isTenantMember(tenantId) || isSuperAdmin();
+      allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
-      allow update, delete: if isTenantOwner(tenantId) || isSuperAdmin();
+      allow update, delete: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
 
       match /{allSubcollections=**} {
-        // Broad read/write for subcollections if member/owner
-        allow read: if isTenantMember(tenantId) || isSuperAdmin();
-        allow write: if isTenantMember(tenantId);
+        // Explicit read/write for all subcollections (transactions, products, etc.)
+        allow get, list: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
+        allow create, update, delete: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }
     }
   }

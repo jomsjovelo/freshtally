@@ -22,7 +22,7 @@ const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-to
 })
 
 export default function DashboardPage() {
-  const { profile, tenant, isUserLoading, user } = useUser()
+  const { profile, tenant, isUserLoading, user, userError } = useUser()
   const router = useRouter()
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
@@ -35,26 +35,25 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // Defensively guard the transaction query to prevent permission errors during session transitions
+  // Defensively guard all Firestore queries to prevent permission errors during transitions
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id || !user || !profile || !tenant) return null
+    if (!db || !user || !profile?.tenantId || !tenant?.id) return null
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id, user, !!profile, !!tenant])
+  }, [db, user?.uid, profile?.tenantId, tenant?.id])
 
-  // Defensively guard the broadcast query
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user || !stableNow || !profile) return null
+    if (!db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user, stableNow, !!profile])
+  }, [db, user?.uid, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -65,6 +64,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
+  // Hydration and loading guards
   if (!mounted || isUserLoading || !stableNow) return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin" />
@@ -74,6 +74,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
+  // Suspended account handling
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">
@@ -85,29 +86,30 @@ export default function DashboardPage() {
     )
   }
 
-  // Handle "Zombie" sessions where user profile exists but tenant doc is missing (e.g. after deletion)
-  if ((!profile?.tenantId || !tenant) && !isUserLoading) {
+  // Zombie session handling: user exists but their business node is gone or profile is uninitialized
+  const isZombie = (!profile?.tenantId || !tenant) && !isUserLoading;
+  if (isZombie) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
         <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary">
           <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter">New Station Detected</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Initialize your business to launch the intelligence dashboard.</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter">Station Offline</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">Your business node could not be found. Initialize your terminal to proceed.</p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          INITIALIZE BUSINESS
+          INITIALIZE TERMINAL
         </Button>
       </div>
     )
   }
 
   const isStaff = profile?.role === 'staff'
-  const isOwner = profile?.role === 'owner'
+  const isOwner = profile?.role === 'owner' || profile?.role === 'super_admin'
 
   return (
     <div className="p-4 space-y-6">
@@ -130,7 +132,7 @@ export default function DashboardPage() {
             {isStaff ? "Terminal" : "Intelligence"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-            {isStaff ? "Operational Node" : "Real-time shop metrics"}
+            {isStaff ? "Operational Node" : "Real-time metrics"}
           </p>
         </div>
         <div className="flex gap-2">
