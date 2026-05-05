@@ -103,7 +103,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 userError: null
               });
             }, (err) => {
-              // Gracefully handle permission errors or missing tenant docs during propagation
+              // Gracefully handle permission errors or missing documents
               setState({
                 user: firebaseUser,
                 profile: profileData,
