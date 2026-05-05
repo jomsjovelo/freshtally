@@ -8,25 +8,20 @@ service cloud.firestore {
       return request.auth != null; 
     }
     
-    function isSuperAdmin() {
-      let pPath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
-      return isSignedIn() && exists(pPath) && get(pPath).data.role == 'super_admin';
-    }
-    
-    // Robust membership check with immediate direct ownership fallback.
-    // This bypasses propagation lag by verifying the user's email against the tenant root.
+    // Efficiently verify tenant access using profile data or direct ownership fallback
     function canAccessTenant(tId) {
       if (!isSignedIn()) { return false; }
-      if (isSuperAdmin()) { return true; }
 
       let profilePath = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       let tenantPath = /databases/$(database)/documents/tenants/$(tId);
       
-      // 1. Profile Check (Primary)
-      let hasProfileAccess = exists(profilePath) && get(profilePath).data.tenantId == tId;
+      // 1. Profile Check (Source of truth for all users)
+      // We use exists() to avoid errors on cold startup
+      let hasProfileAccess = exists(profilePath) && 
+                            (get(profilePath).data.role == 'super_admin' || 
+                             get(profilePath).data.tenantId == tId);
       
-      // 2. Direct Ownership Fallback (Immediate/Resilient)
-      // We check the ownerEmail directly on the tenant document.
+      // 2. Direct Ownership Fallback (Resilient path for owners during propagation lag)
       let isOwnerFallback = exists(tenantPath) && 
                            request.auth.token.email != null && 
                            get(tenantPath).data.ownerEmail.lower() == request.auth.token.email.lower();
@@ -35,19 +30,19 @@ service cloud.firestore {
     }
 
     match /userProfiles/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow read: if isSignedIn() && (request.auth.uid == userId || (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'super_admin'));
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == userId || (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'super_admin'));
     }
 
     match /platform_broadcasts/{broadcastId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow write: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'super_admin';
     }
 
     match /subscription_plans/{planId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow write: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'super_admin';
     }
 
     match /tenants/{tenantId} {

@@ -23,6 +23,7 @@ interface TenantData {
   name: string;
   logoUrl?: string;
   ownerEmail?: string;
+  currency?: string;
 }
 
 interface UserAuthState {
@@ -63,12 +64,10 @@ export const FirebaseProvider: React.FC<{
 
     let unsubProfile: (() => void) | null = null;
     let unsubTenant: (() => void) | null = null;
-    let retryTimeout: NodeJS.Timeout | null = null;
     let settlingTimeout: NodeJS.Timeout | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // Cleanup all active timers and listeners on auth change
-      if (retryTimeout) clearTimeout(retryTimeout);
+      // Immediate cleanup
       if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
@@ -76,94 +75,73 @@ export const FirebaseProvider: React.FC<{
       unsubTenant = null;
 
       if (!user) {
-        setAuthState({
-          user: null,
-          profile: null,
-          tenant: null,
-          isUserLoading: false,
-          userError: null,
-        });
+        setAuthState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
         return;
       }
 
-      // Start loading sequence
       setAuthState(s => ({ ...s, user, isUserLoading: true }));
 
-      const setupSync = () => {
+      // Synchronized initialization sequence
+      const syncEnvironment = () => {
         const profileRef = doc(firestore, 'userProfiles', user.uid);
         
-        // Listen to Profile
+        // 1. Listen to Profile
         unsubProfile = onSnapshot(profileRef, (profileSnap) => {
-          if (!profileSnap.exists()) {
-            // Document might be propagating. Retry.
-            if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 2000);
-            return;
-          }
+          if (!profileSnap.exists()) return; // Wait for document creation
+
+          // CRITICAL: Ensure document is synced to server before releasing UI
+          // This avoids querying subcollections before Rules propagation is ready.
+          if (profileSnap.metadata.hasPendingWrites) return;
 
           const profileData = profileSnap.data() as UserProfile;
           
+          if (profileData.role === 'super_admin') {
+            if (settlingTimeout) clearTimeout(settlingTimeout);
+            settlingTimeout = setTimeout(() => {
+              setAuthState({ user, profile: profileData, tenant: null, isUserLoading: false, userError: null });
+            }, 1000);
+            return;
+          }
+
           if (profileData.tenantId) {
             const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
             
             if (unsubTenant) unsubTenant();
             unsubTenant = onSnapshot(tenantRef, (tenantSnap) => {
-              if (tenantSnap.exists()) {
-                // FRESHTALLY V4: Stabilize for 6 seconds to ensure Rules propagation for subcollections
-                if (settlingTimeout) clearTimeout(settlingTimeout);
-                settlingTimeout = setTimeout(() => {
-                  setAuthState({
-                    user,
-                    profile: profileData,
-                    tenant: tenantSnap.data() as TenantData,
-                    isUserLoading: false,
-                    userError: null
-                  });
-                }, 6000);
-              } else {
-                if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 2000);
-              }
+              if (!tenantSnap.exists()) return;
+              if (tenantSnap.metadata.hasPendingWrites) return;
+
+              // Final settling buffer for Security Rules engine indexing
+              if (settlingTimeout) clearTimeout(settlingTimeout);
+              settlingTimeout = setTimeout(() => {
+                setAuthState({
+                  user,
+                  profile: profileData,
+                  tenant: tenantSnap.data() as TenantData,
+                  isUserLoading: false,
+                  userError: null
+                });
+              }, 2500);
             }, (err) => {
-              // Handle transient permission errors during cold startup
-              if (err.code === 'permission-denied') {
-                if (retryTimeout) clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSync, 3000);
-                return;
+              if (err.code !== 'permission-denied') {
+                setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
               }
-              setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
             });
-          } else {
-            // Super Admin or Onboarding Needed
-            if (settlingTimeout) clearTimeout(settlingTimeout);
-            settlingTimeout = setTimeout(() => {
-              setAuthState({
-                user,
-                profile: profileData,
-                tenant: null,
-                isUserLoading: false,
-                userError: null
-              });
-            }, 6000);
           }
         }, (err) => {
-          if (err.code === 'permission-denied') {
-            if (retryTimeout) clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSync, 3000);
-            return;
+          if (err.code !== 'permission-denied') {
+            setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
           }
-          setAuthState(s => ({ ...s, isUserLoading: false, userError: err }));
         });
       };
 
-      setupSync();
+      syncEnvironment();
     }, (error) => {
       setAuthState(s => ({ ...s, userError: error, isUserLoading: false }));
     });
 
     return () => {
       unsubscribeAuth();
-      if (retryTimeout) clearTimeout(retryTimeout);
       if (settlingTimeout) clearTimeout(settlingTimeout);
       if (unsubProfile) unsubProfile();
       if (unsubTenant) unsubTenant();
