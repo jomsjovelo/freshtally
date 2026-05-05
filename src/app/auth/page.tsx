@@ -36,6 +36,8 @@ export default function AuthPage() {
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
+    // Only redirect to dashboard if user HAS a tenant.
+    // If they have a profile but tenant is null, it means their store was deleted.
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
