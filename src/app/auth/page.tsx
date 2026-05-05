@@ -37,6 +37,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     // Only redirect to dashboard if user HAS a valid, existing tenant.
+    // This prevents infinite loops if a tenant was deleted.
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
@@ -141,8 +142,8 @@ export default function AuthPage() {
     }
   }
 
-  // If user is logged in but missing a business node, simplify the UI
-  const isZombieSession = !!currentUser && (!profile?.tenantId || !tenant)
+  // If user is logged in but missing a business node, simplify the UI to point towards setup
+  const isZombieSession = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
@@ -153,7 +154,7 @@ export default function AuthPage() {
             {isZombieSession ? <Store className="h-8 w-8 text-white" /> : <ShieldCheck className="h-8 w-8 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
-            {isZombieSession ? "Create Business" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
+            {isZombieSession ? "Re-Initialize" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
           </h1>
           <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-2 relative z-10">
             FreshTally SaaS • Multi-Tenant

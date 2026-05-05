@@ -11,7 +11,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userExists() {
+    function userProfileExists() {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
@@ -20,14 +20,12 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return userExists() && getUserData().get('role', 'staff') == 'super_admin';
+      return userProfileExists() && getUserData().get('role', 'staff') == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
       // Robust check: User must be signed in and have a profile matching the tenantId
-      return isSignedIn() && 
-             userExists() && 
-             getUserData().get('tenantId', '') == tenantId;
+      return userProfileExists() && getUserData().get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
@@ -37,7 +35,7 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /platform_broadcasts/{broadcastId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn(); // All authorized users can see system updates
       allow write: if isSuperAdmin();
     }
 
@@ -49,6 +47,7 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
+      // Allow reading the tenant document if you are a confirmed member
       allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
