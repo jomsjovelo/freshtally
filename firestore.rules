@@ -3,61 +3,35 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY SECURITY RULES (PROTOTYPING MODE)
-     *
-     * Core Philosophy:
-     * This ruleset implements a multi-tenant security model designed for a Point-of-Sale (POS) and inventory system.
-     * Access control is "Authorization Independent": users are associated with a specific Tenant via their 
-     * user profile document (/users/{userId}). Security decisions for all tenant-scoped data are then 
-     * made by comparing the user's associated tenantId against the path of the requested resource.
-     *
-     * Data Structure:
-     * - /users/{userId}: Global registry of user profiles, roles, and tenant associations.
-     * - /tenants/{tenantId}: Root metadata for a business entity.
-     * - /tenants/{tenantId}/...: Subcollections containing products, inventory, transactions, and expenses.
-     *
-     * Key Security Decisions:
-     * 1. Multi-Tenancy: Access to any document under a /tenants/{tenantId} path requires the user's profile 
-     *    to have a matching tenantId.
-     * 2. Role-Based Access: Higher-level administrative actions (like modifying tenant metadata) are restricted 
-     *    to users with the 'owner' role.
-     * 3. Relational Integrity: All created documents must contain a 'tenantId' field that matches the path 
-     *    they are being written to, ensuring data consistency for queries.
-     * 4. Prototyping Flexibility: While access is strictly authorized, the internal schema of data fields 
-     *    (types, required strings, etc.) is not enforced to allow for rapid UI/UX iteration.
+     * FRESH TALLY SECURITY RULES
      */
 
     // --- Helper Functions ---
 
-    /** Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Retrieves the user's profile document. */
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    /** Checks if the authenticated user's tenantId matches the provided tenantId. */
     function isTenantMember(tenantId) {
       return isSignedIn() && getUserData().tenantId == tenantId;
     }
 
-    /** Checks if the authenticated user is a member of the tenant and has the 'owner' role. */
     function isTenantOwner(tenantId) {
       return isTenantMember(tenantId) && getUserData().role == 'owner';
     }
 
-    /** Checks if the user ID matches the authenticated user. */
+    function isSuperAdmin() {
+      return isSignedIn() && getUserData().role == 'super_admin';
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** 
-     * Validates that a document exists before performing update/delete.
-     * `resource` is null for create operations and populated for update/delete.
-     */
     function exists() {
       return resource != null;
     }
@@ -65,101 +39,80 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     /**
-     * @description Rules for the User profiles. Users can manage their own profile and tenant association.
-     * @path /users/{userId}
-     * @allow (get) If the user is viewing their own profile.
-     * @deny (list) Global user listing is disabled for privacy.
-     * @principle Ownership-based access for user accounts.
+     * @description System broadcasts visible to all signed-in users.
      */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if false; // Users cannot self-delete in this prototype version.
+    match /platform_broadcasts/{broadcastId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
     }
 
     /**
-     * @description Tenant metadata access. Restricted to members and owners.
-     * @path /tenants/{tenantId}
-     * @allow (update) Only by users with the 'owner' role within this tenant.
-     * @deny (create) Prevents unauthorized creation of new tenant roots.
-     * @principle Multi-tenant isolation and role-based metadata management.
+     * @description User profiles.
      */
-    match /tenants/{tenantId} {
-      allow get: if isTenantMember(tenantId);
-      allow list: if false;
-      allow create: if isSignedIn(); // Allow initial setup, typically handled by a trigger or specific flow.
-      allow update: if exists() && isTenantOwner(tenantId);
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if false;
     }
 
     /**
-     * @description Product catalog for a specific tenant.
-     * @path /tenants/{tenantId}/products/{productId}
-     * @allow (list) All members of the tenant can browse products.
-     * @deny (create) If the tenantId in the data does not match the URL path.
-     * @principle Path-based multi-tenancy and relational integrity.
+     * @description Tenant metadata.
+     */
+    match /tenants/{tenantId} {
+      allow get: if isTenantMember(tenantId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isSignedIn(); 
+      allow update: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
+      allow delete: if isSuperAdmin();
+    }
+
+    /**
+     * @description Product catalog.
      */
     match /tenants/{tenantId}/products/{productId} {
-      allow get, list: if isTenantMember(tenantId);
+      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
       allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId;
       allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
       allow delete: if exists() && isTenantMember(tenantId);
     }
 
     /**
-     * @description Inventory tracking for products.
-     * @path /tenants/{tenantId}/inventoryItems/{inventoryItemId}
-     * @allow (get) Members can view stock levels.
-     * @deny (update) If user does not belong to the tenant.
-     * @principle Multi-tenant data segregation.
+     * @description Inventory tracking.
      */
     match /tenants/{tenantId}/inventoryItems/{inventoryItemId} {
-      allow get, list: if isTenantMember(tenantId);
+      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
       allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId;
       allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
       allow delete: if exists() && isTenantMember(tenantId);
     }
 
     /**
-     * @description Point-of-Sale Transactions. This rule specifically addresses the reported list error.
-     * @path /tenants/{tenantId}/transactions/{transactionId}
-     * @allow (list) Users whose profile matches the {tenantId} in the path.
-     * @deny (create) If the staffUserId does not match the authenticated user.
-     * @principle Authorization Independence via user profile lookup.
+     * @description Point-of-Sale Transactions.
      */
     match /tenants/{tenantId}/transactions/{transactionId} {
-      allow get, list: if isTenantMember(tenantId);
+      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
       allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.staffUserId == request.auth.uid;
       allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if exists() && isTenantOwner(tenantId);
+      allow delete: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
 
-      /**
-       * @description Individual items within a transaction.
-       * @path /tenants/{tenantId}/transactions/{transactionId}/saleItems/{saleItemId}
-       * @principle Inherited tenant access via parent transaction path.
-       */
       match /saleItems/{saleItemId} {
-        allow get, list: if isTenantMember(tenantId);
+        allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
         allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.transactionId == transactionId;
         allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-        allow delete: if exists() && isTenantOwner(tenantId);
+        allow delete: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
       }
     }
 
     /**
-     * @description Business expenses recorded by the tenant.
-     * @path /tenants/{tenantId}/expenses/{expenseId}
-     * @allow (create) Any tenant member (staff/owner) can log an expense.
-     * @deny (delete) Only tenant owners can remove expense records.
-     * @principle Functional role differentiation.
+     * @description Business expenses.
      */
     match /tenants/{tenantId}/expenses/{expenseId} {
-      allow get, list: if isTenantMember(tenantId);
+      allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
       allow create: if isTenantMember(tenantId) && request.resource.data.tenantId == tenantId;
       allow update: if exists() && isTenantMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if exists() && isTenantOwner(tenantId);
+      allow delete: if exists() && (isTenantOwner(tenantId) || isSuperAdmin());
     }
   }
 }
