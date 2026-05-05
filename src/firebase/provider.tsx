@@ -81,10 +81,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           return;
         }
 
-        // Reset state but keep loading true while we fetch profile/tenant
         setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
-        // Fetch User Profile
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
           if (!profileSnap.exists()) {
@@ -94,7 +92,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
           const profileData = profileSnap.data() as UserProfile;
 
-          // Fetch Tenant Metadata if profile has tenantId
           if (profileData.tenantId) {
             const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
             const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
@@ -106,7 +103,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 userError: null
               });
             }, (err) => {
-              // Gracefully handle permission errors or missing documents
               setState({
                 user: firebaseUser,
                 profile: profileData,
@@ -126,7 +122,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             });
           }
         }, (err) => {
-          // Surfacing profile load errors
           setState(prev => ({ ...prev, user: firebaseUser, userError: err, isUserLoading: false }));
         });
 

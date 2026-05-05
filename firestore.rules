@@ -55,7 +55,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
       allow delete: if isSuperAdmin();
 
-      // Deeply nested subcollection rule for multi-tenant isolation
+      // Multi-tenant subcollection isolation
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }

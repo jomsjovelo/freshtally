@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
@@ -35,10 +35,8 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // Defensively guard all Firestore queries to prevent permission errors during transitions
+  // CRITICAL: Strict guarding for sub-collection queries to prevent permission errors
   const transactionsQuery = useMemoFirebase(() => {
-    // CRITICAL: Ensure we have a valid user, profile, and tenant ID that match before querying
-    // This prevents "Missing or insufficient permissions" during initial hydration or document transitions
     if (!db || !user || isUserLoading || !profile?.tenantId || !tenant?.id) return null
     if (profile.tenantId !== tenant.id) return null
     
@@ -78,7 +76,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Zombie session handling: user exists but their business node is gone or profile is uninitialized
+  // Handle sessions where business node is missing
   const isZombie = (!profile?.tenantId || !tenant) && !isUserLoading;
   if (isZombie) {
     return (
@@ -100,7 +98,7 @@ export default function DashboardPage() {
     )
   }
 
-  // Suspended account handling
+  // Account suspension logic
   if (tenant?.status === 'suspended' && profile?.role !== 'super_admin') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 bg-destructive/5">

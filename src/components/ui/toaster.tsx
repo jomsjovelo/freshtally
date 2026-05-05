@@ -1,5 +1,6 @@
-"use client"
+'use client';
 
+import { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast"
 import {
   Toast,
@@ -12,10 +13,16 @@ import {
 
 export function Toaster() {
   const { toasts } = useToast()
+  const [mounted, setMounted] = useState(false)
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Fix hydration issues by always providing the ToastProvider tag
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {mounted && toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">

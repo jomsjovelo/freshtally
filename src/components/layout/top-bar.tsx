@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useState, useEffect } from "react"
 import { useUser } from "@/firebase"
@@ -17,7 +17,7 @@ export function TopBar() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // Always render the header container to prevent hydration mismatches
+  // Always render header container to fix Next.js hydration structural mismatches
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && (
