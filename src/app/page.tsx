@@ -35,12 +35,9 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // RIGID SYNCHRONIZATION GUARD: Only fire queries when the security context is absolute
+  // RIGID SYNCHRONIZATION GUARD: Prevents queries from firing until context is absolute
   const transactionsQuery = useMemoFirebase(() => {
-    // 1. Availability Guards
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    
-    // 2. Consistency Guard: Ensure the application state profile and verified DB tenant match
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -69,21 +66,20 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration protection
   if (!mounted) return <div className="min-h-screen bg-background" />
 
   if (isUserLoading || !stableNow) {
     return (
       <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin" />
-        Synchronizing Node...
+        Synchronizing Terminal...
       </div>
     )
   }
 
   if (!user) return null
 
-  // ZOMBIE PROTECTION: User is authenticated but profile/tenant context is missing
+  // ZOMBIE PROTECTION: User is logged in but missing business node
   if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
@@ -93,8 +89,7 @@ export default function DashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
           <p className="text-muted-foreground text-sm font-medium px-4">
-            Your business node configuration could not be verified. 
-            Initialize your terminal to proceed.
+            Your business node could not be verified. Initialize your terminal to proceed.
           </p>
         </div>
         <Button 

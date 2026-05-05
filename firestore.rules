@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V4
-     * Synchronized for multi-tenant data isolation and role-based access.
+     * FRESH TALLY ARCHITECTURAL STABILITY V5
+     * Hardened multi-tenant isolation with defensive exists() checks.
      */
 
     function isSignedIn() {
@@ -15,12 +15,14 @@ service cloud.firestore {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
              exists(userPath) && 
-             get(userPath).data.tenantId == tenantId;
+             get(userPath).data.get('tenantId', '') == tenantId;
     }
 
     function isTenantOwner(tenantId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isTenantMember(tenantId) && 
+      return isSignedIn() && 
+             exists(userPath) && 
+             get(userPath).data.get('tenantId', '') == tenantId &&
              get(userPath).data.get('role', 'staff') == 'owner';
     }
 

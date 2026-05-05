@@ -17,7 +17,7 @@ export function TopBar() {
 
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // HYDRATION GUARD: Always render the structural header tag to match server/client DOM expectations
+  // HYDRATION GUARD: Always render the structural header tag to match server/client expectations
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && (
@@ -37,10 +37,10 @@ export function TopBar() {
                 </Avatar>
                 <div className="min-w-0">
                   <h2 className="text-sm font-black uppercase tracking-tighter truncate leading-none text-foreground">
-                    {isSuperAdmin ? 'CENTRAL HUB' : (tenant?.name || 'STATION')}
+                    {isSuperAdmin ? 'CENTRAL' : (tenant?.name || 'TERMINAL')}
                   </h2>
                   <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1 truncate">
-                    {isSuperAdmin ? 'ADMIN OVERVIEW' : (profile?.role || 'NODE')}
+                    {isSuperAdmin ? 'ADMIN' : (profile?.role || 'STATION')}
                   </p>
                 </div>
               </>
