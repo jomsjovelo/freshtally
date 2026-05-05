@@ -37,8 +37,8 @@ export default function DashboardPage() {
 
   // Defensively guard all Firestore queries to prevent permission errors during transitions
   const transactionsQuery = useMemoFirebase(() => {
+    // CRITICAL: Ensure we have a valid user, profile, and tenant ID that match before querying
     if (!db || !user || isUserLoading || !profile?.tenantId || !tenant?.id) return null
-    // Ensure the profile and tenant state are in sync before querying sub-collections
     if (profile.tenantId !== tenant.id) return null
     
     return query(

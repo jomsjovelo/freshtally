@@ -36,8 +36,8 @@ export default function AuthPage() {
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
-    // Only redirect to dashboard if user HAS a valid, existing tenant.
-    // This prevents infinite loops if a tenant was deleted.
+    // Only redirect to dashboard if user HAS a valid, existing tenant node.
+    // This prevents infinite loops if a tenant document was deleted.
     if (!isUserLoading && currentUser && profile?.tenantId && tenant) {
       router.push("/")
     }
@@ -142,7 +142,7 @@ export default function AuthPage() {
     }
   }
 
-  // If user is logged in but missing a business node, simplify the UI to point towards setup
+  // Detect session where user has no associated business node
   const isZombieSession = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (

@@ -16,16 +16,16 @@ export function BottomNav() {
     setMounted(true)
   }, [])
 
-  // Hydration guard: Always render nav tag to maintain consistent DOM structure
+  // Definitively fix hydration mismatches by always rendering the outer nav container
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex items-center justify-around h-20 z-50 px-2 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
       {mounted && pathname !== '/auth' && !isUserLoading && (tenant?.status !== 'suspended' || profile?.role === 'super_admin') && (
         <>
           {[
-            { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
+            { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
             { href: "/pos", label: "POS", icon: ShoppingCart, roles: ['staff', 'owner'] },
-            { href: "/inventory", label: "Stock", icon: Package, roles: ['staff', 'owner'] },
-            { href: "/settings", label: "Set", icon: Settings, roles: ['owner', 'staff', 'super_admin'] },
+            { href: "/inventory", label: "Inventory", icon: Package, roles: ['staff', 'owner'] },
+            { href: "/settings", label: "Settings", icon: Settings, roles: ['owner', 'staff', 'super_admin'] },
           ].filter(item => !item.roles || item.roles.includes(profile?.role || '')).map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon

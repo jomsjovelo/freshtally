@@ -104,7 +104,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               });
             }, (err) => {
               // Gracefully handle permission errors or missing documents
-              // This is critical if the tenant document was deleted but the user still has the ID in their profile
+              // This ensures the loading state finishes even if a rule check fails
               setState({
                 user: firebaseUser,
                 profile: profileData,
@@ -124,6 +124,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             });
           }
         }, (err) => {
+          // Surfacing profile load errors
           setState(prev => ({ ...prev, user: firebaseUser, userError: err, isUserLoading: false }));
         });
 

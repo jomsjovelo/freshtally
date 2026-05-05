@@ -19,18 +19,18 @@ service cloud.firestore {
     }
 
     function isTenantMember(tenantId) {
-      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(userDoc) &&
-             get(userDoc).data.tenantId == tenantId;
+             exists(userDocPath) &&
+             get(userDocPath).data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(userDoc) &&
-             get(userDoc).data.tenantId == tenantId &&
-             get(userDoc).data.get('role', 'staff') == 'owner';
+             exists(userDocPath) &&
+             get(userDocPath).data.tenantId == tenantId &&
+             get(userDocPath).data.get('role', 'staff') == 'owner';
     }
 
     // --- Collection Rules ---
@@ -54,8 +54,8 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
 
       match /{allSubcollections=**} {
-        allow get, list: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
-        allow create, update, delete: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
+        allow read: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
+        allow write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }
     }
   }
