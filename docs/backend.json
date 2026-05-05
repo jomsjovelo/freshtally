@@ -1,154 +1,521 @@
-
 {
   "entities": {
     "Tenant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Tenant",
       "type": "object",
-      "description": "Represents a single business or store instance in the SaaS platform.",
+      "description": "Represents a single business entity or store owner within the FreshTally multi-tenant application.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "address": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "suspended"] },
-        "subscriptionPlan": { "type": "string", "enum": ["free", "basic", "pro", "enterprise"] },
-        "expiryDate": { "type": "string", "format": "date-time" },
-        "ownerUid": { "type": "string", "description": "The UID of the primary business owner." },
-        "ownerEmail": { "type": "string", "format": "email" },
-        "ownerName": { "type": "string" },
-        "isVerified": { "type": "boolean", "default": false },
-        "logoUrl": { "type": "string" },
-        "currency": { "type": "string", "default": "PHP" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Tenant entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The legal or common name of the tenant's business."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the tenant record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the tenant record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "name", "status", "subscriptionPlan", "expiryDate", "ownerUid"]
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "UserProfile": {
-      "title": "UserProfile",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
-      "description": "User account details including SaaS role and tenant association.",
+      "description": "Represents a user account associated with a specific tenant, used for role-based access control. Does not store authentication credentials.",
       "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["super_admin", "owner", "staff"] },
-        "tenantId": { "type": "string", "description": "Null if super_admin" },
-        "name": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity (typically the external authentication system's UID)."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant this user belongs to. (Relationship: Tenant 1:N User)"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, obtained from the authentication system.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name or full name."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the tenant (e.g., 'owner', 'staff')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["uid", "role", "email"]
+      "required": [
+        "id",
+        "tenantId",
+        "email",
+        "displayName",
+        "role",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
+      "description": "Represents a salable item managed by the inventory system.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number" },
-        "stock": { "type": "number" },
-        "minStock": { "type": "number", "default": 10 },
-        "category": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Product entity."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant who owns this product. (Relationship: Tenant 1:N Product)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "The selling price of the product."
+        },
+        "sku": {
+          "type": "string",
+          "description": "Stock Keeping Unit (SKU) for the product, unique within a tenant."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL to an image of the product.",
+          "format": "uri"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the product is currently active and available for sale."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the product record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the product record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["name", "price", "stock"]
+      "required": [
+        "id",
+        "tenantId",
+        "name",
+        "price",
+        "sku",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InventoryItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InventoryItem",
+      "type": "object",
+      "description": "Tracks the stock level and inventory details for a specific product within a tenant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InventoryItem entity."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant who owns this inventory item. (Relationship: Tenant 1:N InventoryItem)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to the Product this inventory item tracks. (Relationship: Product 1:1 InventoryItem)"
+        },
+        "stockLevel": {
+          "type": "number",
+          "description": "The current quantity of the product in stock."
+        },
+        "minStockLevel": {
+          "type": "number",
+          "description": "The minimum stock level threshold to trigger a low-stock alert."
+        },
+        "lastStockUpdate": {
+          "type": "string",
+          "description": "Timestamp of the last update to the stock level.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the inventory item record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the inventory item record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "tenantId",
+        "productId",
+        "stockLevel",
+        "minStockLevel",
+        "lastStockUpdate",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transaction",
       "type": "object",
+      "description": "Represents a single point-of-sale transaction, capturing overall details of a sale.",
       "properties": {
-        "id": { "type": "string" },
-        "type": { "type": "string", "enum": ["Sale", "Refund"] },
-        "items": { "type": "array", "items": { "type": "object" } },
-        "totalAmount": { "type": "number" },
-        "paymentType": { "type": "string", "enum": ["cash", "card", "credit"] },
-        "clientId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant where this transaction occurred. (Relationship: Tenant 1:N Transaction)"
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "The date and time when the transaction was completed.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total monetary amount of the transaction."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The method used for payment (e.g., 'Cash', 'Credit Card', 'Debit Card')."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the transaction (e.g., 'Completed', 'Pending', 'Refunded', 'Cancelled')."
+        },
+        "staffUserId": {
+          "type": "string",
+          "description": "Reference to the User (staff member) who processed the transaction. (Relationship: User 1:N Transaction)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the transaction record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the transaction record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["type", "totalAmount", "createdAt"]
+      "required": [
+        "id",
+        "tenantId",
+        "transactionDate",
+        "totalAmount",
+        "paymentMethod",
+        "status",
+        "staffUserId",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "B2BClient": {
-      "title": "B2BClient",
+    "SaleItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SaleItem",
       "type": "object",
+      "description": "Represents a specific product included in a transaction, detailing quantity and price at the time of sale.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "outstandingBalance": { "type": "number", "default": 0 },
-        "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" },
-        "address": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SaleItem entity."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant associated with the parent transaction. (Relationship: Tenant 1:N SaleItem)"
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "Reference to the Transaction this sale item belongs to. (Relationship: Transaction 1:N SaleItem)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to the Product sold. (Relationship: Product 1:N SaleItem)"
+        },
+        "productName": {
+          "type": "string",
+          "description": "Denormalized name of the product at the time of sale."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the product sold."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The unit price of the product at the time of sale."
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "The calculated subtotal for this item (quantity * unitPrice)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the sale item record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the sale item record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["name"]
+      "required": [
+        "id",
+        "tenantId",
+        "transactionId",
+        "productId",
+        "productName",
+        "quantity",
+        "unitPrice",
+        "subtotal",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Reconciliation": {
-      "title": "Reconciliation",
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
       "type": "object",
+      "description": "Records a business expense, potentially with AI-categorization.",
       "properties": {
-        "id": { "type": "string" },
-        "clientId": { "type": "string" },
-        "amountPaid": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Expense entity."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant who incurred this expense. (Relationship: Tenant 1:N Expense)"
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the expense."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary amount of the expense."
+        },
+        "expenseDate": {
+          "type": "string",
+          "description": "The date when the expense was incurred.",
+          "format": "date-time"
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the expense (e.g., 'Rent', 'Utilities', 'Supplies', 'Marketing')."
+        },
+        "receiptUrl": {
+          "type": "string",
+          "description": "URL to a digital copy of the receipt for the expense.",
+          "format": "uri"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or details about the expense."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the expense record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the expense record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["clientId", "amountPaid", "date"]
-    },
-    "PlatformBroadcast": {
-      "title": "PlatformBroadcast",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "message": { "type": "string" },
-        "priority": { "type": "string", "enum": ["info", "warning", "critical"] },
-        "activeUntil": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "SubscriptionPlan": {
-      "title": "SubscriptionPlan",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number" },
-        "staffLimit": { "type": "number" },
-        "features": { "type": "array", "items": { "type": "string" } }
-      }
+      "required": [
+        "id",
+        "tenantId",
+        "description",
+        "amount",
+        "expenseDate",
+        "category",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/tenants/{tenantId}": {
-      "schema": { "$ref": "#/backend/entities/Tenant" },
-      "description": "Root tenant configuration."
-    },
-    "/userProfiles/{uid}": {
-      "schema": { "$ref": "#/backend/entities/UserProfile" },
-      "description": "Global user profiles."
-    },
-    "/platform_broadcasts/{broadcastId}": {
-      "schema": { "$ref": "#/backend/entities/PlatformBroadcast" },
-      "description": "System-wide announcements. Supports composite index: [priority, activeUntil]."
-    },
-    "/subscription_plans/{planId}": {
-      "schema": { "$ref": "#/backend/entities/SubscriptionPlan" },
-      "description": "Available billing tiers."
-    },
-    "/tenants/{tenantId}/products/{productId}": {
-      "schema": { "$ref": "#/backend/entities/Product" },
-      "description": "Tenant inventory. Supports composite index: [category, name]."
-    },
-    "/tenants/{tenantId}/transactions/{txId}": {
-      "schema": { "$ref": "#/backend/entities/Transaction" },
-      "description": "Sales and ledger history. Supports composite index: [type, createdAt]."
-    },
-    "/tenants/{tenantId}/b2bClients/{clientId}": {
-      "schema": { "$ref": "#/backend/entities/B2BClient" },
-      "description": "B2B client debt tracking. Supports composite index: [outstandingBalance, name]."
-    },
-    "/tenants/{tenantId}/reconciliations/{recId}": {
-      "schema": { "$ref": "#/backend/entities/Reconciliation" },
-      "description": "Payment history for B2B settlements."
-    }
+    "structure": [
+      {
+        "path": "/tenants/{tenantId}",
+        "definition": {
+          "entityName": "Tenant",
+          "schema": {
+            "$ref": "#/backend/entities/Tenant"
+          },
+          "description": "Root collection for each business tenant. Documents here store tenant-specific metadata. Accessible by users who are 'owner' for the specific tenantId. Includes denormalized 'ownerId' or relies on 'users' collection for authorization."
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Top-level collection for all user profiles. Each document represents a user account and contains their 'tenantId' and 'role'. This structure is CRITICAL for Authorization Independence, enabling security rules to quickly ascertain a user's tenancy and permissions without additional 'get()' calls to other tenant-scoped collections.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Subcollection for products belonging to a specific tenant. Each document includes the 'tenantId' for authorization independence.",
+          "params": [
+            {
+              "name": "tenantId",
+              "description": "The unique identifier of the tenant."
+            },
+            {
+              "name": "productId",
+              "description": "The unique identifier of the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}/inventoryItems/{inventoryItemId}",
+        "definition": {
+          "entityName": "InventoryItem",
+          "schema": {
+            "$ref": "#/backend/entities/InventoryItem"
+          },
+          "description": "Subcollection for inventory items for a specific tenant. Each document includes the 'tenantId' for authorization independence.",
+          "params": [
+            {
+              "name": "tenantId",
+              "description": "The unique identifier of the tenant."
+            },
+            {
+              "name": "inventoryItemId",
+              "description": "The unique identifier of the inventory item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Subcollection for point-of-sale transactions specific to a tenant. Each document includes the 'tenantId' for authorization independence. This is the collection where the reported permissions error occurred, and access will be granted to users whose `tenantId` in their `/users/{userId}` profile matches the `{tenantId}` in the path.",
+          "params": [
+            {
+              "name": "tenantId",
+              "description": "The unique identifier of the tenant."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier of the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}/transactions/{transactionId}/saleItems/{saleItemId}",
+        "definition": {
+          "entityName": "SaleItem",
+          "schema": {
+            "$ref": "#/backend/entities/SaleItem"
+          },
+          "description": "Nested subcollection for individual sale items within a specific transaction, which belongs to a tenant. Each document includes 'tenantId' and 'transactionId' for authorization independence and contextual integrity.",
+          "params": [
+            {
+              "name": "tenantId",
+              "description": "The unique identifier of the tenant."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier of the parent transaction."
+            },
+            {
+              "name": "saleItemId",
+              "description": "The unique identifier of the sale item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Subcollection for business expenses incurred by a specific tenant. Each document includes the 'tenantId' for authorization independence.",
+          "params": [
+            {
+              "name": "tenantId",
+              "description": "The unique identifier of the tenant."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique identifier of the expense."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure addresses the reported 'Missing or insufficient permissions' error by implementing strict multi-tenancy rules and adhering to the core design principles, especially 'Authorization Independence' and 'QAPs (Rules are not Filters)'. The primary strategy is to use a top-level `users/{userId}` collection to store each user's `tenantId` and `role`. This critical denormalization allows security rules to retrieve the current user's authorization context (their associated tenant and role) with a single, performant `get()` operation on their own user document, rather than requiring multiple `get()` calls across different tenant documents or subcollections.\n\nAll tenant-specific data (Products, Inventory, Transactions, Sale Items, Expenses) are organized as subcollections under `/tenants/{tenantId}/`. This structural segregation ensures that data for different tenants is physically separated and that all documents within a given subcollection share the same security posture – they all belong to the same tenant and require authorization based on that tenant's rules. For instance, `/tenants/{tenantId}/transactions` clearly indicates that all documents here are transactions for `{tenantId}`.\n\nAuthorization Independence is achieved because the `tenantId` is present in the document path (`/tenants/{tenantId}/...`) and the user's `tenantId` and `role` are directly available from their `/users/{userId}` document. This eliminates the need for `get()` calls to parent documents within specific collection rules, making rules atomic and easier to debug. For the error specifically, a rule for `/tenants/{tenantId}/transactions` would check `request.auth.uid` against the `userId` in `users/{userId}` to retrieve their `tenantId` and `role`. Then, it would assert that the `tenantId` from the path matches the user's assigned `tenantId` and that their `role` grants permission for the 'list' operation. This design enables a direct and explicit authorization check.\n\nQAPs (Rules are not Filters) are supported by ensuring that the `tenantId` in the path (`{tenantId}`) is always explicitly validated against the authenticated user's `tenantId` (obtained from their `/users/{userId}` document). When a client attempts to 'list' documents from `/tenants/33353/transactions`, the rule will check if `request.auth.uid` belongs to tenant '33353' and has the necessary role. If the user's `tenantId` (from their user profile) does not match '33353', or if they lack the appropriate role, the `list` operation will be denied *before* any documents are returned, satisfying QAPs. This prevents partial data returns due to security rules and ensures that all data retrieved by a query is fully authorized, simplifying client-side logic and enhancing security."
   }
 }
