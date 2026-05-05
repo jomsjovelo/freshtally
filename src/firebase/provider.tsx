@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -104,7 +104,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               });
             }, (err) => {
               // Gracefully handle permission errors or missing tenant docs
-              // This is critical when a tenant doc is deleted but the user profile remains.
               setState({
                 user: firebaseUser,
                 profile: profileData,

@@ -11,7 +11,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userProfileExists() {
+    function userExists() {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
@@ -20,40 +20,28 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && 
-             userProfileExists() && 
-             getUserData().role == 'super_admin';
+      return userExists() && getUserData().role == 'super_admin';
     }
 
     function isTenantMember(tenantId) {
-      return isSignedIn() && 
-             userProfileExists() && 
-             getUserData().tenantId == tenantId;
+      return userExists() && getUserData().tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
-      return isSignedIn() && 
-             userProfileExists() && 
-             getUserData().role == 'owner' && 
-             getUserData().tenantId == tenantId;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isTenantMember(tenantId) && getUserData().role == 'owner';
     }
 
     // --- Collection Rules ---
 
     match /platform_broadcasts/{broadcastId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSuperAdmin();
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      allow get: if isOwner(userId) || isSuperAdmin();
+      allow get: if request.auth.uid == userId || isSuperAdmin();
       allow list: if isSuperAdmin();
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isOwner(userId) && request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
 
@@ -65,9 +53,8 @@ service cloud.firestore {
       allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
 
       match /{allSubcollections=**} {
-        allow get, list: if isTenantMember(tenantId) || isSuperAdmin();
-        allow create, update: if isTenantMember(tenantId);
-        allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
+        allow read: if isTenantMember(tenantId) || isSuperAdmin();
+        allow write: if isTenantMember(tenantId);
       }
     }
   }

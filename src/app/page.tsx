@@ -91,7 +91,7 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter">New Station Detected</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Register your business to initialize the intelligence dashboard.</p>
+          <p className="text-muted-foreground text-sm font-medium px-4">Initialize your business to launch the intelligence dashboard.</p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
