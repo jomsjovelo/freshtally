@@ -70,13 +70,13 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Keep loading true while fetching profile
+      // Maintain loading state while resolving profile and tenant
       setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Profile missing - allows UI to handle initialization
+          // Profile not found - User might be in onboarding
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -94,7 +94,7 @@ export const FirebaseProvider: React.FC<{
               userError: null
             });
           }, (err) => {
-            // Permission error or missing tenant document - handle as zombie session
+            // Likely a permission error or missing tenant - transition to zombie protection
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -105,7 +105,7 @@ export const FirebaseProvider: React.FC<{
           });
           return () => unsubscribeTenant();
         } else {
-          // Profile exists but no tenantId assigned
+          // Profile exists but has no tenantId (e.g., halfway through onboarding)
           setState({
             user: firebaseUser,
             profile: profileData,

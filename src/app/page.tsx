@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { Bell, ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2 } from "lucide-react"
+import { ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2 } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -35,10 +35,10 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // CRITICAL GUARD: Only query if context is fully stable and verified across profile and tenant nodes
+  // RIGID SYNCHRONIZATION GUARD: Only query sub-collections if context is fully stable and verified
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    // Rigid synchronization: ensure both state pieces match exactly before authorizing a sub-collection query
+    // Ensure Auth and DB nodes match perfectly before authorizing list operation
     if (profile.tenantId !== tenant.id) return null
     
     return query(
@@ -67,7 +67,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // Hydration structural protection
+  // Hydration safety mount
   if (!mounted) return <div className="min-h-screen bg-background" />
 
   if (isUserLoading || !stableNow) return (
@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Handle Missing Business Node (Zombie Protection)
+  // ZOMBIE PROTECTION: Authenticated but missing business node
   if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
@@ -88,7 +88,7 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">Your business configuration could not be verified. Initialize your terminal to proceed.</p>
+          <p className="text-muted-foreground text-sm font-medium px-4">Your business node configuration could not be verified. Initialize your terminal to proceed.</p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 

@@ -3,8 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY SECURITY RULES
-     * Hardened for multi-tenant SaaS resilience.
+     * FRESH TALLY SECURITY RULES - ARCHITECTURAL STABILITY V2
      */
 
     function isSignedIn() {
@@ -20,7 +19,7 @@ service cloud.firestore {
 
     function isTenantMember(tenantId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      // Defensive: Check existence and field matching to prevent rule evaluation errors
+      // Defensive: Ensure user document exists before checking tenantId
       return isSignedIn() && 
              exists(userPath) && 
              get(userPath).data.get('tenantId', '') == tenantId;
@@ -35,6 +34,7 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /platform_broadcasts/{broadcastId} {
+      // System broadcasts are readable by any authenticated node
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
     }
