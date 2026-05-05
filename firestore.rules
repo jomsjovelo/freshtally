@@ -24,10 +24,10 @@ service cloud.firestore {
     }
 
     function isTenantMember(tenantId) {
-      // Use isSignedIn first for fast rejection, then check user profile for authorization
+      // Robust check: User must be signed in and have a profile matching the tenantId
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+             userExists() && 
+             getUserData().tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
@@ -52,10 +52,10 @@ service cloud.firestore {
       allow get: if isTenantMember(tenantId) || isSuperAdmin();
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
-      allow update: if isTenantOwner(tenantId) || isSuperAdmin();
-      allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
+      allow update, delete: if isTenantOwner(tenantId) || isSuperAdmin();
 
       match /{allSubcollections=**} {
+        // Broad read/write for subcollections if member/owner
         allow read: if isTenantMember(tenantId) || isSuperAdmin();
         allow write: if isTenantMember(tenantId);
       }

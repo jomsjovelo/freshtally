@@ -20,10 +20,10 @@ export function TopBar() {
   // Hydration guard: Always render the header tag to maintain DOM structure consistency
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
-      {pathname !== '/auth' && (
+      {mounted && pathname !== '/auth' && (
         <>
           <div className="flex items-center gap-3 overflow-hidden">
-            {!mounted || isUserLoading ? (
+            {isUserLoading ? (
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-gray-100 flex items-center justify-center">
                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
