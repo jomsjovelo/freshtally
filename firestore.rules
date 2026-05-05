@@ -4,6 +4,7 @@ service cloud.firestore {
 
     /**
      * FRESH TALLY SECURITY RULES
+     * Triggering deployment with an updated rule set.
      */
 
     // --- Helper Functions ---
@@ -42,8 +43,8 @@ service cloud.firestore {
      * @description System broadcasts visible to all signed-in users.
      */
     match /platform_broadcasts/{broadcastId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSuperAdmin();
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
 
     /**

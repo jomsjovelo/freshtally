@@ -4,6 +4,13 @@
       "collectionGroup": "platform_broadcasts",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "activeUntil", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "platform_broadcasts",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "priority", "order": "ASCENDING" },
         { "fieldPath": "activeUntil", "order": "ASCENDING" }
       ]
