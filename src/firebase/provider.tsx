@@ -104,6 +104,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               });
             }, (err) => {
               // Gracefully handle permission errors or missing tenant docs
+              // This is critical when a tenant doc is deleted but the user profile remains.
               setState({
                 user: firebaseUser,
                 profile: profileData,

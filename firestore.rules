@@ -20,24 +20,17 @@ service cloud.firestore {
 
     function isTenantMember(tenantId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
-      
-      return isSignedIn() && (
-        // Check 1: User profile links them to this tenant
-        (exists(userPath) && get(userPath).data.tenantId == tenantId) ||
-        // Check 2: User is the explicit owner on the tenant doc (fallback)
-        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid)
-      );
+      // Resilience: Rely on the user's profile to define membership.
+      // This ensures that even if the Tenant document is deleted, the user can 
+      // still access their data or see appropriate recovery UI.
+      return isSignedIn() && exists(userPath) && get(userPath).data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      let tenantPath = /databases/$(database)/documents/tenants/$(tenantId);
-
-      return isSignedIn() && (
-        (exists(userPath) && get(userPath).data.role == 'owner' && get(userPath).data.tenantId == tenantId) ||
-        (exists(tenantPath) && get(tenantPath).data.ownerUid == request.auth.uid)
-      );
+      return isSignedIn() && exists(userPath) && 
+             get(userPath).data.role == 'owner' && 
+             get(userPath).data.tenantId == tenantId;
     }
 
     function isOwner(userId) {
@@ -73,11 +66,11 @@ service cloud.firestore {
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
       allow update: if isTenantOwner(tenantId) || isSuperAdmin();
-      allow delete: if isSuperAdmin() || isTenantOwner(tenantId);
+      allow delete: if isTenantOwner(tenantId) || isSuperAdmin();
     }
 
     /**
-     * @description Tenant sub-collections.
+     * @description Tenant sub-collections (Products, Transactions, Expenses, etc.)
      */
     match /tenants/{tenantId}/{allSubcollections=**} {
       allow get, list: if isTenantMember(tenantId) || isSuperAdmin();

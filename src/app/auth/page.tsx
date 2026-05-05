@@ -131,7 +131,7 @@ export default function AuthPage() {
             displayName: ownerName || "Shop Staff",
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
-          })
+          }, { merge: true })
           .commit()
 
         toast({ title: "Access Granted", description: `Joining team...` })
@@ -278,6 +278,7 @@ export default function AuthPage() {
               )}
 
               <Button 
+                type="submit"
                 className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-sm shadow-xl active:scale-[0.98] transition-all mt-6" 
                 disabled={loading}
               >
