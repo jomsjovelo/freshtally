@@ -80,7 +80,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // 2. Start Handshake: Keep user, clear context, set loading
+      // 2. Start Handshake: Keep user, set loading
       setState(prev => ({ 
         ...prev, 
         user: firebaseUser, 
@@ -133,7 +133,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
-          // Profile exists but no tenant linked
+          // Profile exists but no tenant linked (e.g. Super Admin or pending setup)
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

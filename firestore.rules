@@ -7,9 +7,8 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      // Safely fetch user data, default to empty map if doc doesn't exist
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) ? get(userPath).data : {};
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : {};
     }
 
     function getRole() {
