@@ -13,12 +13,14 @@ import { getFirestore } from 'firebase/firestore'
 export function initializeFirebase() {
   if (typeof window === 'undefined') return { firebaseApp: null, auth: null, firestore: null };
 
+  let firebaseApp: FirebaseApp;
   if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    firebaseApp = initializeApp(firebaseConfig);
+  } else {
+    firebaseApp = getApp();
   }
 
-  return getSdks(getApp());
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

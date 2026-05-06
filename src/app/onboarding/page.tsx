@@ -104,7 +104,7 @@ export default function OnboardingPage() {
                 id="storeName"
                 name="storeName"
                 placeholder="e.g. Metro Roast Coffee" 
-                className="h-16 rounded-2xl border-none bg-gray-100 font-bold text-lg"
+                className="h-16 rounded-2xl border-none bg-gray-100 font-bold text-lg px-6"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 required
@@ -115,12 +115,12 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label htmlFor="storeAddress" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Address</Label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
                   id="storeAddress"
                   name="storeAddress"
-                  placeholder=" Makati Ave, Makati City" 
-                  className="h-16 pl-12 rounded-2xl border-none bg-gray-100 font-bold text-lg"
+                  placeholder="Makati Ave, Makati City" 
+                  className="h-16 pl-14 rounded-2xl border-none bg-gray-100 font-bold text-lg px-6"
                   value={storeAddress}
                   onChange={(e) => setStoreAddress(e.target.value)}
                   required
@@ -130,15 +130,15 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="startDate" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operations Start Date</Label>
+              <Label htmlFor="startDateButton" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operations Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    id="startDate"
-                    name="startDate"
+                    id="startDateButton"
+                    name="startDateButton"
                     variant={"outline"}
                     className={cn(
-                      "w-full h-16 justify-start text-left font-bold rounded-2xl bg-gray-100 border-none",
+                      "w-full h-16 justify-start text-left font-bold rounded-2xl bg-gray-100 border-none px-6",
                       !startDate && "text-muted-foreground"
                     )}
                   >

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { ShoppingCart, Package, Megaphone, TrendingDown, Loader2, Sparkles, ArrowUpRight } from "lucide-react"
+import { ShoppingCart, Package, Megaphone, TrendingDown, Loader2, Sparkles, ArrowUpRight, AlertCircle } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -32,30 +32,28 @@ function SyncingTerminal() {
   )
 }
 
-function DashboardContent({ user, profile, tenant, stableNow }: { user: any, profile: any, tenant: any, stableNow: string }) {
+function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant: any, stableNow: string }) {
   const db = useFirestore()
   const router = useRouter()
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !user || !tenant?.id || !profile?.tenantId) return null;
-    if (tenant.id !== profile.tenantId) return null;
-
+    if (!db || !tenant?.id || !profile?.tenantId || tenant.id !== profile.tenantId) return null;
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, user, tenant?.id, profile?.tenantId])
+  }, [db, tenant?.id, profile?.tenantId])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !user || !stableNow) return null
+    if (!db || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, user, stableNow])
+  }, [db, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -195,7 +193,6 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router])
 
-  // Identity Handshake Recovery: Homeless accounts
   useEffect(() => {
     if (!isUserLoading && user && !profile?.tenantId && !tenant) {
       router.push("/onboarding")
@@ -205,8 +202,27 @@ export default function DashboardPage() {
   if (isUserLoading) return <SyncingTerminal />
 
   if (!user || !profile || (!tenant && profile.role !== 'super_admin')) {
+    if (!isUserLoading && user && profile && !tenant && profile.role !== 'super_admin') {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-gray-50">
+          <div className="h-24 w-24 bg-destructive/5 text-destructive rounded-[40px] flex items-center justify-center mb-6 border border-destructive/10">
+            <AlertCircle className="h-12 w-12" />
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-tighter leading-tight">Store Decommissioned</h1>
+          <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest mt-4 leading-relaxed max-w-xs">
+            The linked store node is no longer active. Contact an administrator or initialize a new registry.
+          </p>
+          <Button 
+            className="w-full max-w-xs h-16 rounded-[24px] bg-primary text-white font-black mt-10 shadow-xl"
+            onClick={() => router.push('/onboarding')}
+          >
+            INITIALIZE NEW STORE
+          </Button>
+        </div>
+      )
+    }
     return <SyncingTerminal />
   }
 
-  return <DashboardContent user={user} profile={profile} tenant={tenant} stableNow={stableNow} />
+  return <DashboardContent profile={profile} tenant={tenant} stableNow={stableNow} />
 }

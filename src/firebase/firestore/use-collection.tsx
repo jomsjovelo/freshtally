@@ -44,7 +44,7 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // KILL SWITCH: Exit immediately if query context is unstable
+    // KILL SWITCH: Exit immediately if query context is unstable or reference is null
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);

@@ -73,14 +73,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
-      // Start loading phase for profile/tenant
       setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
       // 2. Fetch User Profile
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Case: Auth exists but no profile yet (onboarding needed)
           setAuthState({
             user,
             profile: null,
@@ -105,7 +103,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Handle tenant fetch failure (e.g. deleted or permissions)
             setAuthState({
               user,
               profile: profileData,
@@ -116,7 +113,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           });
           return () => unsubscribeTenant();
         } else {
-          // Profile exists but no tenantId associated
           setAuthState({
             user,
             profile: profileData,
