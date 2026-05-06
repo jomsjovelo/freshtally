@@ -36,7 +36,6 @@ export default function AuthPage() {
   const router = useRouter()
   const { toast } = useToast()
   
-  // FIXED: Replaced top-level getAuth/getFirestore calls with context hooks to prevent SSR crashes.
   const auth = useAuth()
   const db = useFirestore()
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()

@@ -28,7 +28,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
   
-  // Use context hook to prevent "No Firebase App" errors.
   const db = useFirestore()
 
   useEffect(() => {
