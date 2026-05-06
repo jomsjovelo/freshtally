@@ -4,21 +4,23 @@ FreshTally is a high-performance, AI-powered multi-tenant business management sy
 
 ## 🚀 Migration to GitHub & App Hosting
 
-To deploy this project via Firebase App Hosting, run these commands in your workstation terminal:
+If you see an error saying "Branch name must refer to a valid existing branch", it's because you haven't pushed your code yet. Run these commands in your project terminal:
 
-1. **Initialize Git**:
+1. **Initialize & Commit**:
    ```bash
    git init
    git add .
    git commit -m "Initial commit from FreshTally Studio"
    ```
 
-2. **Connect to GitHub**:
+2. **Push to GitHub**:
    ```bash
-   git remote add origin https://github.com/jomsjovelo/freshtally.git
    git branch -M main
+   git remote add origin https://github.com/jomsjovelo/freshtally.git
    git push -u origin main
    ```
+
+Once you run `git push`, the Firebase App Hosting setup will recognize the `main` branch and you can proceed!
 
 ## 🛠 Deployment Configuration
 
