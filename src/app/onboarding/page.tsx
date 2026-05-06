@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -102,8 +103,10 @@ export default function OnboardingPage() {
         <CardContent className="p-8 space-y-6">
           <form onSubmit={handleOnboarding} className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Name</Label>
+              <Label htmlFor="storeName" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Name</Label>
               <Input 
+                id="storeName"
+                name="storeName"
                 placeholder="e.g. Metro Roast Coffee" 
                 className="h-16 rounded-2xl border-none bg-gray-100 font-bold text-lg"
                 value={storeName}
@@ -113,10 +116,12 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Address</Label>
+              <Label htmlFor="storeAddress" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Address</Label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
+                  id="storeAddress"
+                  name="storeAddress"
                   placeholder=" Makati Ave, Makati City" 
                   className="h-16 pl-12 rounded-2xl border-none bg-gray-100 font-bold text-lg"
                   value={storeAddress}
@@ -127,10 +132,11 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operations Start Date</Label>
+              <Label htmlFor="startDate" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operations Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    id="startDate"
                     variant={"outline"}
                     className={cn(
                       "w-full h-16 justify-start text-left font-bold rounded-2xl bg-gray-100 border-none",

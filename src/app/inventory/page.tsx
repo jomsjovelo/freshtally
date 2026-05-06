@@ -100,8 +100,10 @@ export default function InventoryPage() {
             
             <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto flex-1 pb-32">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Product Name</Label>
+                <Label htmlFor="productName" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Product Name</Label>
                 <Input 
+                  id="productName"
+                  name="productName"
                   required
                   placeholder="e.g. Arabica Coffee Beans"
                   className="h-16 rounded-2xl bg-gray-100 border-none font-bold text-lg"
@@ -112,8 +114,10 @@ export default function InventoryPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">SKU / Code</Label>
+                  <Label htmlFor="sku" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">SKU / Code</Label>
                   <Input 
+                    id="sku"
+                    name="sku"
                     required
                     placeholder="COF-001"
                     className="h-16 rounded-2xl bg-gray-100 border-none font-bold"
@@ -122,8 +126,10 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Unit Price (₱)</Label>
+                  <Label htmlFor="unitPrice" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Unit Price (₱)</Label>
                   <Input 
+                    id="unitPrice"
+                    name="unitPrice"
                     required
                     type="number"
                     placeholder="0.00"
@@ -136,8 +142,10 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Stock</Label>
+                  <Label htmlFor="stock" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Stock</Label>
                   <Input 
+                    id="stock"
+                    name="stock"
                     required
                     type="number"
                     placeholder="0"
@@ -147,8 +155,10 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Min. Alert Level</Label>
+                  <Label htmlFor="minStock" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Min. Alert Level</Label>
                   <Input 
+                    id="minStock"
+                    name="minStock"
                     required
                     type="number"
                     className="h-16 rounded-2xl bg-gray-100 border-none font-bold"
@@ -174,6 +184,8 @@ export default function InventoryPage() {
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
+            id="inventorySearch"
+            name="inventorySearch"
             placeholder="Search SKUs or Names..." 
             className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
             value={search}

@@ -94,8 +94,10 @@ export default function ExpensesPage() {
             
             <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto flex-1 pb-32">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">What was it for?</Label>
+                <Label htmlFor="expenseDescription" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">What was it for?</Label>
                 <Input 
+                  id="expenseDescription"
+                  name="expenseDescription"
                   required
                   placeholder="e.g. Utility Bills, Rent, Inventory"
                   className="h-16 rounded-2xl bg-gray-100 border-none font-bold text-lg"
@@ -105,8 +107,10 @@ export default function ExpensesPage() {
               </div>
               
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Amount (₱)</Label>
+                <Label htmlFor="expenseAmount" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Amount (₱)</Label>
                 <Input 
+                  id="expenseAmount"
+                  name="expenseAmount"
                   required
                   type="number"
                   placeholder="0.00"
@@ -117,8 +121,10 @@ export default function ExpensesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
+                <Label htmlFor="expenseCategory" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
                 <select 
+                  id="expenseCategory"
+                  name="expenseCategory"
                   className="w-full h-16 rounded-2xl bg-gray-100 border-none font-bold px-4"
                   value={formData.category}
                   onChange={(e) => setFormData({...formData, category: e.target.value})}
@@ -163,6 +169,8 @@ export default function ExpensesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
+            id="expenseSearch"
+            name="expenseSearch"
             placeholder="Search expenses..." 
             className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
             value={search}

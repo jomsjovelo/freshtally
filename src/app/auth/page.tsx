@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -128,7 +129,6 @@ export default function AuthPage() {
     }
   }
 
-  // A zombie is a user who is logged in but their profile/tenant data is missing or broken
   const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
@@ -193,9 +193,11 @@ export default function AuthPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {(authMode === "login" || authMode === "join_staff") && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
+                      <Label htmlFor="tenantId" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
                       <div className="relative">
                         <Input 
+                          id="tenantId"
+                          name="tenantId"
                           placeholder="STORE CODE" 
                           maxLength={5}
                           className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-black px-5 pr-12 text-center tracking-[0.3em]"
@@ -210,21 +212,26 @@ export default function AuthPage() {
 
                   {authMode !== "login" && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+                      <Label htmlFor="fullName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
                       <Input 
+                        id="fullName"
+                        name="fullName"
                         placeholder="e.g. Juan Dela Cruz" 
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
                         value={ownerName}
                         onChange={(e) => setOwnerName(e.target.value)}
                         required
+                        autoComplete="name"
                       />
                     </div>
                   )}
 
                   {authMode === "register_owner" && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
+                      <Label htmlFor="businessName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
                       <Input 
+                        id="businessName"
+                        name="businessName"
                         placeholder="e.g. Metro Roast" 
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
                         value={businessName}
@@ -235,27 +242,33 @@ export default function AuthPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
+                    <Label htmlFor="email" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
                     <Input 
+                      id="email"
+                      name="email"
                       type="email" 
                       placeholder="name@business.com" 
                       className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      autoComplete="email"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
+                    <Label htmlFor="password" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
                     <div className="relative">
                       <Input 
+                        id="password"
+                        name="password"
                         type="password" 
                         placeholder="Min. 6 characters" 
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        autoComplete={authMode === "login" ? "current-password" : "new-password"}
                       />
                       <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                     </div>
@@ -263,15 +276,18 @@ export default function AuthPage() {
 
                   {authMode !== "login" && (
                     <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
+                      <Label htmlFor="confirmPassword" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
                       <div className="relative">
                         <Input 
+                          id="confirmPassword"
+                          name="confirmPassword"
                           type="password" 
                           placeholder="Repeat password" 
                           className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           required
+                          autoComplete="new-password"
                         />
                         <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
                       </div>

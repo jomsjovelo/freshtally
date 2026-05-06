@@ -171,6 +171,8 @@ export default function SuperAdminPage() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
+              id="tenantSearch"
+              name="tenantSearch"
               placeholder="Search nodes..." 
               className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
               value={searchQuery}
@@ -221,8 +223,9 @@ export default function SuperAdminPage() {
                       
                       <div className="p-8 space-y-8 overflow-y-auto h-full pb-32">
                         <div className="flex items-center justify-between bg-gray-50 p-6 rounded-3xl">
-                          <Label className="text-sm font-black uppercase">Status</Label>
+                          <Label htmlFor={`status-${tenant.id}`} className="text-sm font-black uppercase">Status</Label>
                           <Switch 
+                            id={`status-${tenant.id}`}
                             checked={tenant.status === 'active'} 
                             onCheckedChange={() => handleTenantAction('status')}
                           />
@@ -251,7 +254,7 @@ export default function SuperAdminPage() {
                           </Button>
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-full h-16 font-black rounded-2xl bg-gray-50 border-none px-6">
+                              <Button id={`expiry-${tenant.id}`} variant="outline" className="w-full h-16 font-black rounded-2xl bg-gray-50 border-none px-6">
                                 <CalendarIcon className="mr-3 h-6 w-6 text-primary" />
                                 {expiryDate ? format(expiryDate, "PPP") : "Set Expiry"}
                               </Button>
@@ -281,30 +284,43 @@ export default function SuperAdminPage() {
         <TabsContent value="broadcast" className="space-y-6 pt-4">
           <Card className="border-none shadow-sm bg-white rounded-[32px] p-6 space-y-6">
             <div className="space-y-4">
-              <Select value={broadcastPriority} onValueChange={setBroadcastPriority}>
-                <SelectTrigger className="h-14 rounded-xl border-none bg-gray-50 font-black uppercase text-[10px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-none">
-                  <SelectItem value="info" className="font-bold uppercase">Info</SelectItem>
-                  <SelectItem value="warning" className="font-bold uppercase">Warning</SelectItem>
-                  <SelectItem value="critical" className="font-bold uppercase">Critical</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="broadcastPriority" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Priority</Label>
+                <Select value={broadcastPriority} onValueChange={setBroadcastPriority}>
+                  <SelectTrigger id="broadcastPriority" className="h-14 rounded-xl border-none bg-gray-50 font-black uppercase text-[10px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-none">
+                    <SelectItem value="info" className="font-bold uppercase">Info</SelectItem>
+                    <SelectItem value="warning" className="font-bold uppercase">Warning</SelectItem>
+                    <SelectItem value="critical" className="font-bold uppercase">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <Input 
-                placeholder="Broadcast Title" 
-                className="h-14 rounded-xl bg-gray-50 border-none font-bold"
-                value={broadcastTitle}
-                onChange={(e) => setBroadcastTitle(e.target.value)}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="broadcastTitle" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Title</Label>
+                <Input 
+                  id="broadcastTitle"
+                  name="broadcastTitle"
+                  placeholder="Broadcast Title" 
+                  className="h-14 rounded-xl bg-gray-50 border-none font-bold"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                />
+              </div>
 
-              <Textarea 
-                placeholder="Message details..." 
-                className="rounded-2xl bg-gray-50 border-none font-bold min-h-[120px]"
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="broadcastMessage" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Message</Label>
+                <Textarea 
+                  id="broadcastMessage"
+                  name="broadcastMessage"
+                  placeholder="Message details..." 
+                  className="rounded-2xl bg-gray-50 border-none font-bold min-h-[120px]"
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                />
+              </div>
 
               <Button 
                 className="w-full h-16 rounded-[24px] bg-primary text-white font-black text-lg"
