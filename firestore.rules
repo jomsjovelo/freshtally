@@ -12,9 +12,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Helper: Check if user belongs to a specific tenant
+    // Helper: Check if user profile exists and belongs to a specific tenant
     function isTenantMember(tenantId) {
-      return isSignedIn() && getUserData().tenantId == tenantId;
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
     }
 
     // Helper: Get user role

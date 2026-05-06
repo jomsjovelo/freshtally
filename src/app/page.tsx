@@ -39,16 +39,17 @@ export default function DashboardPage() {
   }, [])
 
   // Intelligence Guard: Sub-collection queries strictly blocked until Tenant Node is verified
+  // This is the "Kill Switch" - if any part of the security context is missing, return null.
   const transactionsQuery = useMemoFirebase(() => {
-    if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    if (profile.tenantId !== tenant.id) return null
+    if (!mounted || isUserLoading || !db || !user || !profile || !tenant || !profile.tenantId || !tenant.id) return null;
+    if (profile.tenantId !== tenant.id) return null;
     
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [mounted, isUserLoading, db, user?.uid, profile?.tenantId, tenant?.id])
+  }, [mounted, isUserLoading, db, user, profile, tenant])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !stableNow) return null
@@ -58,7 +59,7 @@ export default function DashboardPage() {
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [mounted, isUserLoading, db, stableNow])
+  }, [mounted, isUserLoading, db, stableNow, user])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -83,7 +84,7 @@ export default function DashboardPage() {
   if (!user) return null
 
   // Zombie Session Protection: Handle auth without business node
-  if (!profile?.tenantId || !tenant) {
+  if (!profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
         <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary shadow-inner">

@@ -62,11 +62,12 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // Early Exit: Kill switch if target is not ready
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
-      return;
+      return () => {};
     }
 
     setIsLoading(true);
