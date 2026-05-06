@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.0.6 - Defensive Synchronization
+    // Version: 1.0.7 - Robust Membership Checks
     function isSignedIn() {
       return request.auth != null;
     }
