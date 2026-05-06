@@ -72,6 +72,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
+      // Keep Loading until Profile/Tenant are checked
       setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
 
       // 1. Resolve Profile
@@ -102,7 +103,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Handle restricted or missing tenant document gracefully
+            // Graceful exit for restricted/missing tenant
             setAuthState({
               user,
               profile: profileData,

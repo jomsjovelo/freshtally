@@ -2,12 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.0.8 - Robust Defensive Membership Checks
+    // Version: 1.1.0 - Defensive Rule Hardening
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive check: only verify tenant if the userProfile document exists AND the tenant document exists
+    // Defensive check: verify tenant and profile existence to prevent evaluation errors
     function isMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
@@ -66,7 +66,7 @@ service cloud.firestore {
       }
     }
 
-    // Explicitly allow global broadcasts for all logged-in users regardless of tenant status
+    // Explicitly allow global broadcasts for all logged-in users
     match /platform_broadcasts/{broadcastId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if hasRole('super_admin');

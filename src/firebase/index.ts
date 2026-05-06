@@ -8,8 +8,11 @@ import { getFirestore } from 'firebase/firestore'
 /**
  * INITIALIZATION ENGINE
  * Explicitly uses firebaseConfig to prevent RPC 404 errors during metadata lookup.
+ * This ensures the SDK doesn't attempt to ping App Hosting endpoints in the dev cluster.
  */
 export function initializeFirebase() {
+  if (typeof window === 'undefined') return { firebaseApp: null, auth: null, firestore: null };
+
   if (!getApps().length) {
     const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);

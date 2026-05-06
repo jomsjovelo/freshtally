@@ -162,7 +162,7 @@ export default function OnboardingPage() {
               <p className="text-sm font-bold text-blue-800">Philippine Peso (PHP ₱)</p>
             </div>
 
-            <Button className="w-full h-16 rounded-[24px] bg-accent text-white font-black text-xl shadow-xl active:scale-[0.98] transition-all" disabled={loading}>
+            <Button type="submit" className="w-full h-16 rounded-[24px] bg-accent text-white font-black text-xl shadow-xl active:scale-[0.98] transition-all" disabled={loading}>
               {loading ? "INITIALIZING..." : "LAUNCH STORE"}
               <ArrowRight className="ml-2 h-6 w-6" />
             </Button>
