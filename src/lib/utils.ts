@@ -7,6 +7,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Strictly formats currency as Philippine Peso (₱)
+ */
 export function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -17,6 +20,9 @@ export function formatCurrency(amount: number) {
 
 export type AgingCategory = 'current' | 'overdue' | 'critical';
 
+/**
+ * AR Aging Logic: Calculates bucket based on oldest unpaid transaction
+ */
 export function getAgingCategory(oldestUnpaidAt: string | null): AgingCategory {
   if (!oldestUnpaidAt) return 'current';
   
@@ -27,10 +33,13 @@ export function getAgingCategory(oldestUnpaidAt: string | null): AgingCategory {
   return 'current';
 }
 
+/**
+ * Visual Aging Indicators: MD3-inspired semantic colors
+ */
 export function getAgingColor(category: AgingCategory) {
   switch (category) {
-    case 'critical': return 'text-destructive';
-    case 'overdue': return 'text-amber-500';
-    default: return 'text-foreground';
+    case 'critical': return 'text-destructive font-black'; // Red
+    case 'overdue': return 'text-amber-500 font-bold';    // Warning/Yellow
+    default: return 'text-muted-foreground font-medium';  // Neutral
   }
 }

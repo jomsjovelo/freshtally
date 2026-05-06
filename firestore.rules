@@ -1,17 +1,18 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V12
-     * Hardened isolation with atomic verification and defensive existence checks.
+     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V15
+     * Hardened isolation with strict exists() guards and atomic verification.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive helper to check user role/tenant
+    // Defensive helper to check user role/tenant membership
     function getUserData() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(path) ? get(path).data : null;
@@ -47,13 +48,14 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
+      // Direct tenant access requires membership or superadmin
       allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
       allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
       allow delete: if isSuperAdmin();
 
-      // Sub-collections strictly scoped to verified tenant members
+      // Deep sub-collection scoping
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       }

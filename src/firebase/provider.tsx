@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -47,6 +48,9 @@ export interface UserHookResult extends UserAuthState {}
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
+/**
+ * Atomic Context Synchronization: Ensures absolute loading state before UI mount
+ */
 export const FirebaseProvider: React.FC<{
   children: ReactNode;
   firebaseApp: FirebaseApp;
@@ -68,7 +72,7 @@ export const FirebaseProvider: React.FC<{
     let tenantUnsub: (() => void) | null = null;
 
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
-      // Clear previous subs on auth change
+      // Clear previous listeners to prevent memory leaks and zombie updates
       if (profileUnsub) profileUnsub();
       if (tenantUnsub) tenantUnsub();
 
@@ -77,18 +81,18 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Sync Profile
+      // Step 1: Sync User Profile Node
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Profile document doesn't exist yet (e.g. during onboarding propagation)
+          // Profile document doesn't exist yet (propagation delay or onboarding)
           setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false }));
           return;
         }
 
         const profileData = profileSnap.data() as UserProfile;
 
-        // If user has a tenant, sync tenant data before ending loading state
+        // Step 2: Sync Business Tenant Node (Multi-tenant isolation)
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           if (tenantUnsub) tenantUnsub();
@@ -98,7 +102,7 @@ export const FirebaseProvider: React.FC<{
               user: firebaseUser,
               profile: profileData,
               tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-              isUserLoading: false,
+              isUserLoading: false, // Critical: Only end loading when entire chain is synced
               userError: null
             });
           }, (err) => {
@@ -111,7 +115,7 @@ export const FirebaseProvider: React.FC<{
             });
           });
         } else {
-          // No tenant (e.g. super admin)
+          // Single-node profile (e.g. Super Admin or pending store assignment)
           setState({
             user: firebaseUser,
             profile: profileData,

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from "react"
@@ -5,7 +6,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2 } from "lucide-react"
+import { ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2, Sparkles } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -21,6 +22,9 @@ const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-to
   loading: () => <div className="h-40 w-full bg-muted/10 animate-pulse rounded-2xl" />
 })
 
+/**
+ * FreshTally Retail OS: Multi-tenant isolated dashboard
+ */
 export default function DashboardPage() {
   const { profile, tenant, isUserLoading, user } = useUser()
   const router = useRouter()
@@ -35,16 +39,17 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
+  // Intelligence Guard: Sub-collection queries strictly blocked until Tenant Node is verified
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    if (profile.tenantId !== tenant.id || profile.id !== user.uid) return null
+    if (profile.tenantId !== tenant.id) return null
     
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [mounted, isUserLoading, db, user?.uid, profile?.tenantId, profile?.id, tenant?.id])
+  }, [mounted, isUserLoading, db, user?.uid, profile?.tenantId, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !stableNow) return null
@@ -54,7 +59,7 @@ export default function DashboardPage() {
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [mounted, isUserLoading, db, user?.uid, stableNow])
+  }, [mounted, isUserLoading, db, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
@@ -65,29 +70,30 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  if (!mounted) return <div className="min-h-screen bg-background" />
+  if (!mounted) return <div className="min-h-screen bg-background max-w-md mx-auto" />
 
   if (isUserLoading || !stableNow) {
     return (
       <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin" />
-        Synchronizing Store...
+        Syncing Terminal Node...
       </div>
     )
   }
 
   if (!user) return null
 
+  // Zombie Session Protection: Handle auth without business node
   if (!profile?.tenantId || !tenant) {
     return (
-      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
-        <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary">
+      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
+        <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary shadow-inner">
           <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Store Offline</h2>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
           <p className="text-muted-foreground text-sm font-medium px-4">
-            Your business node could not be verified. Enter your Store Code or re-initialize.
+            Your Store Code is required for session verification.
           </p>
         </div>
         <Button 
@@ -104,15 +110,15 @@ export default function DashboardPage() {
   const isOwner = profile?.role === 'owner' || profile?.role === 'super_admin'
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 max-w-md mx-auto">
       {broadcasts && broadcasts.length > 0 && (
         <div className={cn(
-          "p-5 rounded-[28px] flex gap-4 items-center animate-in slide-in-from-top-4",
+          "p-5 rounded-[28px] flex gap-4 items-center animate-in slide-in-from-top-4 shadow-sm",
           broadcasts[0].priority === 'critical' ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"
         )}>
           <Megaphone className="h-6 w-6 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">System Broadcast</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Platform Broadcast</p>
             <p className="text-sm font-black uppercase truncate mt-0.5">{broadcasts[0].title}</p>
           </div>
         </div>
@@ -121,11 +127,14 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-primary uppercase leading-none">
-            {isStaff ? "Operations" : "Dashboard"}
+            {isStaff ? "Terminal" : "Ledger"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
             {tenant.name} • {profile.role}
           </p>
+        </div>
+        <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10">
+          <Sparkles className="h-5 w-5" />
         </div>
       </header>
 
@@ -136,11 +145,11 @@ export default function DashboardPage() {
             className="bg-primary p-6 rounded-[32px] text-white shadow-xl flex flex-col items-center gap-3 active:scale-95 transition-all"
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Open Terminal</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">POS Terminal</span>
           </button>
           <button 
             onClick={() => router.push('/inventory')}
-            className="bg-white border-2 border-primary/10 p-6 rounded-[32px] flex flex-col items-center gap-3 active:scale-95 transition-all text-primary"
+            className="bg-white border-2 border-primary/10 p-6 rounded-[32px] flex flex-col items-center gap-3 active:scale-95 transition-all text-primary shadow-sm"
           >
             <Package className="h-6 w-6" />
             <span className="text-[10px] font-black uppercase tracking-widest">Inventory</span>
@@ -159,13 +168,13 @@ export default function DashboardPage() {
       )}
 
       <section className="space-y-4 pb-4">
-        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Recent activity</h3>
+        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Global activity</h3>
         <div className="space-y-3">
           {isTxLoading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Auditing...</div>
+            <div className="p-8 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Auditing Ledger...</div>
           ) : transactions && transactions.length > 0 ? (
             transactions.map((tx) => (
-              <div key={tx.id} className="bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm border border-gray-50">
+              <div key={tx.id} className="bg-white p-5 rounded-[28px] flex items-center justify-between shadow-sm border border-gray-50 active:scale-98 transition-all">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "h-12 w-12 rounded-[18px] flex items-center justify-center",
@@ -176,7 +185,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-black text-sm uppercase leading-none">{tx.type}</p>
                     <p className="text-[9px] text-muted-foreground font-bold mt-1.5 uppercase tracking-widest">
-                      {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Processing'}
+                      {tx.createdAt ? (tx.createdAt.toDate ? new Date(tx.createdAt.toDate()) : new Date(tx.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                     </p>
                   </div>
                 </div>
@@ -187,7 +196,7 @@ export default function DashboardPage() {
             ))
           ) : (
             <div className="bg-gray-50 rounded-[32px] p-10 text-center border-2 border-dashed border-gray-200">
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Empty Ledger</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Empty Ledger History</p>
             </div>
           )}
         </div>

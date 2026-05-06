@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Store, Loader2, ShieldCheck, Bell, AlertTriangle } from "lucide-react"
+import { Store, Loader2, ShieldCheck, Bell, AlertTriangle, ChevronRight } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { 
   DropdownMenu, 
@@ -15,9 +15,12 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
 import { collection, query, where } from "firebase/firestore"
-import { getAgingCategory, cn } from "@/lib/utils"
+import { getAgingCategory, cn, formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
+/**
+ * In-App Notification Center: MD3 MD3-compliant Alert Hub
+ */
 export function TopBar() {
   const { tenant, isUserLoading, profile, user } = useUser()
   const db = useFirestore()
@@ -28,7 +31,7 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
-  // Notification Logic
+  // AR Aging Engine: Fetch all clients with balances to calculate global health
   const overdueClientsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id) return null
     return query(
@@ -39,6 +42,7 @@ export function TopBar() {
 
   const { data: b2bClients } = useCollection(overdueClientsQuery)
 
+  // Categorize alerts into Overdue and Critical buckets
   const alerts = useMemo(() => {
     if (!b2bClients) return []
     return b2bClients
@@ -52,7 +56,7 @@ export function TopBar() {
   const isSuperAdmin = profile?.role === 'super_admin'
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && user && (
         <>
           <div className="flex items-center gap-3 overflow-hidden">
@@ -86,13 +90,13 @@ export function TopBar() {
                 <button className="relative h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                   <Bell className={cn("h-5 w-5", alerts.length > 0 ? "text-destructive animate-pulse" : "text-muted-foreground")} />
                   {alerts.length > 0 && (
-                    <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-destructive rounded-full border-2 border-white" />
+                    <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 bg-destructive rounded-full border-2 border-white" />
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72 rounded-2xl border-none shadow-2xl p-2">
+              <DropdownMenuContent align="end" className="w-72 rounded-[24px] border-none shadow-2xl p-2 mt-2">
                 <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground p-3">
-                  System Alerts
+                  In-App Alert Center
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {alerts.length > 0 ? (
@@ -100,16 +104,16 @@ export function TopBar() {
                     <DropdownMenuItem key={alert.id} className="p-3 rounded-xl focus:bg-gray-50 cursor-pointer flex flex-col items-start gap-1">
                       <div className="flex items-center justify-between w-full">
                         <span className="font-black text-[11px] uppercase truncate">{alert.name}</span>
-                        <Badge variant="destructive" className="text-[7px] uppercase px-1.5 h-4 font-black">
+                        <Badge variant={alert.category === 'critical' ? 'destructive' : 'default'} className="text-[7px] uppercase px-1.5 h-4 font-black">
                           {alert.category}
                         </Badge>
                       </div>
-                      <p className="text-[9px] font-bold text-muted-foreground">Aging balance: ₱{alert.outstandingBalance.toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-muted-foreground">Aging: {formatCurrency(alert.outstandingBalance)}</p>
                     </DropdownMenuItem>
                   ))
                 ) : (
                   <div className="p-8 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">All Clear</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">Ledger Healthy</p>
                   </div>
                 )}
               </DropdownMenuContent>

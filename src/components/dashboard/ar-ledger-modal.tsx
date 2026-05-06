@@ -22,13 +22,17 @@ import {
   ChevronRight, 
   UserPlus,
   Share2,
-  Copy
+  Copy,
+  Receipt
 } from "lucide-react"
 import { formatCurrency, cn, getAgingCategory, getAgingColor } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, doc, increment, writeBatch, query, orderBy } from "firebase/firestore"
+import { collection, doc, increment, writeBatch, query, orderBy, serverTimestamp } from "firebase/firestore"
 
+/**
+ * AR Ledger Engine: Handles settlement and Native Web Share dunning
+ */
 export function ARLedgerModal({ children }: { children: React.ReactNode }) {
   const { tenant } = useUser()
   const db = useFirestore()
@@ -60,20 +64,20 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
         clientId: selectedClient.id,
         amountPaid: settlementAmount,
         date: date.toISOString(),
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       })
 
       const clientRef = doc(db, "tenants", tenant.id, "b2bClients", selectedClient.id)
       batch.update(clientRef, { 
         outstandingBalance: increment(-settlementAmount),
-        updatedAt: new Date().toISOString()
+        updatedAt: serverTimestamp()
       })
 
       await batch.commit()
 
       toast({
-        title: "Balance Settled",
-        description: `Payment of ${formatCurrency(settlementAmount)} logged for ${selectedClient.name}.`,
+        title: "Balance Reconciled",
+        description: `Payment of ${formatCurrency(settlementAmount)} applied to ${selectedClient.name}.`,
       })
       setAmount("")
       setSelectedClient(null)
@@ -88,9 +92,12 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
     }
   }
 
+  /**
+   * Native Share Handler (Manual Dunning): No external SMS cost.
+   */
   const handleShareReminder = async (client: any) => {
     const category = getAgingCategory(client.oldestUnpaidAt)
-    if (category === 'current') return
+    if (category === 'current' && client.outstandingBalance <= 0) return
 
     const message = `Hello ${client.name}, this is a friendly reminder from ${tenant?.name} regarding your outstanding balance of ${formatCurrency(client.outstandingBalance)}. Please let us know when we can expect settlement. Thank you!`
 
@@ -101,11 +108,13 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
           text: message,
         });
       } catch (err) {
-        console.error("Share failed", err)
+        // Fallback to clipboard if share cancelled
+        await navigator.clipboard.writeText(message)
+        toast({ title: "Reminder Copied", description: "Native share aborted. Message saved to clipboard." })
       }
     } else {
       await navigator.clipboard.writeText(message)
-      toast({ title: "Reminder Copied", description: "Message saved to clipboard." })
+      toast({ title: "Reminder Copied", description: "System doesn't support native share. Message saved to clipboard." })
     }
   }
 
@@ -117,19 +126,19 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
       <DialogContent className="max-w-md w-full h-[90vh] flex flex-col p-0 border-none bg-background sm:rounded-[40px] overflow-hidden">
         <DialogHeader className="p-8 pb-4 bg-primary text-white">
           <DialogTitle className="text-2xl font-black flex items-center gap-3 uppercase tracking-tighter">
-            <History className="h-7 w-7" />
-            B2B AR Ledger
+            <Receipt className="h-7 w-7" />
+            AR Ledger Profile
           </DialogTitle>
-          <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Accounts Receivable Management</p>
+          <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Store Charge Monitoring</p>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
           {!selectedClient ? (
             <div className="space-y-4">
               <div className="flex justify-between items-center px-1">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Client Debt List</p>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Receivables List</p>
                 <Button variant="ghost" className="h-8 text-[10px] font-black uppercase text-primary">
-                  <UserPlus className="h-3 w-3 mr-1" /> Add Client
+                  <UserPlus className="h-3 w-3 mr-1" /> New Account
                 </Button>
               </div>
               
@@ -150,7 +159,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        {category !== 'current' && (
+                        {client.outstandingBalance > 0 && (
                           <Button 
                             variant="ghost" 
                             size="icon"
@@ -175,7 +184,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
               ) : (
                 <div className="py-20 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200">
                   <User className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">No B2B Accounts</p>
+                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">No B2B Accounts Found</p>
                 </div>
               )}
             </div>
@@ -185,7 +194,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                 onClick={() => setSelectedClient(null)}
                 className="text-[10px] font-black text-primary flex items-center gap-1 uppercase tracking-widest hover:bg-primary/5 p-2 rounded-lg transition-colors"
               >
-                <ChevronRight className="h-4 w-4 rotate-180" /> RETURN TO LEDGER
+                <ChevronRight className="h-4 w-4 rotate-180" /> B2B REGISTRY
               </button>
 
               <div className="bg-primary/5 p-8 rounded-[32px] border-2 border-primary/10 relative overflow-hidden">
@@ -201,10 +210,10 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Received</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Received (₱)</label>
                   <Input 
                     type="number"
-                    placeholder="₱ Amount"
+                    placeholder="0.00"
                     className="h-16 rounded-[24px] text-xl font-black bg-gray-50 border-none shadow-inner px-6"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -242,7 +251,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                   onClick={handleSettle}
                   disabled={isProcessing}
                 >
-                  {isProcessing ? "POSTING..." : "CONFIRM RECEIPT"}
+                  {isProcessing ? "PROCESSING..." : "CONFIRM SETTLEMENT"}
                   <CheckCircle2 className="h-6 w-6 ml-2" />
                 </Button>
               </div>
