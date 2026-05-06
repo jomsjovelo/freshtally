@@ -17,31 +17,30 @@ import { useUser, useFirestore } from "@/firebase"
 
 /**
  * STORE INITIALIZATION PAGE
- * Finalizes store node creation with professional accessibility.
+ * Stabilized with mounting guards and standard accessibility identifiers.
  */
 export default function OnboardingPage() {
   const [storeName, setStoreName] = useState("")
   const [storeAddress, setStoreAddress] = useState("")
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
   
   const router = useRouter()
   const { toast } = useToast()
-  
-  // SAFE SDK ACCESS via hooks
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
 
   useEffect(() => {
-    // Only set default start date after mounting to prevent hydration mismatch
+    setMounted(true)
     setStartDate(new Date())
   }, [])
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (mounted && !isUserLoading && !user) {
       router.push("/auth")
     }
-  }, [user, isUserLoading, router])
+  }, [user, isUserLoading, router, mounted])
 
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,11 +91,17 @@ export default function OnboardingPage() {
     }
   }
 
-  if (isUserLoading || !user || !startDate) return null
+  if (!mounted || isUserLoading || !user || !startDate) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/30" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
-      <Card className="w-full max-md border-none shadow-2xl rounded-[40px] overflow-hidden">
+      <Card className="w-full max-w-md border-none shadow-2xl rounded-[40px] overflow-hidden">
         <CardHeader className="text-center pt-10 pb-6 bg-accent text-white relative">
           <div className="h-20 w-20 bg-white/20 rounded-[24px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
             <Store className="h-10 w-10 text-white" />

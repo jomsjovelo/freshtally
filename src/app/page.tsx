@@ -37,7 +37,6 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
   const router = useRouter()
 
   const transactionsQuery = useMemoFirebase(() => {
-    // KILL SWITCH: Strict guard to prevent unauthorized list queries before identity resolution.
     if (!db || !tenant?.id || !profile?.tenantId || tenant.id !== profile.tenantId) return null;
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
@@ -90,6 +89,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
         </div>
         <button 
           id="dashboard-spark-btn"
+          name="dashboard-spark-btn"
           onClick={() => router.push('/settings')}
           className="h-14 w-14 rounded-[24px] bg-primary/5 hover:bg-primary/10 flex items-center justify-center text-primary border border-primary/10 transition-all active:scale-95 shadow-soft"
         >
@@ -101,6 +101,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
         <div className="grid grid-cols-2 gap-4">
           <button 
             id="quick-checkout-btn"
+            name="quick-checkout-btn"
             onClick={() => router.push('/pos')}
             className="bg-primary p-8 rounded-[40px] text-white shadow-xl shadow-primary/20 flex flex-col items-center gap-4 active:scale-[0.97] transition-all group"
           >
@@ -111,6 +112,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
           </button>
           <button 
             id="quick-registry-btn"
+            name="quick-registry-btn"
             onClick={() => router.push('/inventory')}
             className="bg-white border-2 border-gray-100 p-8 rounded-[40px] flex flex-col items-center gap-4 active:scale-[0.97] transition-all text-foreground shadow-soft group"
           >
@@ -182,36 +184,33 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
   )
 }
 
-/**
- * ROOT DASHBOARD PORTAL
- * Orchestrates identity-guarded access with a recovery screen for deleted store nodes.
- */
 export default function DashboardPage() {
   const router = useRouter()
   const { user, profile, tenant, isUserLoading } = useUser()
   const [stableNow, setStableNow] = useState("")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     setStableNow(new Date().toISOString())
   }, [])
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (mounted && !isUserLoading && !user) {
       router.push("/auth")
     }
-  }, [user, isUserLoading, router])
+  }, [user, isUserLoading, router, mounted])
 
   useEffect(() => {
-    if (!isUserLoading && user && !profile?.tenantId && !tenant) {
+    if (mounted && !isUserLoading && user && !profile?.tenantId && !tenant) {
       router.push("/onboarding")
     }
-  }, [user, profile, tenant, isUserLoading, router])
+  }, [user, profile, tenant, isUserLoading, router, mounted])
 
-  if (isUserLoading) return <SyncingTerminal />
+  if (!mounted || isUserLoading) return <SyncingTerminal />
 
-  // RECOVERY HANDLER: Shows decommissioned screen if tenant context is missing for a logged-in user.
   if (!user || !profile || (!tenant && profile.role !== 'super_admin')) {
-    if (!isUserLoading && user && profile && !tenant && profile.role !== 'super_admin') {
+    if (user && profile && !tenant && profile.role !== 'super_admin') {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-gray-50">
           <div className="h-24 w-24 bg-destructive/5 text-destructive rounded-[40px] flex items-center justify-center mb-6 border border-destructive/10">

@@ -19,7 +19,7 @@ import { useUser, useAuth, useFirestore } from "@/firebase"
 
 /**
  * IDENTITY REGISTRY PORTAL
- * Refined with professional accessibility and standardized form identifiers.
+ * Hardened with standard accessibility identifiers and professional autocomplete hints.
  */
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")

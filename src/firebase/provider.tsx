@@ -40,8 +40,8 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
- * Resolves User -> Profile -> Tenant as a single unit of work.
- * Ensures proper unsubscription of nested listeners to prevent memory leaks.
+ * Chained resolution: User -> Profile -> Tenant.
+ * Ensures proper unsubscription and state synchronization.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -55,7 +55,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [userError, setUserError] = useState<Error | null>(null);
 
-  // 1. Auth Listener
+  // 1. Listen for Auth Changes
   useEffect(() => {
     if (!auth) {
       setIsUserLoading(false);
@@ -77,7 +77,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [auth]);
 
-  // 2. Profile Listener (Chained to User)
+  // 2. Listen for Profile Changes (Chained to User)
   useEffect(() => {
     if (!user || !firestore) return;
 
@@ -87,7 +87,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       if (snap.exists()) {
         const profileData = { ...snap.data(), id: snap.id };
         setProfile(profileData);
-        // If no tenantId, stop loading here
         if (!profileData.tenantId) {
           setTenant(null);
           setIsUserLoading(false);
@@ -105,10 +104,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [user, firestore]);
 
-  // 3. Tenant Listener (Chained to Profile)
+  // 3. Listen for Tenant Changes (Chained to Profile)
   useEffect(() => {
     if (!profile?.tenantId || !firestore) {
-      // If we have a profile but no tenantId (e.g. fresh registration)
       if (profile && !profile.tenantId) setIsUserLoading(false);
       return;
     }
@@ -122,7 +120,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
       setIsUserLoading(false);
     }, (err) => {
-      // Handle decommissioned or missing tenants
       setTenant(null);
       setIsUserLoading(false);
     });
