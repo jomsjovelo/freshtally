@@ -2,11 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Version: 1.0.5 - Forced Sync
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive check: only verify tenant if the userProfile exists
+    // Defensive check: only verify tenant if the userProfile document exists
     function isMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
@@ -24,8 +25,11 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      allow get: if isMember(tenantId);
+      // Allow creation during onboarding if signed in
       allow create: if isSignedIn();
+      
+      // Allow read/update only for members
+      allow get: if isMember(tenantId);
       allow update: if isMember(tenantId) && hasRole('owner');
 
       match /products/{productId} {

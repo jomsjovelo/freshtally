@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound, CheckCircle2, Hash, LogOut, RefreshCw } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, RefreshCw, LogOut, KeyRound, CheckCircle2, Hash } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser } from "@/firebase"
@@ -49,7 +49,7 @@ export default function AuthPage() {
       setPassword("")
       setTenantIdInput("")
       setError(null)
-      toast({ title: "Session Cleared", description: "You can now log in with a different account." })
+      toast({ title: "Session Cleared", description: "Identity registry reset." })
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -64,7 +64,7 @@ export default function AuthPage() {
     
     if (authMode !== "login") {
       if (password !== confirmPassword) {
-        setError("Passwords do not match. Please verify your entries.")
+        setError("Passwords do not match.")
         return
       }
       if (password.length < 6) {
@@ -95,6 +95,7 @@ export default function AuthPage() {
             status: "active",
             subscriptionPlan: "basic",
             currency: "PHP",
+            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           })
@@ -129,10 +130,6 @@ export default function AuthPage() {
     }
   }
 
-  /**
-   * ZOMBIE STATE
-   * Happens when a user exists but their profile is not linked to a valid tenant document.
-   */
   const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
@@ -153,10 +150,10 @@ export default function AuthPage() {
 
         <div className="p-8 space-y-6 overflow-y-auto">
           {error && (
-            <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700 animate-in fade-in slide-in-from-top-2">
+            <Alert variant="destructive" className="rounded-2xl border-none bg-red-50 text-red-700">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-[10px] font-black uppercase tracking-tight leading-tight">
+                <AlertDescription className="text-[10px] font-black uppercase tracking-tight">
                   {error}
                 </AlertDescription>
               </div>
@@ -164,19 +161,19 @@ export default function AuthPage() {
           )}
 
           {isZombie ? (
-            <div className="space-y-6 text-center py-4 animate-in fade-in zoom-in-95">
+            <div className="space-y-6 text-center py-4">
               <div className="h-20 w-20 bg-destructive/5 text-destructive rounded-3xl flex items-center justify-center mx-auto mb-2">
                 <LogOut className="h-10 w-10" />
               </div>
               <div className="space-y-2">
-                <p className="font-black text-sm uppercase tracking-tight">Sync Handshake Failed</p>
+                <p className="font-black text-sm uppercase tracking-tight">Identity Mismatch</p>
                 <p className="text-[10px] font-medium text-muted-foreground uppercase leading-relaxed tracking-wider">
-                  Your store identity could not be verified. This happens if the store was deleted or your profile is detached.
+                  Store node identity could not be verified. This happens if the store was decommissioned or moved.
                 </p>
               </div>
               <Button 
                 onClick={handleSignOut}
-                className="w-full h-16 rounded-[20px] bg-destructive text-white font-black text-xs tracking-[0.15em] shadow-lg shadow-destructive/20 active:scale-[0.97] transition-all"
+                className="w-full h-16 rounded-[20px] bg-destructive text-white font-black text-xs tracking-[0.15em] shadow-lg shadow-destructive/20 active:scale-[0.97]"
                 disabled={loading}
               >
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "TERMINATE & RE-SYNC"}
@@ -188,14 +185,14 @@ export default function AuthPage() {
               setError(null);
             }} className="w-full">
               <TabsList className="grid grid-cols-3 h-12 bg-gray-50 border border-gray-100 rounded-2xl p-1 mb-6">
-                <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">LOGIN</TabsTrigger>
-                <TabsTrigger value="register_owner" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">OWNER</TabsTrigger>
-                <TabsTrigger value="join_staff" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">STAFF</TabsTrigger>
+                <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase">LOGIN</TabsTrigger>
+                <TabsTrigger value="register_owner" className="rounded-xl text-[9px] font-black uppercase">OWNER</TabsTrigger>
+                <TabsTrigger value="join_staff" className="rounded-xl text-[9px] font-black uppercase">STAFF</TabsTrigger>
               </TabsList>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {(authMode === "login" || authMode === "join_staff") && (
-                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="tenantIdInput" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
                     <div className="relative">
                       <Input 
@@ -214,7 +211,7 @@ export default function AuthPage() {
                 )}
 
                 {authMode !== "login" && (
-                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="ownerName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
                     <Input 
                       id="ownerName"
@@ -224,13 +221,12 @@ export default function AuthPage() {
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
                       required
-                      autoComplete="name"
                     />
                   </div>
                 )}
 
                 {authMode === "register_owner" && (
-                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="businessName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
                     <Input 
                       id="businessName"
@@ -255,7 +251,6 @@ export default function AuthPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    autoComplete="email"
                   />
                 </div>
 
@@ -271,14 +266,13 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      autoComplete={authMode === "login" ? "current-password" : "new-password"}
                     />
                     <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                   </div>
                 </div>
 
                 {authMode !== "login" && (
-                  <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1.5">
                     <Label htmlFor="confirmPassword" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
                     <div className="relative">
                       <Input 
@@ -290,7 +284,6 @@ export default function AuthPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        autoComplete="new-password"
                       />
                       <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
                     </div>

@@ -40,8 +40,8 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
- * Ensures User -> Profile -> Tenant documents are fully resolved before allowing queries.
- * This handles cases where a tenant document might be deleted.
+ * Resolves Auth -> Profile -> Tenant documents as a single atomic sequence.
+ * Ensures the app stays in a loading state until the full identity is resolved or proven missing.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -72,9 +72,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
-      // Start atomic handshake
+      // Initial state update when user is detected
       setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
 
+      // 1. Resolve Profile
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -90,6 +91,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         const profileData = { ...profileSnap.data(), id: profileSnap.id };
         
+        // 2. Resolve Tenant if Profile has a tenantId
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
@@ -101,7 +103,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Handle cases where tenant document is missing/deleted or permissions restricted
+            // Handle missing/restricted tenant document
             setAuthState({
               user,
               profile: profileData,

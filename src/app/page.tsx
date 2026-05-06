@@ -36,7 +36,7 @@ function DashboardContent({ user, profile, tenant, stableNow }: { user: any, pro
 
   /**
    * QUERY KILL SWITCH
-   * Only returns the query object if the security context is perfectly reconciled.
+   * Strictly blocks queries if the User-Profile-Tenant context is mismatched or incomplete.
    */
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !user || !tenant?.id || !profile?.tenantId) return null;
@@ -176,7 +176,6 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // Guard: Wait for the provider to finish loading entirely
   useEffect(() => {
     if (mounted && !isUserLoading && !user) {
       router.push("/auth")
@@ -189,12 +188,12 @@ export default function DashboardPage() {
 
   /**
    * IDENTITY RECOVERY HANDSHAKE
-   * Handles "homeless" accounts where the store document was deleted.
+   * Detects "homeless" accounts where the tenant document has been deleted.
    */
   if (user && profile?.tenantId && !tenant) {
     const isOwner = profile.role === 'owner'
     return (
-      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[80vh] gap-8 max-w-md mx-auto animate-in fade-in zoom-in duration-500">
+      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[80vh] gap-8 max-w-md mx-auto animate-in fade-in zoom-in">
         <div className="h-28 w-28 bg-red-50 rounded-[40px] flex items-center justify-center text-destructive shadow-inner relative">
            <AlertCircle className="h-14 w-14" />
            <div className="absolute -top-2 -right-2 h-8 w-8 bg-white rounded-full flex items-center justify-center shadow-md">
@@ -204,7 +203,7 @@ export default function DashboardPage() {
         <div className="space-y-3">
           <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground leading-tight">Store Not Found</h2>
           <p className="text-muted-foreground text-sm font-medium px-4 leading-relaxed">
-            Your store node (ID: {profile.tenantId}) could not be located in the cloud registry. It may have been decommissioned.
+            Your store node (ID: {profile.tenantId}) could not be located in the cloud registry.
           </p>
         </div>
         <div className="w-full space-y-3">
@@ -231,7 +230,7 @@ export default function DashboardPage() {
     )
   }
 
-  // Kill Switch: If security context is missing, do NOT render dashboard content containing queries
+  // Final Guard: Block dashboard if context is missing or mismatched
   if (userError || !user || !profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
@@ -241,7 +240,7 @@ export default function DashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
           <p className="text-muted-foreground text-sm font-medium px-4">
-            Identity verification required. Connect to your Store Node.
+            Connect to your Store Node.
           </p>
         </div>
         <Button 
