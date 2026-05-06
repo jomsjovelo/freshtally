@@ -35,7 +35,7 @@ service cloud.firestore {
         allow read, write: if isSignedIn();
       }
 
-      // Financials: Strictly restricted to Owners
+      // Financials: Strictly restricted to Owners (Staff explicitly denied)
       match /expenses/{expId} {
         allow read, write: if isSignedIn() && getRole() == 'owner';
       }
@@ -46,6 +46,12 @@ service cloud.firestore {
 
       match /reconciliations/{recId} {
         allow read, write: if isSignedIn() && getRole() == 'owner';
+      }
+      
+      // Products: Readable by members, managed by owners
+      match /products/{productId} {
+        allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
+        allow write: if isSignedIn() && getRole() == 'owner';
       }
     }
   }

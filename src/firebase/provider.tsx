@@ -11,7 +11,7 @@ interface UserProfile {
   tenantId: string;
   email: string;
   displayName: string;
-  role: 'owner' | 'staff' | 'super_admin';
+  role: 'owner' | 'staff' | 'manager' | 'super_admin';
   createdAt: any;
   updatedAt: any;
 }
@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // 1. Handle Unauthenticated State: Atomic clear
+      // Handle Unauthenticated: Strict atomic clear per directive
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -80,12 +80,15 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // 2. Handle Authenticated State: Strict sequence
+      // Handle Authenticated: isUserLoading stays true until final resolution
+      setState(prev => ({ ...prev, isUserLoading: true, user: firebaseUser }));
+
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
 
         if (!profileSnap.exists()) {
+          // Onboarding state
           setState({ 
             user: firebaseUser, 
             profile: null, 
@@ -113,7 +116,7 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
-            // Tenant doc missing: Store recovery state
+            // Deleted store / Zombie session
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -124,7 +127,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
-          // No tenantId: Onboarding state
+          // Profile exists but no tenant linked
           setState({ 
             user: firebaseUser, 
             profile: profileData, 
