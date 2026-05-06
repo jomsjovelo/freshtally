@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -74,7 +73,7 @@ export default function OnboardingPage() {
 
       toast({
         title: "Store Created!",
-        description: `Welcome to FreshTally. Your Store ID is ${tenantId}.`
+        description: `Welcome to FreshTally. Your Store Code is ${tenantId}.`
       })
       router.push("/")
     } catch (error: any) {
@@ -97,13 +96,13 @@ export default function OnboardingPage() {
           <div className="h-20 w-20 bg-white/20 rounded-[24px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
             <Store className="h-10 w-10 text-white" />
           </div>
-          <CardTitle className="text-2xl font-black uppercase tracking-tighter">Your Market Profile</CardTitle>
+          <CardTitle className="text-2xl font-black uppercase tracking-tighter">Your Store Profile</CardTitle>
           <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-2">Initialize your SaaS workspace</p>
         </CardHeader>
         <CardContent className="p-8 space-y-6">
           <form onSubmit={handleOnboarding} className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Name</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Name</Label>
               <Input 
                 placeholder="e.g. Metro Roast Coffee" 
                 className="h-16 rounded-2xl border-none bg-gray-100 font-bold text-lg"
@@ -114,7 +113,7 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Address</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Address</Label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 

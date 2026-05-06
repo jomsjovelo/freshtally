@@ -1,4 +1,3 @@
-
 "use client"
 
 import { BottomNav } from "@/components/layout/bottom-nav"
@@ -39,12 +38,12 @@ export default function SettingsPage() {
     router.push('/auth')
   }
 
-  const copyTenantId = () => {
+  const copyStoreCode = () => {
     if (tenant?.id) {
       navigator.clipboard.writeText(tenant.id)
       toast({ 
-        title: "Store ID Copied", 
-        description: "Share this 5-digit code with your staff.",
+        title: "Store Code Copied", 
+        description: "Share this unique code with your staff to join the store.",
         duration: 3000
       })
     }
@@ -88,7 +87,7 @@ export default function SettingsPage() {
               {isSuperAdmin ? 'PLATFORM OWNER' : (profile?.role === 'owner' ? 'BUSINESS OWNER' : 'STORE STAFF')}
             </span>
             <span className="text-[8px] bg-black/20 px-3 py-1 rounded-full font-black uppercase tracking-widest backdrop-blur-md">
-              {isSuperAdmin ? 'GENESIS' : (tenant?.name || 'REGISTERED NODE')}
+              {isSuperAdmin ? 'GENESIS' : (tenant?.name || 'REGISTERED STORE')}
             </span>
           </div>
         </div>
@@ -132,17 +131,17 @@ export default function SettingsPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2 text-accent">
                   <Hash className="h-4 w-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Unique Store ID</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest">Store Code</p>
                 </div>
                 <p className="text-4xl font-black font-mono tracking-tighter text-foreground select-all">{tenant.id}</p>
                 <p className="text-[9px] text-muted-foreground font-bold mt-2 uppercase tracking-widest opacity-60">
-                  Provide this 5-digit code to your staff.
+                  Provide this code to your staff.
                 </p>
               </div>
               <Button 
                 size="icon" 
                 className="h-16 w-16 rounded-[24px] bg-accent hover:bg-accent/90 shadow-lg active:scale-90 transition-all shrink-0" 
-                onClick={copyTenantId}
+                onClick={copyStoreCode}
               >
                 <Copy className="h-7 w-7" />
               </Button>
@@ -154,7 +153,7 @@ export default function SettingsPage() {
       {/* SYSTEM CONFIGURATION */}
       <div className="space-y-8">
         <section className="space-y-3">
-          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Operational Node</h3>
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Store Node</h3>
           <div className="space-y-2">
             {[
               { icon: ShieldCheck, label: "Access Control", description: "Roles and permissions", color: "text-purple-500", roles: ['owner', 'super_admin'] },

@@ -45,7 +45,6 @@ export default function AuthPage() {
     setError(null)
     const normalizedEmail = email.trim().toLowerCase()
     
-    // Validation for registration/recovery
     if (authMode !== "login") {
       if (password !== confirmPassword) {
         setError("Passwords do not match. Please verify your entries.")
@@ -60,7 +59,6 @@ export default function AuthPage() {
     setLoading(true)
     try {
       if (authMode === "login") {
-        // Standard login - Profile sync in Provider will handle the rest
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
       } else {
         const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
@@ -118,8 +116,8 @@ export default function AuthPage() {
 
   const getButtonText = () => {
     if (loading) return null
-    if (isZombie) return "RE-SYNC TERMINAL"
-    if (authMode === "login") return "ENTER TERMINAL"
+    if (isZombie) return "RE-SYNC STORE"
+    if (authMode === "login") return "ENTER STORE"
     if (authMode === "register_owner") return "INITIALIZE MARKET"
     return "JOIN STATION"
   }
@@ -133,10 +131,10 @@ export default function AuthPage() {
             {isZombie ? <Store className="h-7 w-7 text-white" /> : <ShieldCheck className="h-7 w-7 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
-            {isZombie ? "Terminal Recovery" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
+            {isZombie ? "Store Recovery" : (authMode === "login" ? "Store Access" : "Market Entry")}
           </h1>
           <p className="text-[10px] font-bold text-white/70 mt-2 uppercase tracking-[0.2em] relative z-10">
-            {isZombie ? "Re-syncing business node" : "FreshTally Cloud Ledger"}
+            FreshTally Cloud Ledger
           </p>
         </div>
 
@@ -165,10 +163,10 @@ export default function AuthPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {(authMode === "login" || authMode === "join_staff") && (
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Terminal ID</Label>
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
                   <div className="relative">
                     <Input 
-                      placeholder="5-DIGIT CODE" 
+                      placeholder="STORE CODE" 
                       maxLength={5}
                       className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-black px-5 pr-12 text-center tracking-[0.3em]"
                       value={tenantIdInput}
@@ -263,7 +261,7 @@ export default function AuthPage() {
         
         <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
           <p className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-[0.2em]">
-            Authorized Access Only • Cloud Terminal V1.4
+            Authorized Access Only • Cloud Store V1.5
           </p>
         </div>
       </div>

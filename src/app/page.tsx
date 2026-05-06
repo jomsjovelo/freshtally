@@ -35,11 +35,8 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // RIGID SYNCHRONIZATION GUARD: Sub-collection queries strictly conditional on security context stability
   const transactionsQuery = useMemoFirebase(() => {
-    // Only initiate queries when Auth, Profile, and Tenant are fully consistent and verified
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
-    // Ensure the tenant identity in the UI state matches the profile strictly before requesting data
     if (profile.tenantId !== tenant.id || profile.id !== user.uid) return null
     
     return query(
@@ -74,14 +71,13 @@ export default function DashboardPage() {
     return (
       <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin" />
-        Synchronizing Terminal...
+        Synchronizing Store...
       </div>
     )
   }
 
   if (!user) return null
 
-  // ZOMBIE PROTECTION: Handle authenticated session with missing/inconsistent business node
   if (!profile?.tenantId || !tenant) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6">
@@ -89,16 +85,16 @@ export default function DashboardPage() {
           <Store className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Store Offline</h2>
           <p className="text-muted-foreground text-sm font-medium px-4">
-            Your business node could not be verified. Enter your Terminal ID or re-initialize.
+            Your business node could not be verified. Enter your Store Code or re-initialize.
           </p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          CONNECT TERMINAL
+          CONNECT STORE
         </Button>
       </div>
     )
