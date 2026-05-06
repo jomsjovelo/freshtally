@@ -41,6 +41,7 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     // KILL SWITCH: If reference is null or not memoized, stop immediately.
+    // This prevents queries from firing before the security context is stable.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
