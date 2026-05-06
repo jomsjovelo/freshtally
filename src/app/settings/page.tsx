@@ -14,7 +14,6 @@ import {
   Globe,
   Loader2,
   Copy,
-  UserPlus,
   MapPin,
   Hash
 } from "lucide-react"
@@ -22,18 +21,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { useUser } from "@/firebase"
-import { getAuth, signOut } from "firebase/auth"
+import { useUser, useAuth } from "@/firebase"
+import { signOut } from "firebase/auth"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
   const { profile, tenant, isUserLoading } = useUser()
   const router = useRouter()
-  const auth = getAuth()
+  const auth = useAuth()
   const { toast } = useToast()
 
   const handleSignOut = async () => {
+    if (!auth) return
     await signOut(auth)
     router.push('/auth')
   }
@@ -68,7 +68,6 @@ export default function SettingsPage() {
         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Configure your ecosystem</p>
       </header>
 
-      {/* USER PROFILE HEADER */}
       <div className="bg-primary p-7 rounded-[40px] flex items-center gap-5 text-white shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 transition-transform group-hover:scale-125 duration-1000" />
         <Avatar className="h-20 w-20 border-4 border-white/20 shadow-2xl rounded-[24px]">
@@ -77,14 +76,14 @@ export default function SettingsPage() {
             "rounded-[20px] font-black text-2xl",
             isSuperAdmin ? "bg-accent text-white" : "bg-white text-primary"
           )}>
-            {profile?.name?.charAt(0).toUpperCase() || 'U'}
+            {profile?.displayName?.charAt(0).toUpperCase() || profile?.email?.charAt(0).toUpperCase() || 'U'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 z-10 min-w-0">
-          <h2 className="text-xl font-black uppercase tracking-tight truncate leading-tight">{profile?.name || 'Authorized User'}</h2>
+          <h2 className="text-xl font-black uppercase tracking-tight truncate leading-tight">{profile?.displayName || 'Authorized User'}</h2>
           <div className="flex flex-wrap gap-2 mt-2">
             <span className="text-[8px] bg-white/20 px-3 py-1 rounded-full font-black uppercase tracking-widest backdrop-blur-md">
-              {isSuperAdmin ? 'PLATFORM OWNER' : (profile?.role === 'owner' ? 'BUSINESS OWNER' : 'STORE STAFF')}
+              {profile?.role?.toUpperCase()}
             </span>
             <span className="text-[8px] bg-black/20 px-3 py-1 rounded-full font-black uppercase tracking-widest backdrop-blur-md">
               {isSuperAdmin ? 'GENESIS' : (tenant?.name || 'REGISTERED STORE')}
@@ -93,7 +92,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* STORE IDENTITY (OWNER ONLY) */}
       {!isSuperAdmin && tenant && (
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
           <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Business Identity</h3>
@@ -122,7 +120,6 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* STAFF ONBOARDING (OWNER ONLY) */}
       {isOwner && tenant && (
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
           <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Expansion Tools</h3>
@@ -150,7 +147,6 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* SYSTEM CONFIGURATION */}
       <div className="space-y-8">
         <section className="space-y-3">
           <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-2">Store Node</h3>

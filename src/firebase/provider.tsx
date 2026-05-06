@@ -8,9 +8,9 @@ import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
+  firebaseApp: FirebaseApp | null;
+  firestore: Firestore | null;
+  auth: Auth | null;
 }
 
 interface UserAuthState {
@@ -58,11 +58,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   });
 
   useEffect(() => {
-    if (!auth || !firestore) return;
+    if (!auth || !firestore) {
+      if (!auth && !firestore && typeof window !== 'undefined') {
+        setAuthState(prev => ({ ...prev, isUserLoading: false }));
+      }
+      return;
+    }
 
-    // Standard observer for auth state changes
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // 1. Terminate if no session
       if (!user) {
         setAuthState({
           user: null,
@@ -76,11 +79,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
       setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
-      // 2. Resolve Profile - Critical path for Authorization Independence
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // User exists but has no profile yet (Onboarding state)
           setAuthState({
             user,
             profile: null,
@@ -93,7 +94,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         const profileData = { ...profileSnap.data(), id: profileSnap.id };
         
-        // 3. Resolve Tenant if profile links to one
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
@@ -105,7 +105,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Permission or missing error resolution (homeless account)
             setAuthState({
               user,
               profile: profileData,
@@ -116,7 +115,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           });
           return () => unsubscribeTenant();
         } else {
-          // Profile exists but no tenantId (e.g., super_admin or partial onboarding)
           setAuthState({
             user,
             profile: profileData,
@@ -139,9 +137,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
       areServicesAvailable: servicesAvailable,
-      firebaseApp: servicesAvailable ? firebaseApp : null,
-      firestore: servicesAvailable ? firestore : null,
-      auth: servicesAvailable ? auth : null,
+      firebaseApp,
+      firestore,
+      auth,
       ...authState,
     };
   }, [firebaseApp, firestore, auth, authState]);
@@ -162,9 +160,9 @@ export const useFirebase = (): any => {
   return context;
 };
 
-export const useAuth = (): Auth => useFirebase().auth;
-export const useFirestore = (): Firestore => useFirebase().firestore;
-export const useFirebaseApp = (): FirebaseApp => useFirebase().firebaseApp;
+export const useAuth = (): Auth | null => useFirebase().auth;
+export const useFirestore = (): Firestore | null => useFirebase().firestore;
+export const useFirebaseApp = (): FirebaseApp | null => useFirebase().firebaseApp;
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T & {__memo?: boolean} {
   const memoized = useMemo(factory, deps);
