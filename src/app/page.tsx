@@ -36,6 +36,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
   const db = useFirestore()
   const router = useRouter()
 
+  // STRICT SCOPE: Only initiate query if profile and tenant are perfectly synced
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id || !profile?.tenantId || tenant.id !== profile.tenantId) return null;
     return query(

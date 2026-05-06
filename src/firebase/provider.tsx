@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -41,8 +40,8 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
- * Chained resolution: User -> Profile -> Tenant.
- * Ensures proper unsubscription and state synchronization to prevent memory leaks.
+ * Sequence: User (Auth) -> Profile (Firestore) -> Tenant (Firestore).
+ * Logic ensures child states are cleared immediately when parents change to prevent permission leaks.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -56,7 +55,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [userError, setUserError] = useState<Error | null>(null);
 
-  // 1. Listen for Auth Changes
+  // 1. AUTH WATCHER: Reconcile authentication state
   useEffect(() => {
     if (!auth) {
       setIsUserLoading(false);
@@ -66,6 +65,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
       if (!authUser) {
+        // RESET: Ensure no profile/tenant leak on logout
         setProfile(null);
         setTenant(null);
         setIsUserLoading(false);
@@ -78,10 +78,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [auth]);
 
-  // 2. Listen for Profile Changes (Chained to User)
+  // 2. PROFILE WATCHER: Chained to User
   useEffect(() => {
+    // RESET: Clear previous profile while fetching new one
+    setProfile(null);
+    setTenant(null);
+
     if (!user || !firestore) {
-      setProfile(null);
+      if (!user) setIsUserLoading(false);
       return;
     }
 
@@ -91,14 +95,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       if (snap.exists()) {
         const profileData = { ...snap.data(), id: snap.id };
         setProfile(profileData);
-        // If profile exists but has no tenantId, we're done loading
+        // If profile has no tenant, loading is done
         if (!profileData.tenantId) {
-          setTenant(null);
           setIsUserLoading(false);
         }
       } else {
         setProfile(null);
-        setTenant(null);
         setIsUserLoading(false);
       }
     }, (err) => {
@@ -109,13 +111,17 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribeProfile();
   }, [user, firestore]);
 
-  // 3. Listen for Tenant Changes (Chained to Profile)
+  // 3. TENANT WATCHER: Chained to Profile
   useEffect(() => {
+    // RESET: Clear previous tenant while fetching new one
+    setTenant(null);
+
     if (!profile?.tenantId || !firestore) {
-      setTenant(null);
+      if (profile && !profile.tenantId) setIsUserLoading(false);
       return;
     }
 
+    setIsUserLoading(true);
     const tenantRef = doc(firestore, "tenants", profile.tenantId);
     const unsubscribeTenant = onSnapshot(tenantRef, (snap) => {
       if (snap.exists()) {

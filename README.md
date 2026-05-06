@@ -1,4 +1,3 @@
-
 # FreshTally - Cloud Store Ledger
 
 FreshTally is a high-performance, AI-powered multi-tenant business management system. It provides store owners and staff with a secure, professional "Terminal" for real-time retail operations.
