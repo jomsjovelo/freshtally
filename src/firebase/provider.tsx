@@ -38,11 +38,6 @@ export interface UserHookResult {
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-/**
- * ATOMIC IDENTITY HANDSHAKE PROVIDER
- * Resolves Auth -> Profile -> Tenant documents as a single atomic sequence.
- * Ensures the app handles "homeless" accounts (deleted tenants) without hanging.
- */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
   firebaseApp,
@@ -72,10 +67,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
-      // Keep Loading until Profile/Tenant are checked
       setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
 
-      // 1. Resolve Profile
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -91,7 +84,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         const profileData = { ...profileSnap.data(), id: profileSnap.id };
         
-        // 2. Resolve Tenant if Profile has a tenantId
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
@@ -103,7 +95,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Graceful exit for restricted/missing tenant
             setAuthState({
               user,
               profile: profileData,
