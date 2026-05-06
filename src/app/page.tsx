@@ -189,7 +189,7 @@ export default function DashboardPage() {
 
   /**
    * IDENTITY RECOVERY HANDSHAKE
-   * Handles "homeless" accounts where the store document was deleted/decommissioned.
+   * Handles "homeless" accounts where the store document was deleted.
    */
   if (user && profile?.tenantId && !tenant) {
     const isOwner = profile.role === 'owner'

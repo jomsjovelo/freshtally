@@ -41,6 +41,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
  * Ensures User -> Profile -> Tenant documents are fully resolved before allowing queries.
+ * This handles cases where a tenant document might be deleted.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -81,7 +82,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             user,
             profile: null,
             tenant: null,
-            isUserLoading: false, // End loading even if profile missing (for setup flow)
+            isUserLoading: false, 
             userError: null
           });
           return;

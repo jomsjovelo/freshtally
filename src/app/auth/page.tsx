@@ -183,131 +183,129 @@ export default function AuthPage() {
               </Button>
             </div>
           ) : (
-            <>
-              <Tabs value={authMode} onValueChange={(v: any) => {
-                setAuthMode(v as any);
-                setError(null);
-              }} className="w-full">
-                <TabsList className="grid grid-cols-3 h-12 bg-gray-50 border border-gray-100 rounded-2xl p-1 mb-6">
-                  <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">LOGIN</TabsTrigger>
-                  <TabsTrigger value="register_owner" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">OWNER</TabsTrigger>
-                  <TabsTrigger value="join_staff" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">STAFF</TabsTrigger>
-                </TabsList>
+            <Tabs value={authMode} onValueChange={(v: any) => {
+              setAuthMode(v as any);
+              setError(null);
+            }} className="w-full">
+              <TabsList className="grid grid-cols-3 h-12 bg-gray-50 border border-gray-100 rounded-2xl p-1 mb-6">
+                <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">LOGIN</TabsTrigger>
+                <TabsTrigger value="register_owner" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">OWNER</TabsTrigger>
+                <TabsTrigger value="join_staff" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">STAFF</TabsTrigger>
+              </TabsList>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {(authMode === "login" || authMode === "join_staff") && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label htmlFor="tenantIdInput" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
-                      <div className="relative">
-                        <Input 
-                          id="tenantIdInput"
-                          name="tenantIdInput"
-                          placeholder="STORE CODE" 
-                          maxLength={5}
-                          className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-black px-5 pr-12 text-center tracking-[0.3em]"
-                          value={tenantIdInput}
-                          onChange={(e) => setTenantIdInput(e.target.value)}
-                          required
-                        />
-                        <Hash className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
-                      </div>
-                    </div>
-                  )}
-
-                  {authMode !== "login" && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label htmlFor="ownerName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
-                      <Input 
-                        id="ownerName"
-                        name="ownerName"
-                        placeholder="e.g. Juan Dela Cruz" 
-                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                        value={ownerName}
-                        onChange={(e) => setOwnerName(e.target.value)}
-                        required
-                        autoComplete="name"
-                      />
-                    </div>
-                  )}
-
-                  {authMode === "register_owner" && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label htmlFor="businessName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
-                      <Input 
-                        id="businessName"
-                        name="businessName"
-                        placeholder="e.g. Metro Roast" 
-                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
-                    <Input 
-                      id="email"
-                      name="email"
-                      type="email" 
-                      placeholder="name@business.com" 
-                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      autoComplete="email"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {(authMode === "login" || authMode === "join_staff") && (
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                    <Label htmlFor="tenantIdInput" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
                     <div className="relative">
                       <Input 
-                        id="password"
-                        name="password"
-                        type="password" 
-                        placeholder="Min. 6 characters" 
-                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        id="tenantIdInput"
+                        name="tenantIdInput"
+                        placeholder="STORE CODE" 
+                        maxLength={5}
+                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-black px-5 pr-12 text-center tracking-[0.3em]"
+                        value={tenantIdInput}
+                        onChange={(e) => setTenantIdInput(e.target.value)}
                         required
-                        autoComplete={authMode === "login" ? "current-password" : "new-password"}
                       />
-                      <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
+                      <Hash className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                     </div>
                   </div>
+                )}
 
-                  {authMode !== "login" && (
-                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                      <Label htmlFor="confirmPassword" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
-                      <div className="relative">
-                        <Input 
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password" 
-                          placeholder="Repeat password" 
-                          className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                          autoComplete="new-password"
-                        />
-                        <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
-                      </div>
+                {authMode !== "login" && (
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                    <Label htmlFor="ownerName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+                    <Input 
+                      id="ownerName"
+                      name="ownerName"
+                      placeholder="e.g. Juan Dela Cruz" 
+                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
+                      value={ownerName}
+                      onChange={(e) => setOwnerName(e.target.value)}
+                      required
+                      autoComplete="name"
+                    />
+                  </div>
+                )}
+
+                {authMode === "register_owner" && (
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                    <Label htmlFor="businessName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
+                    <Input 
+                      id="businessName"
+                      name="businessName"
+                      placeholder="e.g. Metro Roast" 
+                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
+                  <Input 
+                    id="email"
+                    name="email"
+                    type="email" 
+                    placeholder="name@business.com" 
+                    className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
+                  <div className="relative">
+                    <Input 
+                      id="password"
+                      name="password"
+                      type="password" 
+                      placeholder="Min. 6 characters" 
+                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                    />
+                    <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
+                  </div>
+                </div>
+
+                {authMode !== "login" && (
+                  <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                    <Label htmlFor="confirmPassword" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
+                    <div className="relative">
+                      <Input 
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password" 
+                        placeholder="Repeat password" 
+                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        autoComplete="new-password"
+                      />
+                      <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  <Button 
-                    type="submit"
-                    className="w-full h-16 rounded-[20px] bg-primary text-white font-black text-xs tracking-[0.15em] shadow-lg shadow-primary/20 mt-6 active:scale-[0.97] transition-all" 
-                    disabled={loading}
-                  >
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (authMode === "login" ? "ENTER STORE" : (authMode === "register_owner" ? "INITIALIZE MARKET" : "JOIN STATION"))}
-                  </Button>
-                </form>
-              </Tabs>
-            </>
+                <Button 
+                  type="submit"
+                  className="w-full h-16 rounded-[20px] bg-primary text-white font-black text-xs tracking-[0.15em] shadow-lg shadow-primary/20 mt-6 active:scale-[0.97] transition-all" 
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (authMode === "login" ? "ENTER STORE" : (authMode === "register_owner" ? "INITIALIZE MARKET" : "JOIN STATION"))}
+                </Button>
+              </form>
+            </Tabs>
           )}
         </div>
         
