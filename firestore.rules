@@ -10,20 +10,24 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function userProfile() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-    }
-
+    /**
+     * Kill Switch Guard: Uses exists() to ensure evaluation only continues
+     * after identity document is fully synchronized.
+     */
     function isMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             userProfile().tenantId == tenantId;
+             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tenantId == tenantId;
+    }
+
+    function getRole() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role;
     }
 
     function hasRole(role) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             userProfile().role == role;
+             getRole() == role;
     }
 
     match /userProfiles/{userId} {
@@ -73,7 +77,7 @@ service cloud.firestore {
       allow create, update, delete: if isMember(tenantId) && hasRole('owner');
     }
 
-    // BROADCASTS: Global read for all signed in users. Write for super_admins.
+    // BROADCASTS: Global read for all signed in users.
     match /platform_broadcasts/{broadcastId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if hasRole('super_admin');

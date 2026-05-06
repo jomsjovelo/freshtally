@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
@@ -21,87 +21,46 @@ const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-to
   loading: () => <div className="h-40 w-full bg-muted/10 animate-pulse rounded-2xl" />
 })
 
-export default function DashboardPage() {
-  const { profile, tenant, isUserLoading, user } = useUser()
-  const router = useRouter()
+/**
+ * Loading component for strict handshake synchronization
+ */
+function SyncingTerminal() {
+  return (
+    <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
+      <Loader2 className="h-10 w-10 animate-spin" />
+      Syncing Terminal Node...
+    </div>
+  )
+}
+
+/**
+ * Inner component to isolate hooks from initial auth guards
+ */
+function DashboardContent({ user, profile, tenant, stableNow }: { user: any, profile: any, tenant: any, stableNow: string }) {
   const db = useFirestore()
-  const [mounted, setMounted] = useState(false)
-  const [stableNow, setStableNow] = useState<string | null>(null)
+  const router = useRouter()
 
-  useEffect(() => {
-    setMounted(true)
-    const d = new Date()
-    d.setSeconds(0, 0)
-    setStableNow(d.toISOString())
-  }, [])
-
-  // KILL SWITCH: Do not execute component hooks or logic until provider finishes syncing.
   const transactionsQuery = useMemoFirebase(() => {
-    if (!mounted || isUserLoading || !db || !user || !profile || !tenant || !profile.tenantId || !tenant.id) return null;
-    // Security check: Match tenant context before firing
-    if (profile.tenantId !== tenant.id) return null;
-    
+    if (!db || !tenant?.id) return null;
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [mounted, isUserLoading, db, user, profile, tenant])
+  }, [db, tenant?.id])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    // Basic guard for global broadcasts
-    if (!mounted || isUserLoading || !db || !user || !stableNow) return null
+    if (!db || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [mounted, isUserLoading, db, stableNow, user])
+  }, [db, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
-
-  useEffect(() => {
-    if (mounted && !isUserLoading && !user) {
-      router.push("/auth")
-    }
-  }, [user, isUserLoading, router, mounted])
-
-  // GLOBAL LOADING GUARD
-  if (!mounted || isUserLoading || !stableNow) {
-    return (
-      <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin" />
-        Syncing Terminal Node...
-      </div>
-    )
-  }
-
-  if (!user) return null
-
-  // MULTI-TENANT GUARD: Block rendering if session profile is missing or mismatched.
-  if (!profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
-    return (
-      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
-        <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary shadow-inner">
-          <Store className="h-12 w-12" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
-          <p className="text-muted-foreground text-sm font-medium px-4">
-            Your Store Code is required for session verification.
-          </p>
-        </div>
-        <Button 
-          className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
-          onClick={() => router.push('/auth')}
-        >
-          CONNECT STORE
-        </Button>
-      </div>
-    )
-  }
 
   const isStaff = profile.role === 'staff'
   const isOwner = profile.role === 'owner' || profile.role === 'super_admin'
@@ -201,5 +160,66 @@ export default function DashboardPage() {
 
       <BottomNav />
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  const { profile, tenant, isUserLoading, user } = useUser()
+  const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+  const [stableNow, setStableNow] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+    const d = new Date()
+    d.setSeconds(0, 0)
+    setStableNow(d.toISOString())
+  }, [])
+
+  useEffect(() => {
+    if (mounted && !isUserLoading && !user) {
+      router.push("/auth")
+    }
+  }, [user, isUserLoading, router, mounted])
+
+  // 1. Wait for Provider to finish entire handshake
+  if (!mounted || isUserLoading || !stableNow) {
+    return <SyncingTerminal />
+  }
+
+  // 2. Auth Kill Switch: Redirect if no user
+  if (!user) return null
+
+  // 3. Multi-Tenant Kill Switch: Do not render queries if context is unstable or mismatched
+  if (!profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
+    return (
+      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
+        <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary shadow-inner">
+          <Store className="h-12 w-12" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4">
+            Identity verification required. Connect to your Store Node.
+          </p>
+        </div>
+        <Button 
+          className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
+          onClick={() => router.push('/auth')}
+        >
+          CONNECT STORE
+        </Button>
+      </div>
+    )
+  }
+
+  // 4. Safe Zone: All context verified. Render queries.
+  return (
+    <DashboardContent 
+      user={user} 
+      profile={profile} 
+      tenant={tenant} 
+      stableNow={stableNow} 
+    />
   )
 }
