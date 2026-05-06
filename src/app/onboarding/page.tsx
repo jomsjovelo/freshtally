@@ -93,7 +93,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
-      <Card className="w-full max-w-md border-none shadow-2xl rounded-[40px] overflow-hidden">
+      <Card className="w-full max-md border-none shadow-2xl rounded-[40px] overflow-hidden">
         <CardHeader className="text-center pt-10 pb-6 bg-accent text-white relative">
           <div className="h-20 w-20 bg-white/20 rounded-[24px] flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
             <Store className="h-10 w-10 text-white" />
