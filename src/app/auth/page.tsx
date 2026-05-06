@@ -12,15 +12,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, RefreshCw, LogOut, KeyRound, CheckCircle2, Hash, Mail } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, RefreshCw, LogOut, KeyRound, CheckCircle2, Hash, Mail, User } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser, useAuth, useFirestore } from "@/firebase"
 
 /**
  * IDENTITY REGISTRY PORTAL
- * Handles user authentication with standard-compliant form accessibility.
- * Uses atomic context hooks to prevent "No Firebase App" errors during pre-rendering.
+ * Handles user authentication with professional accessibility and browser compatibility.
  */
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
@@ -221,16 +220,19 @@ export default function AuthPage() {
                 {authMode !== "login" && (
                   <div className="space-y-2">
                     <Label htmlFor="ownerName" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Full Name</Label>
-                    <Input 
-                      id="ownerName"
-                      name="ownerName"
-                      placeholder="e.g. Juan Dela Cruz" 
-                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5"
-                      value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value)}
-                      required={authMode !== "login"}
-                      autoComplete="name"
-                    />
+                    <div className="relative group">
+                      <Input 
+                        id="ownerName"
+                        name="ownerName"
+                        placeholder="e.g. Juan Dela Cruz" 
+                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5 pr-12"
+                        value={ownerName}
+                        onChange={(e) => setOwnerName(e.target.value)}
+                        required={authMode !== "login"}
+                        autoComplete="name"
+                      />
+                      <User className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30 group-focus-within:opacity-100 transition-opacity" />
+                    </div>
                   </div>
                 )}
 

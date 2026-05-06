@@ -206,7 +206,7 @@ export default function DashboardPage() {
 
   if (isUserLoading) return <SyncingTerminal />
 
-  // RECOVERY HANDLER: Shows decomissioned screen if tenant context is missing for a logged-in user.
+  // RECOVERY HANDLER: Shows decommissioned screen if tenant context is missing for a logged-in user.
   if (!user || !profile || (!tenant && profile.role !== 'super_admin')) {
     if (!isUserLoading && user && profile && !tenant && profile.role !== 'super_admin') {
       return (

@@ -60,6 +60,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   useEffect(() => {
     if (!auth || !firestore) return;
 
+    // Standard observer for auth state changes
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       // 1. Terminate if no session
       if (!user) {
@@ -75,10 +76,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
       setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
-      // 2. Resolve Profile
+      // 2. Resolve Profile - Critical path for Authorization Independence
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
+          // User exists but has no profile yet (Onboarding state)
           setAuthState({
             user,
             profile: null,
@@ -103,7 +105,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Permission or missing error resolution
+            // Permission or missing error resolution (homeless account)
             setAuthState({
               user,
               profile: profileData,
@@ -114,6 +116,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           });
           return () => unsubscribeTenant();
         } else {
+          // Profile exists but no tenantId (e.g., super_admin or partial onboarding)
           setAuthState({
             user,
             profile: profileData,
