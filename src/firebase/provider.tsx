@@ -81,11 +81,10 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Step 1: Sync User Profile Node
+      // Start fetching fresh profile
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // Profile document doesn't exist yet (propagation delay or onboarding)
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -115,7 +114,7 @@ export const FirebaseProvider: React.FC<{
             });
           });
         } else {
-          // Single-node profile (e.g. Super Admin or pending store assignment)
+          // Single-node profile (e.g. Super Admin)
           setState({
             user: firebaseUser,
             profile: profileData,
