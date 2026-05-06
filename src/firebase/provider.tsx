@@ -41,7 +41,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
  * Resolves User -> Profile -> Tenant as a single unit of work.
- * Fixed: Modular effects to ensure proper unsubscription of nested listeners.
+ * Ensures proper unsubscription of nested listeners to prevent memory leaks.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -77,7 +77,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [auth]);
 
-  // 2. Profile Listener
+  // 2. Profile Listener (Chained to User)
   useEffect(() => {
     if (!user || !firestore) return;
 
@@ -85,7 +85,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const profileRef = doc(firestore, "userProfiles", user.uid);
     const unsubscribe = onSnapshot(profileRef, (snap) => {
       if (snap.exists()) {
-        setProfile({ ...snap.data(), id: snap.id });
+        const profileData = { ...snap.data(), id: snap.id };
+        setProfile(profileData);
+        // If no tenantId, stop loading here
+        if (!profileData.tenantId) {
+          setTenant(null);
+          setIsUserLoading(false);
+        }
       } else {
         setProfile(null);
         setTenant(null);
@@ -99,19 +105,24 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [user, firestore]);
 
-  // 3. Tenant Listener
+  // 3. Tenant Listener (Chained to Profile)
   useEffect(() => {
     if (!profile?.tenantId || !firestore) {
+      // If we have a profile but no tenantId (e.g. fresh registration)
       if (profile && !profile.tenantId) setIsUserLoading(false);
       return;
     }
 
     const tenantRef = doc(firestore, "tenants", profile.tenantId);
     const unsubscribe = onSnapshot(tenantRef, (snap) => {
-      setTenant(snap.exists() ? { ...snap.data(), id: snap.id } : null);
+      if (snap.exists()) {
+        setTenant({ ...snap.data(), id: snap.id });
+      } else {
+        setTenant(null);
+      }
       setIsUserLoading(false);
     }, (err) => {
-      // Handle decommissioned or missing tenants as null rather than hard error
+      // Handle decommissioned or missing tenants
       setTenant(null);
       setIsUserLoading(false);
     });

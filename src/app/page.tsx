@@ -89,6 +89,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
           </p>
         </div>
         <button 
+          id="dashboard-spark-btn"
           onClick={() => router.push('/settings')}
           className="h-14 w-14 rounded-[24px] bg-primary/5 hover:bg-primary/10 flex items-center justify-center text-primary border border-primary/10 transition-all active:scale-95 shadow-soft"
         >
@@ -99,6 +100,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
       {isStaff && (
         <div className="grid grid-cols-2 gap-4">
           <button 
+            id="quick-checkout-btn"
             onClick={() => router.push('/pos')}
             className="bg-primary p-8 rounded-[40px] text-white shadow-xl shadow-primary/20 flex flex-col items-center gap-4 active:scale-[0.97] transition-all group"
           >
@@ -108,6 +110,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
             <span className="text-[10px] font-black uppercase tracking-[0.25em]">Checkout</span>
           </button>
           <button 
+            id="quick-registry-btn"
             onClick={() => router.push('/inventory')}
             className="bg-white border-2 border-gray-100 p-8 rounded-[40px] flex flex-col items-center gap-4 active:scale-[0.97] transition-all text-foreground shadow-soft group"
           >
@@ -219,6 +222,8 @@ export default function DashboardPage() {
             The linked store node is no longer active. Contact an administrator or initialize a new registry.
           </p>
           <Button 
+            id="init-new-store-btn"
+            name="init-new-store-btn"
             className="w-full max-w-xs h-16 rounded-[24px] bg-primary text-white font-black mt-10 shadow-xl"
             onClick={() => router.push('/onboarding')}
           >

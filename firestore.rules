@@ -2,8 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.5.0 - Hardened Multi-Tenancy Identity Handshake
-    // This comment triggers a clean deployment of the security policy.
+    // Version: 1.6.0 - Hardened Multi-Tenancy Identity Handshake
+    // This comment triggers a clean deployment of the security policy to resolve 409 Conflict.
     
     function isSignedIn() {
       return request.auth != null;
