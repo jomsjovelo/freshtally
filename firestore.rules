@@ -2,9 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.8.4 - Export Stability & Identity Hardening
-    // Defensive exists() guards for all member-based access.
-    // Explicit list operation scoping for multi-tenancy.
+    // Version: 1.8.6 - Production Stabilization for fresh export
     
     function isSignedIn() {
       return request.auth != null;
@@ -61,11 +59,6 @@ service cloud.firestore {
       match /b2bClients/{clientId} {
         allow get, list: if isMember(tenantId);
         allow create, update, delete: if isMember(tenantId) && (hasRole('owner') || hasRole('super_admin'));
-      }
-      
-      match /reconciliations/{recId} {
-        allow list, get: if isMember(tenantId);
-        allow create: if isMember(tenantId);
       }
     }
 

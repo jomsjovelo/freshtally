@@ -39,10 +39,9 @@ export interface UserHookResult {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 /**
- * ATOMIC IDENTITY HANDSHAKE PROVIDER (v2.0)
- * Sequence: User (Auth) -> Profile (Firestore) -> Tenant (Firestore).
- * Logic ensures child states are cleared immediately when parents change to prevent permission leaks.
- * Hardened to prevent race conditions during list operations.
+ * ATOMIC IDENTITY HANDSHAKE PROVIDER (v2.1)
+ * Chained identity resolution: User -> Profile -> Tenant.
+ * Hardened to immediately clear child states on parent transitions to prevent permission leaks.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -93,7 +92,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       if (snap.exists()) {
         const profileData = { ...snap.data(), id: snap.id };
         setProfile(profileData);
-        // If profile exists but has no tenant, we stop loading
         if (!profileData.tenantId) {
           setTenant(null);
           setIsUserLoading(false);
