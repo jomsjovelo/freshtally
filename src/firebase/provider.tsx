@@ -59,7 +59,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   useEffect(() => {
     if (!auth || !firestore) {
-      if (!auth && !firestore && typeof window !== 'undefined') {
+      if (typeof window !== 'undefined') {
         setAuthState(prev => ({ ...prev, isUserLoading: false }));
       }
       return;
@@ -79,6 +79,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
       setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
+      // Resolve Profile
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -94,6 +95,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         const profileData = { ...profileSnap.data(), id: profileSnap.id };
         
+        // Resolve Tenant if it exists in profile
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
@@ -105,6 +107,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
+            // Permission error or missing tenant handled as null
             setAuthState({
               user,
               profile: profileData,

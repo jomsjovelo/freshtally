@@ -35,6 +35,7 @@ export default function AuthPage() {
   const router = useRouter()
   const { toast } = useToast()
   
+  // SAFE SDK ACCESS via hooks
   const auth = useAuth()
   const db = useFirestore()
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()

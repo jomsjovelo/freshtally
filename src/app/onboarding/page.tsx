@@ -24,13 +24,16 @@ export default function OnboardingPage() {
   const [storeAddress, setStoreAddress] = useState("")
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [loading, setLoading] = useState(false)
-  const { user, isUserLoading } = useUser()
+  
   const router = useRouter()
   const { toast } = useToast()
   
+  // SAFE SDK ACCESS via hooks
+  const { user, isUserLoading } = useUser()
   const db = useFirestore()
 
   useEffect(() => {
+    // Only set default start date after mounting to prevent hydration mismatch
     setStartDate(new Date())
   }, [])
 
