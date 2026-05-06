@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Store, Loader2, ShieldCheck, Bell, AlertTriangle, ChevronRight } from "lucide-react"
+import { Store, Loader2, ShieldCheck, Bell, AlertTriangle } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { 
   DropdownMenu, 
@@ -19,7 +19,8 @@ import { getAgingCategory, cn, formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
 /**
- * In-App Notification Center: MD3 MD3-compliant Alert Hub
+ * In-App Notification Center: MD3-compliant Alert Hub for B2B Receivables.
+ * MD3 Glass Design: Synchronized with server to prevent hydration mismatches.
  */
 export function TopBar() {
   const { tenant, isUserLoading, profile, user } = useUser()
@@ -31,14 +32,17 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
-  // AR Aging Engine: Fetch all clients with balances to calculate global health
+  // AR Aging Engine: Fetch all clients with balances to calculate global health.
+  // STRICT GUARD: Only fetch if we have a verified tenant identity.
   const overdueClientsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id) return null
+    if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null
+    if (tenant.id !== profile.tenantId) return null
+    
     return query(
       collection(db, "tenants", tenant.id, "b2bClients"),
       where("outstandingBalance", ">", 0)
     )
-  }, [db, tenant?.id])
+  }, [mounted, db, tenant?.id, profile?.tenantId])
 
   const { data: b2bClients } = useCollection(overdueClientsQuery)
 
@@ -56,7 +60,7 @@ export function TopBar() {
   const isSuperAdmin = profile?.role === 'super_admin'
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 h-16 px-4 flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && user && (
         <>
           <div className="flex items-center gap-3 overflow-hidden">

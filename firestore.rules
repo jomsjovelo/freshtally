@@ -4,8 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V15
-     * Hardened isolation with strict exists() guards and atomic verification.
+     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V16
+     * Hardened isolation with defensive exists() guards and atomic verification.
+     * Prevents race conditions during document propagation.
      */
 
     function isSignedIn() {
@@ -15,22 +16,32 @@ service cloud.firestore {
     // Defensive helper to check user role/tenant membership
     function getUserData() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      // exists() is critical to prevent rule evaluation errors during latency
       return exists(path) ? get(path).data : null;
     }
 
     function isTenantMember(tenantId) {
       let data = getUserData();
-      return isSignedIn() && data != null && data.tenantId == tenantId;
+      return isSignedIn() && 
+             data != null && 
+             'tenantId' in data && 
+             data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
       let data = getUserData();
-      return isSignedIn() && data != null && data.tenantId == tenantId && data.role == 'owner';
+      return isSignedIn() && 
+             data != null && 
+             'tenantId' in data && 
+             data.tenantId == tenantId && 
+             data.role == 'owner';
     }
 
     function isSuperAdmin() {
       let data = getUserData();
-      return isSignedIn() && data != null && data.role == 'super_admin';
+      return isSignedIn() && 
+             data != null && 
+             data.role == 'super_admin';
     }
 
     // --- Collection Rules ---

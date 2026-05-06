@@ -49,7 +49,8 @@ export interface UserHookResult extends UserAuthState {}
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 /**
- * Atomic Context Synchronization: Ensures absolute loading state before UI mount
+ * Atomic Context Synchronization: Ensures absolute loading state before UI mount.
+ * Refactored to prevent race conditions during identity propagation.
  */
 export const FirebaseProvider: React.FC<{
   children: ReactNode;
@@ -73,8 +74,8 @@ export const FirebaseProvider: React.FC<{
 
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
       // Clear previous listeners to prevent memory leaks and zombie updates
-      if (profileUnsub) profileUnsub();
-      if (tenantUnsub) tenantUnsub();
+      if (profileUnsub) { profileUnsub(); profileUnsub = null; }
+      if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
 
       if (!firebaseUser) {
         setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
@@ -86,7 +87,8 @@ export const FirebaseProvider: React.FC<{
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
           // Profile document doesn't exist yet (propagation delay or onboarding)
-          setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false }));
+          // We keep isUserLoading false but profile/tenant null to show onboarding/error
+          setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
 
