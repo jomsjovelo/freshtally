@@ -14,8 +14,17 @@ import { Input } from "@/components/ui/input"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { CalendarIcon, User, History, CheckCircle2, ChevronRight, UserPlus } from "lucide-react"
-import { formatCurrency, cn } from "@/lib/utils"
+import { 
+  CalendarIcon, 
+  User, 
+  History, 
+  CheckCircle2, 
+  ChevronRight, 
+  UserPlus,
+  Share2,
+  Copy
+} from "lucide-react"
+import { formatCurrency, cn, getAgingCategory, getAgingColor } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, doc, increment, writeBatch, query, orderBy } from "firebase/firestore"
@@ -45,7 +54,6 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
       const settlementAmount = Number(amount)
       const batch = writeBatch(db)
       
-      // 1. Log Reconciliation
       const recRef = doc(collection(db, "tenants", tenant.id, "reconciliations"))
       batch.set(recRef, {
         tenantId: tenant.id,
@@ -55,9 +63,11 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
         createdAt: new Date()
       })
 
-      // 2. Update Client Balance (Atomic)
       const clientRef = doc(db, "tenants", tenant.id, "b2bClients", selectedClient.id)
-      batch.update(clientRef, { outstandingBalance: increment(-settlementAmount) })
+      batch.update(clientRef, { 
+        outstandingBalance: increment(-settlementAmount),
+        updatedAt: new Date().toISOString()
+      })
 
       await batch.commit()
 
@@ -75,6 +85,27 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
       })
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleShareReminder = async (client: any) => {
+    const category = getAgingCategory(client.oldestUnpaidAt)
+    if (category === 'current') return
+
+    const message = `Hello ${client.name}, this is a friendly reminder from ${tenant?.name} regarding your outstanding balance of ${formatCurrency(client.outstandingBalance)}. Please let us know when we can expect settlement. Thank you!`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Payment Reminder',
+          text: message,
+        });
+      } catch (err) {
+        console.error("Share failed", err)
+      }
+    } else {
+      await navigator.clipboard.writeText(message)
+      toast({ title: "Reminder Copied", description: "Message saved to clipboard." })
     }
   }
 
@@ -105,27 +136,42 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
               {isLoading ? (
                 <div className="py-20 text-center animate-pulse font-black text-muted-foreground uppercase tracking-widest">Scanning Ledgers...</div>
               ) : clients && clients.length > 0 ? (
-                clients.map((client) => (
-                  <div key={client.id} className="bg-card p-5 rounded-[24px] flex items-center justify-between shadow-sm border border-gray-50 group active:scale-98 transition-all">
-                    <div>
-                      <p className="font-black text-sm uppercase tracking-tight">{client.name}</p>
-                      <p className={cn(
-                        "text-xs font-black mt-1 uppercase tracking-widest",
-                        client.outstandingBalance > 0 ? "text-destructive" : "text-green-600"
-                      )}>
-                        {formatCurrency(client.outstandingBalance)} {client.outstandingBalance > 0 ? "Owed" : "Cleared"}
-                      </p>
+                clients.map((client) => {
+                  const category = getAgingCategory(client.oldestUnpaidAt)
+                  return (
+                    <div key={client.id} className="bg-card p-5 rounded-[24px] flex items-center justify-between shadow-sm border border-gray-50 group active:scale-98 transition-all">
+                      <div className="flex-1">
+                        <p className="font-black text-sm uppercase tracking-tight">{client.name}</p>
+                        <p className={cn(
+                          "text-xs font-black mt-1 uppercase tracking-widest",
+                          getAgingColor(category)
+                        )}>
+                          {formatCurrency(client.outstandingBalance)} {category !== 'current' ? `(${category.toUpperCase()})` : "Owed"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {category !== 'current' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-12 w-12 rounded-xl text-primary bg-primary/5"
+                            onClick={() => handleShareReminder(client)}
+                          >
+                            <Share2 className="h-5 w-5" />
+                          </Button>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="rounded-xl h-12 px-6 text-[10px] font-black uppercase border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                          onClick={() => setSelectedClient(client)}
+                        >
+                          Settle
+                        </Button>
+                      </div>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="rounded-xl h-12 px-6 text-[10px] font-black uppercase border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                      onClick={() => setSelectedClient(client)}
-                    >
-                      Settle
-                    </Button>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="py-20 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200">
                   <User className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
@@ -148,7 +194,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                 </div>
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Active Obligation</p>
                 <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedClient.name}</h3>
-                <p className="text-4xl font-black text-primary mt-4 tracking-tighter">
+                <p className={cn("text-4xl font-black mt-4 tracking-tighter", getAgingColor(getAgingCategory(selectedClient.oldestUnpaidAt)))}>
                   {formatCurrency(selectedClient.outstandingBalance)}
                 </p>
               </div>

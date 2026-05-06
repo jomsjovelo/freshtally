@@ -1,13 +1,26 @@
+
 'use client';
 
-import { useState, useEffect } from "react"
-import { useUser } from "@/firebase"
+import { useState, useEffect, useMemo } from "react"
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Store, Loader2, ShieldCheck } from "lucide-react"
+import { Store, Loader2, ShieldCheck, Bell, AlertTriangle } from "lucide-react"
 import { usePathname } from "next/navigation"
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu"
+import { collection, query, where } from "firebase/firestore"
+import { getAgingCategory, cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 export function TopBar() {
   const { tenant, isUserLoading, profile, user } = useUser()
+  const db = useFirestore()
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
@@ -15,9 +28,29 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
+  // Notification Logic
+  const overdueClientsQuery = useMemoFirebase(() => {
+    if (!db || !tenant?.id) return null
+    return query(
+      collection(db, "tenants", tenant.id, "b2bClients"),
+      where("outstandingBalance", ">", 0)
+    )
+  }, [db, tenant?.id])
+
+  const { data: b2bClients } = useCollection(overdueClientsQuery)
+
+  const alerts = useMemo(() => {
+    if (!b2bClients) return []
+    return b2bClients
+      .map(client => ({
+        ...client,
+        category: getAgingCategory(client.oldestUnpaidAt)
+      }))
+      .filter(c => c.category !== 'current')
+  }, [b2bClients])
+
   const isSuperAdmin = profile?.role === 'super_admin'
 
-  // HYDRATION GUARD: Always render structural header shell to prevent Next.js mismatches
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {mounted && pathname !== '/auth' && user && (
@@ -47,7 +80,41 @@ export function TopBar() {
             )}
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="relative h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <Bell className={cn("h-5 w-5", alerts.length > 0 ? "text-destructive animate-pulse" : "text-muted-foreground")} />
+                  {alerts.length > 0 && (
+                    <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-destructive rounded-full border-2 border-white" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 rounded-2xl border-none shadow-2xl p-2">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground p-3">
+                  System Alerts
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {alerts.length > 0 ? (
+                  alerts.map(alert => (
+                    <DropdownMenuItem key={alert.id} className="p-3 rounded-xl focus:bg-gray-50 cursor-pointer flex flex-col items-start gap-1">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-black text-[11px] uppercase truncate">{alert.name}</span>
+                        <Badge variant="destructive" className="text-[7px] uppercase px-1.5 h-4 font-black">
+                          {alert.category}
+                        </Badge>
+                      </div>
+                      <p className="text-[9px] font-bold text-muted-foreground">Aging balance: ₱{alert.outstandingBalance.toLocaleString()}</p>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="p-8 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">All Clear</p>
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <div className="h-8 px-3 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-[9px] font-black text-primary uppercase tracking-widest">ONLINE</span>
             </div>

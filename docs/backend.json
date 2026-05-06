@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Tenant": {
@@ -7,27 +8,37 @@
       "description": "Represents a single business entity or store owner within the FreshTally multi-tenant application.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the Tenant entity."
+          "type": "string"
         },
         "name": {
+          "type": "string"
+        },
+        "status": {
           "type": "string",
-          "description": "The legal or common name of the tenant's business."
+          "enum": ["active", "suspended"]
+        },
+        "subscriptionPlan": {
+          "type": "string",
+          "enum": ["free", "basic", "pro", "enterprise"]
+        },
+        "currency": {
+          "type": "string",
+          "default": "PHP"
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp when the tenant record was created.",
           "format": "date-time"
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp when the tenant record was last updated.",
           "format": "date-time"
         }
       },
       "required": [
         "id",
         "name",
+        "status",
+        "subscriptionPlan",
         "createdAt",
         "updatedAt"
       ]
@@ -36,37 +47,31 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user account associated with a specific tenant, used for role-based access control.",
+      "description": "Represents a user account associated with a specific tenant.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
+          "type": "string"
         },
         "tenantId": {
-          "type": "string",
-          "description": "Reference to the Tenant this user belongs to."
+          "type": "string"
         },
         "email": {
           "type": "string",
-          "description": "The user's email address.",
           "format": "email"
         },
         "displayName": {
-          "type": "string",
-          "description": "The user's display name."
+          "type": "string"
         },
         "role": {
           "type": "string",
-          "description": "The role of the user (owner, staff, super_admin)."
+          "enum": ["owner", "staff", "manager", "super_admin"]
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp when the user record was created.",
           "format": "date-time"
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp when the user record was last updated.",
           "format": "date-time"
         }
       },
@@ -80,33 +85,34 @@
         "updatedAt"
       ]
     },
+    "B2BClient": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "B2BClient",
+      "type": "object",
+      "description": "A business client with a credit line or outstanding balance.",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "outstandingBalance": { "type": "number" },
+        "oldestUnpaidAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tenantId", "name", "outstandingBalance", "createdAt", "updatedAt"]
+    },
     "PlatformBroadcast": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PlatformBroadcast",
       "type": "object",
-      "description": "System-wide announcements displayed to users on their dashboards.",
+      "description": "System-wide announcements.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "string",
-          "enum": ["info", "warning", "critical"]
-        },
-        "activeUntil": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "priority": { "type": "string", "enum": ["info", "warning", "critical"] },
+        "activeUntil": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "message", "priority", "activeUntil", "createdAt"]
     },
@@ -114,306 +120,81 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
-      "description": "Represents a salable item managed by the inventory system.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "price": {
-          "type": "number"
-        },
-        "sku": {
-          "type": "string"
-        },
-        "imageUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "isActive": {
-          "type": "boolean"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "sku": { "type": "string" },
+        "stock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "tenantId",
-        "name",
-        "price",
-        "sku",
-        "isActive",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "InventoryItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "InventoryItem",
-      "type": "object",
-      "description": "Tracks the stock level and inventory details for a specific product.",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "productId": {
-          "type": "string"
-        },
-        "stockLevel": {
-          "type": "number"
-        },
-        "minStockLevel": {
-          "type": "number"
-        },
-        "lastStockUpdate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "tenantId",
-        "productId",
-        "stockLevel",
-        "minStockLevel",
-        "lastStockUpdate",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "tenantId", "name", "price", "stock", "isActive"]
     },
     "Transaction": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transaction",
       "type": "object",
-      "description": "Represents a single point-of-sale transaction.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "transactionDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "totalAmount": {
-          "type": "number"
-        },
-        "paymentMethod": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "staffUserId": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "paymentType": { "type": "string", "enum": ["cash", "card", "credit"] },
+        "clientId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Sale"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "tenantId",
-        "transactionDate",
-        "totalAmount",
-        "paymentMethod",
-        "status",
-        "staffUserId",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "SaleItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SaleItem",
-      "type": "object",
-      "description": "Represents a specific product included in a transaction.",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "transactionId": {
-          "type": "string"
-        },
-        "productId": {
-          "type": "string"
-        },
-        "productName": {
-          "type": "string"
-        },
-        "quantity": {
-          "type": "number"
-        },
-        "unitPrice": {
-          "type": "number"
-        },
-        "subtotal": {
-          "type": "number"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "tenantId",
-        "transactionId",
-        "productId",
-        "productName",
-        "quantity",
-        "unitPrice",
-        "subtotal",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "tenantId", "totalAmount", "paymentType", "type", "createdAt"]
     },
     "Expense": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Expense",
       "type": "object",
-      "description": "Records a business expense.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "number"
-        },
-        "expenseDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "category": {
-          "type": "string"
-        },
-        "receiptUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "notes": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "tenantId",
-        "description",
-        "amount",
-        "expenseDate",
-        "category",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "tenantId", "description", "amount", "category", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "/platform_broadcasts/{broadcastId}": {
-      "schema": {
-        "$ref": "#/backend/entities/PlatformBroadcast"
-      },
-      "description": "Global broadcasts for all users."
+      "schema": { "$ref": "#/backend/entities/PlatformBroadcast" },
+      "description": "Global broadcasts."
     },
     "/tenants/{tenantId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Tenant"
-      },
-      "description": "Root collection for each business tenant."
+      "schema": { "$ref": "#/backend/entities/Tenant" },
+      "description": "Tenant root."
     },
     "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/User"
-      },
-      "description": "Profiles for all users."
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "User profiles."
+    },
+    "/tenants/{tenantId}/b2bClients/{clientId}": {
+      "schema": { "$ref": "#/backend/entities/B2BClient" },
+      "description": "B2B client AR data."
     },
     "/tenants/{tenantId}/products/{productId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Product"
-      },
-      "description": "Products belonging to a specific tenant."
-    },
-    "/tenants/{tenantId}/inventoryItems/{inventoryItemId}": {
-      "schema": {
-        "$ref": "#/backend/entities/InventoryItem"
-      },
-      "description": "Inventory items for a specific tenant."
+      "schema": { "$ref": "#/backend/entities/Product" },
+      "description": "Products."
     },
     "/tenants/{tenantId}/transactions/{transactionId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Transaction"
-      },
-      "description": "Point-of-sale transactions specific to a tenant."
-    },
-    "/tenants/{tenantId}/transactions/{transactionId}/saleItems/{saleItemId}": {
-      "schema": {
-        "$ref": "#/backend/entities/SaleItem"
-      },
-      "description": "Sale items within a transaction."
+      "schema": { "$ref": "#/backend/entities/Transaction" },
+      "description": "Sales records."
     },
     "/tenants/{tenantId}/expenses/{expenseId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Expense"
-      },
-      "description": "Business expenses incurred by a specific tenant."
+      "schema": { "$ref": "#/backend/entities/Expense" },
+      "description": "Business expenses."
     }
   }
 }
