@@ -40,12 +40,13 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // Kill Switch: Explicit early exit if dependencies aren't stable or present
+    // KILL SWITCH: Early exit if dependencies are null or incomplete.
+    // This prevents unauthorized background fetch attempts during auth transitions.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
-      return;
+      return () => {}; // Immediate exit with empty cleanup
     }
 
     setIsLoading(true);

@@ -10,7 +10,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Safer profile lookup with existence check
     function userProfile() {
       return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
     }
@@ -72,6 +71,12 @@ service cloud.firestore {
     match /tenants/{tenantId}/b2bClients/{clientId} {
       allow get, list: if isMember(tenantId);
       allow create, update, delete: if isMember(tenantId) && hasRole('owner');
+    }
+
+    // BROADCASTS: Global read for all signed in users. Write for super_admins.
+    match /platform_broadcasts/{broadcastId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if hasRole('super_admin');
     }
   }
 }

@@ -56,6 +56,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     if (!auth || !firestore) return;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // RESET: Clear state immediately on auth change
       if (!user) {
         setAuthState({
           user: null,
@@ -67,9 +68,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
+      // SYNC START: User found, lock queries until identity documents are ready
       setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
-      // Atomic identity sync: Fetch profile then tenant
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -82,12 +83,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            setAuthState(prev => ({
-              ...prev,
+            // ATOMIC SYNC: Only release isUserLoading when profile AND tenant are in state
+            setAuthState({
+              user,
               profile: profileData,
               tenant: tenantSnap.exists() ? { ...tenantSnap.data(), id: tenantSnap.id } : null,
-              isUserLoading: false
-            }));
+              isUserLoading: false,
+              userError: null
+            });
           }, (err) => {
             setAuthState(prev => ({ ...prev, isUserLoading: false, userError: err }));
           });

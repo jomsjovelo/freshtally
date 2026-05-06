@@ -35,9 +35,10 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // Intelligence Guard: Kill switch query until all security context documents are verified.
+  // KILL SWITCH: Do not execute component hooks or logic until provider finishes syncing.
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile || !tenant || !profile.tenantId || !tenant.id) return null;
+    // Security check: Match tenant context before firing
     if (profile.tenantId !== tenant.id) return null;
     
     return query(
@@ -48,6 +49,7 @@ export default function DashboardPage() {
   }, [mounted, isUserLoading, db, user, profile, tenant])
 
   const broadcastsQuery = useMemoFirebase(() => {
+    // Basic guard for global broadcasts
     if (!mounted || isUserLoading || !db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
@@ -66,7 +68,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // GLOBAL KILL SWITCH: Do not execute component logic until provider finishes syncing.
+  // GLOBAL LOADING GUARD
   if (!mounted || isUserLoading || !stableNow) {
     return (
       <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
