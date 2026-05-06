@@ -108,6 +108,7 @@ export default function OnboardingPage() {
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 required
+                autoComplete="organization"
               />
             </div>
 
@@ -123,6 +124,7 @@ export default function OnboardingPage() {
                   value={storeAddress}
                   onChange={(e) => setStoreAddress(e.target.value)}
                   required
+                  autoComplete="street-address"
                 />
               </div>
             </div>

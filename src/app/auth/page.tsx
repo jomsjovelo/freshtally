@@ -205,6 +205,7 @@ export default function AuthPage() {
                         value={tenantIdInput}
                         onChange={(e) => setTenantIdInput(e.target.value)}
                         required
+                        autoComplete="off"
                       />
                       <Hash className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                     </div>
@@ -222,6 +223,7 @@ export default function AuthPage() {
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
                       required
+                      autoComplete="name"
                     />
                   </div>
                 )}
@@ -237,6 +239,7 @@ export default function AuthPage() {
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       required
+                      autoComplete="organization"
                     />
                   </div>
                 )}
@@ -252,6 +255,7 @@ export default function AuthPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                   />
                 </div>
 
@@ -267,6 +271,7 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      autoComplete={authMode === "login" ? "current-password" : "new-password"}
                     />
                     <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                   </div>
@@ -285,6 +290,7 @@ export default function AuthPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
+                        autoComplete="new-password"
                       />
                       <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
                     </div>

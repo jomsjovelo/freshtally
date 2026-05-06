@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -50,10 +49,13 @@ export function ExpenseAITool() {
       {!result ? (
         <div className="space-y-3">
           <Textarea 
+            id="ai-expense-description"
+            name="ai-expense-description"
             placeholder="E.g. Purchased 10 packs of high-quality printing paper from Staples for $55"
             className="bg-background/80 border-none shadow-inner resize-none min-h-[100px]"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            autoComplete="off"
           />
           <Button 
             className="w-full bg-accent hover:bg-accent/90 text-white font-semibold"

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -30,9 +29,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, doc, increment, writeBatch, query, orderBy, serverTimestamp } from "firebase/firestore"
 
-/**
- * AR Ledger Engine: Handles settlement and Native Web Share dunning
- */
 export function ARLedgerModal({ children }: { children: React.ReactNode }) {
   const { tenant } = useUser()
   const db = useFirestore()
@@ -92,9 +88,6 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
     }
   }
 
-  /**
-   * Native Share Handler (Manual Dunning): No external SMS cost.
-   */
   const handleShareReminder = async (client: any) => {
     const category = getAgingCategory(client.oldestUnpaidAt)
     if (category === 'current' && client.outstandingBalance <= 0) return
@@ -108,7 +101,6 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
           text: message,
         });
       } catch (err) {
-        // Fallback to clipboard if share cancelled
         await navigator.clipboard.writeText(message)
         toast({ title: "Reminder Copied", description: "Native share aborted. Message saved to clipboard." })
       }
@@ -210,21 +202,26 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Received (₱)</label>
+                  <label htmlFor="settlement-amount" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Received (₱)</label>
                   <Input 
+                    id="settlement-amount"
+                    name="settlement-amount"
                     type="number"
                     placeholder="0.00"
                     className="h-16 rounded-[24px] text-xl font-black bg-gray-50 border-none shadow-inner px-6"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
+                    autoComplete="off"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Collection Date</label>
+                  <label htmlFor="settlement-date" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Collection Date</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
+                        id="settlement-date"
+                        name="settlement-date"
                         variant={"outline"}
                         className={cn(
                           "w-full h-16 justify-start text-left font-black rounded-[24px] bg-gray-50 border-none shadow-inner px-6",

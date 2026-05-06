@@ -188,10 +188,13 @@ export default function POSPage() {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
+            id="pos-catalog-search"
+            name="pos-catalog-search"
             placeholder="Search catalog..." 
             className="pl-12 h-16 bg-white border-none shadow-sm rounded-[24px] font-bold text-lg"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            autoComplete="off"
           />
         </div>
 
