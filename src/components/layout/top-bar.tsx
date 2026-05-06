@@ -28,11 +28,12 @@ export function TopBar() {
   }, []);
 
   const overdueClientsQuery = useMemoFirebase(() => {
-    // SECURITY: Only query B2B clients if user is owner/manager/super_admin
-    const canSeeAr = profile?.role === 'owner' || profile?.role === 'manager' || profile?.role === 'super_admin';
-    
-    if (!mounted || !db || !tenant?.id || !profile?.tenantId || !canSeeAr) return null;
+    if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null;
     if (tenant.id !== profile.tenantId) return null;
+
+    // SECURITY: Strictly gate B2B queries to owners/managers/admins
+    const canSeeAr = profile.role === 'owner' || profile.role === 'manager' || profile.role === 'super_admin';
+    if (!canSeeAr) return null;
     
     return query(
       collection(db, "tenants", tenant.id, "b2bClients"),

@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // 1. Handle Unauthenticated: Atomic clear
+      // 1. Reset state immediately on auth change to avoid stale query propagation
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -80,7 +80,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // 2. Start Handshake: Keep user, set loading
+      // 2. Start Handshake: Atomic loading state
       setState(prev => ({ 
         ...prev, 
         user: firebaseUser, 
@@ -122,7 +122,7 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
-            // Orphaned Profile: Tenant document missing
+            // Store Document Missing (Sync Error)
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -133,7 +133,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
-          // Profile exists but no tenant linked (e.g. Super Admin or pending setup)
+          // Profile active but unlinked to a tenant
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

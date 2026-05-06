@@ -1,64 +1,64 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Basic helpers
+    
+    // Helper: Is the user signed in?
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Helper: Get user profile data (cached per request)
     function getUserData() {
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : {};
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    // Helper: Check if user belongs to a specific tenant
+    function isTenantMember(tenantId) {
+      return isSignedIn() && getUserData().tenantId == tenantId;
+    }
+
+    // Helper: Get user role
     function getRole() {
       return getUserData().get('role', 'none');
     }
 
-    function isTenantMember(tenantId) {
-      return getUserData().get('tenantId', '') == tenantId;
-    }
-
-    // User Profile: Self access
+    // User Profile: Strict self-access
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Platform Level: Global broadcasts
+    // Platform Level: Global broadcasts for all authorized users
     match /platform_broadcasts/{broadcastId} {
       allow read: if isSignedIn();
     }
 
-    // Tenant Level: Multi-tenant isolation
+    // Multi-tenant Root and Sub-collections
     match /tenants/{tenantId} {
-      allow read: if isSignedIn() && isTenantMember(tenantId);
+      // Basic tenant identification
+      allow read: if isTenantMember(tenantId);
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
+      allow update: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
 
-      // Operational: Sales Terminal (Everyone in tenant)
+      // Transactions: Operational data shared by all tenant staff/owners
       match /transactions/{txId} {
-        allow read, write: if isSignedIn() && isTenantMember(tenantId);
+        allow read, write: if isTenantMember(tenantId);
       }
 
-      // Operational: Stock Management (Everyone in tenant)
+      // Products: Read by staff, managed by owners/managers
       match /products/{productId} {
-        allow read: if isSignedIn() && isTenantMember(tenantId);
-        allow write: if isSignedIn() && isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'manager' || getRole() == 'super_admin');
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'manager' || getRole() == 'super_admin');
       }
 
-      // Financial: Business Expenses (Owners only)
+      // Financials: Restricted strictly to owners/admins
       match /expenses/{expId} {
-        allow read, write: if isSignedIn() && isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
+        allow read, write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
       }
-
-      // Financial: B2B Accounts & Accounts Receivable (Owners only)
       match /b2bClients/{clientId} {
-        allow read, write: if isSignedIn() && isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
+        allow read, write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
       }
-      
-      // Financial: Reconciliation Logs (Owners only)
       match /reconciliations/{recId} {
-        allow read, write: if isSignedIn() && isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
+        allow read, write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
       }
     }
   }
