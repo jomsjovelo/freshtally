@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V17
+     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V18
      * Hardened Role-Based Access Control (RBAC) with sub-collection shielding.
      */
 
@@ -74,6 +74,7 @@ service cloud.firestore {
         allow update, delete: if isSuperAdmin();
       }
 
+      // Financial sub-collections shielded from 'staff'
       match /expenses/{expenseId} {
         allow read, write: if isTenantOwner(tenantId) || isSuperAdmin();
       }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -50,7 +49,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * Atomic Context Synchronization: Ensures absolute loading state before UI mount.
- * Refactored to prevent race conditions during identity propagation.
+ * Prevents race conditions during identity propagation.
  */
 export const FirebaseProvider: React.FC<{
   children: ReactNode;
@@ -73,7 +72,7 @@ export const FirebaseProvider: React.FC<{
     let tenantUnsub: (() => void) | null = null;
 
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
-      // Clear previous listeners to prevent memory leaks and zombie updates
+      // Clear previous listeners and reset state to prevent memory leaks and zombie updates
       if (profileUnsub) { profileUnsub(); profileUnsub = null; }
       if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
 
@@ -87,7 +86,6 @@ export const FirebaseProvider: React.FC<{
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
           // Profile document doesn't exist yet (propagation delay or onboarding)
-          // We keep isUserLoading false but profile/tenant null to show onboarding/error
           setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
           return;
         }
@@ -97,14 +95,14 @@ export const FirebaseProvider: React.FC<{
         // Step 2: Sync Business Tenant Node (Multi-tenant isolation)
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
-          if (tenantUnsub) tenantUnsub();
+          if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
           
           tenantUnsub = onSnapshot(tenantRef, (tenantSnap) => {
             setState({
               user: firebaseUser,
               profile: profileData,
               tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-              isUserLoading: false, // Critical: Only end loading when entire chain is synced
+              isUserLoading: false, // Only end loading when entire chain is synced
               userError: null
             });
           }, (err) => {
