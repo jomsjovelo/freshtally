@@ -55,7 +55,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [userError, setUserError] = useState<Error | null>(null);
 
-  // 1. AUTH WATCHER: Reconcile authentication state
+  // 1. AUTH WATCHER
   useEffect(() => {
     if (!auth) {
       setIsUserLoading(false);
@@ -65,7 +65,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
       if (!authUser) {
-        // RESET: Ensure no profile/tenant leak on logout
         setProfile(null);
         setTenant(null);
         setIsUserLoading(false);
@@ -80,11 +79,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   // 2. PROFILE WATCHER: Chained to User
   useEffect(() => {
-    // RESET: Clear previous profile while fetching new one
-    setProfile(null);
-    setTenant(null);
-
     if (!user || !firestore) {
+      setProfile(null);
+      setTenant(null);
       if (!user) setIsUserLoading(false);
       return;
     }
@@ -95,15 +92,17 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       if (snap.exists()) {
         const profileData = { ...snap.data(), id: snap.id };
         setProfile(profileData);
-        // If profile has no tenant, loading is done
         if (!profileData.tenantId) {
           setIsUserLoading(false);
         }
       } else {
         setProfile(null);
+        setTenant(null);
         setIsUserLoading(false);
       }
     }, (err) => {
+      setProfile(null);
+      setTenant(null);
       setUserError(err);
       setIsUserLoading(false);
     });
@@ -113,10 +112,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   // 3. TENANT WATCHER: Chained to Profile
   useEffect(() => {
-    // RESET: Clear previous tenant while fetching new one
-    setTenant(null);
-
     if (!profile?.tenantId || !firestore) {
+      setTenant(null);
       if (profile && !profile.tenantId) setIsUserLoading(false);
       return;
     }
@@ -132,6 +129,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       setIsUserLoading(false);
     }, (err) => {
       setTenant(null);
+      setUserError(err);
       setIsUserLoading(false);
     });
 
@@ -161,7 +159,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-export const useFirebase = (): any => {
+export const useFirebase = (): FirebaseContextState => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');

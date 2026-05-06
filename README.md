@@ -2,16 +2,7 @@
 
 FreshTally is a high-performance, AI-powered multi-tenant business management system. It provides store owners and staff with a secure, professional "Terminal" for real-time retail operations.
 
-## Core Vision
-To empower small and medium enterprises with enterprise-grade ledger, inventory, and point-of-sale tools that are intuitive, fast, and secure.
-
-## Technical Direction
-- **Multi-Tenant Isolation**: Secure data partitioning via unique **Store Codes**.
-- **AI-Driven Operations**: Intelligent expense categorization and financial auditing using **Genkit AI**.
-- **Modern Tech Stack**: Next.js 15 (App Router), Firebase (Firestore/Auth), ShadCN UI, and Tailwind CSS.
-- **Offline-First Resilience**: Leveraging Firestore's local cache for uninterrupted terminal operations.
-
-## GitHub Migration
+## GitHub & Antigravity Migration
 To move this project to GitHub or Antigravity, follow these steps:
 
 1. **Initialize Git**:
@@ -21,16 +12,22 @@ To move this project to GitHub or Antigravity, follow these steps:
    git commit -m "Initial commit from FreshTally Studio"
    ```
 
-2. **Create a Remote Repository**: Create a new repository on GitHub.
+2. **Create a Remote Repository**: Create a new repository on GitHub or Antigravity.
 
-3. **Push to GitHub**:
+3. **Push to Remote**:
    ```bash
    git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
    git branch -M main
    git push -u origin main
    ```
 
-## Key Features
+## Technical Features
+- **Atomic Identity Handshake**: Chained Firestore listeners for secure User-Profile-Tenant resolution.
+- **AI-Driven Operations**: Intelligent expense categorization and financial auditing via Genkit.
+- **Modern Tech Stack**: Next.js 15 (App Router), Firebase (Firestore/Auth), ShadCN UI, and Tailwind.
+- **Professional Accessibility**: Fully standardized form fields with unique IDs and autocomplete hints.
+
+## Key Modules
 - **Store Terminal**: Fast POS checkout with support for Cash, Card, and Store Charge (AR).
 - **Live Inventory**: Real-time stock monitoring with critical alert thresholds.
 - **AI Expense Registry**: Automated categorization of business outflows.

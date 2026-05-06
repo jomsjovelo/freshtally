@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,7 +31,7 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * SAFE COLLECTION HOOK
- * Implements an explicit early exit to prevent unauthorized background fetch attempts.
+ * Implements an explicit early exit (Kill Switch) to prevent unauthorized fetches during session transitions.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
@@ -45,12 +44,12 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // KILL SWITCH: Exit immediately if query context is unstable or reference is null
+    // KILL SWITCH: Immediately clear data and exit if the query context is null or unstable
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
-      return () => {}; 
+      return; 
     }
 
     setIsLoading(true);
