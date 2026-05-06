@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Handle Unauthenticated: Strict atomic clear
+      // Handle Unauthenticated: Strict atomic clear to prevent stale data queries
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -80,15 +80,21 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Maintain loading state while fetching dependencies
-      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true, storeNotFound: false }));
+      // Maintain user but clear session context during async identity handshake
+      setState(prev => ({ 
+        ...prev, 
+        user: firebaseUser, 
+        profile: null,
+        tenant: null,
+        isUserLoading: true, 
+        storeNotFound: false 
+      }));
 
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
 
         if (!profileSnap.exists()) {
-          // Onboarding state
           setState({ 
             user: firebaseUser, 
             profile: null, 
@@ -116,7 +122,6 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
-            // STORE_NOT_FOUND state: Profile exists but tenant document is missing
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -127,7 +132,6 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
-          // Profile exists but no tenantId assigned
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

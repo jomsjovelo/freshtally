@@ -1,41 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Basic sign-in check
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Safely fetch user role from the users collection
     function getRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // User profiles: Users can manage their own profile
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Platform broadcasts: Readable by any signed-in user
     match /platform_broadcasts/{broadcastId} {
       allow read: if isSignedIn();
     }
 
-    // Tenant scoped data
     match /tenants/{tenantId} {
-      // Tenant document: Readable by members (Owner/Staff)
       allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
-      // Create allowed for any authenticated user (during onboarding)
       allow create: if isSignedIn();
-      // Update only by owners
       allow update: if isSignedIn() && getRole() == 'owner';
 
-      // Transactions: Accessible to all signed-in users within the tenant node
       match /transactions/{txId} {
         allow read, write: if isSignedIn();
       }
 
-      // Financials: Strictly restricted to Owners
       match /expenses/{expId} {
         allow read, write: if isSignedIn() && getRole() == 'owner';
       }
@@ -44,14 +34,13 @@ service cloud.firestore {
         allow read, write: if isSignedIn() && getRole() == 'owner';
       }
 
-      match /reconciliations/{recId} {
-        allow read, write: if isSignedIn() && getRole() == 'owner';
-      }
-      
-      // Products: Readable by members, managed by owners
       match /products/{productId} {
         allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
         allow write: if isSignedIn() && getRole() == 'owner';
+      }
+      
+      match /reconciliations/{recId} {
+        allow read, write: if isSignedIn() && getRole() == 'owner';
       }
     }
   }
