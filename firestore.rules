@@ -1,67 +1,141 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper: Is the user signed in?
+
+    /**
+     * FreshTally Security Rules
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset implements a multi-tenant, Role-Based Access Control (RBAC) model.
+     * Authorization is "independent," meaning it relies on a central /userProfiles/{userId} 
+     * document to determine a user's tenantId and role, which is then compared against 
+     * the collection path.
+     *
+     * DATA STRUCTURE:
+     * 1. /userProfiles/{userId} - Global lookup for user identity and authorization metadata.
+     * 2. /tenants/{tenantId} - Root for all business-specific data (Products, Transactions, Expenses).
+     *
+     * KEY SECURITY DECISIONS:
+     * - Multi-tenancy is enforced by ensuring the {tenantId} in the document path matches 
+     *   the tenantId stored in the user's profile.
+     * - Role-based permissions (owner vs. staff) control destructive operations.
+     * - Relational integrity is enforced by ensuring denormalized fields (like tenantId) 
+     *   match the document's path during creation.
+     */
+
+    // --- Global Helper Functions ---
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper: Get user profile data safely
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Helper: Robust multi-tenant membership check
-    // Uses exists() to prevent evaluation crashes before the user profile is written or synced.
-    function isTenantMember(tenantId) {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+    // Fetches the profile for the currently authenticated user
+    function userProfile() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
     }
 
-    // Helper: Get user role
-    function getRole() {
-      return getUserData().get('role', 'none');
+    // Verifies the user belongs to the tenant specified in the path
+    function isMember(tenantId) {
+      return isSignedIn() && userProfile().tenantId == tenantId;
     }
 
-    // User Profile: Strict self-access
-    match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    // Verifies the user has a specific role within their tenant
+    function hasRole(role) {
+      return isSignedIn() && userProfile().role == role;
     }
 
-    // Platform Level: Global broadcasts for all authorized users
-    match /platform_broadcasts/{broadcastId} {
-      allow read: if isSignedIn();
+    // Combined check for existence and membership for updates/deletes
+    function isExistingMember(tenantId) {
+      return resource != null && isMember(tenantId);
     }
 
-    // Multi-tenant Root and Sub-collections
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for UserProfile. Users can only access and create their own profile.
+     * @path /userProfiles/{userId}
+     * @allow (get, list, create, update) if the authenticated user's UID matches {userId}.
+     * @deny (get, list) if the user's UID does not match the document ID.
+     * @principle Ownership - Restricts access to a user's own data tree.
+     */
+    match /userProfiles/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if false; // Profiles should generally not be deleted by users in this prototype.
+    }
+
+    /**
+     * @description Rules for the Tenant root document. Access restricted to members.
+     * @path /tenants/{tenantId}
+     * @allow (get) if the user's profile tenantId matches {tenantId}.
+     * @deny (update) if the user is not an 'owner'.
+     * @principle Roles - Only 'owner' role can modify tenant-level settings.
+     */
     match /tenants/{tenantId} {
-      allow read: if isTenantMember(tenantId);
-      allow create: if isSignedIn();
-      allow update: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
+      allow get: if isMember(tenantId);
+      allow list: if false; // Prevent listing all tenants in the system.
+      allow create: if isSignedIn(); // Allow creation during onboarding; restricted by application logic.
+      allow update: if isExistingMember(tenantId) && hasRole('owner');
+      allow delete: if false; // Tenants are permanent in this prototype.
+    }
 
-      // Transactions: Shared by all tenant members
-      match /transactions/{txId} {
-        allow read, write: if isTenantMember(tenantId);
-      }
+    /**
+     * @description Rules for Products. All tenant members can manage the catalog.
+     * @path /tenants/{tenantId}/products/{productId}
+     * @allow (get, list, create, update) if the user's profile tenantId matches {tenantId}.
+     * @deny (create) if the internal tenantId field does not match the path.
+     * @principle Relational Integrity - Forces internal data to match path hierarchy.
+     */
+    match /tenants/{tenantId}/products/{productId} {
+      allow get, list: if isMember(tenantId);
+      allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId;
+      allow update: if isExistingMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
+      allow delete: if isExistingMember(tenantId) && hasRole('owner');
+    }
 
-      // Products: Read by members, managed by admins
-      match /products/{productId} {
-        allow read: if isTenantMember(tenantId);
-        allow write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'manager' || getRole() == 'super_admin');
-      }
+    /**
+     * @description Rules for Transactions. All members can record sales; only owners can modify history.
+     * @path /tenants/{tenantId}/transactions/{transactionId}
+     * @allow (get, list, create) if the user's profile tenantId matches {tenantId}.
+     * @deny (list) if the user attempts to access a tenant ID they do not belong to.
+     * @principle Shared Access - Uses a lookup-based check for path-based scoping.
+     */
+    match /tenants/{tenantId}/transactions/{transactionId} {
+      allow get, list: if isMember(tenantId);
+      allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.staffId == request.auth.uid;
+      allow update: if isExistingMember(tenantId) && (hasRole('owner') || request.resource.data.status == 'voided');
+      allow delete: if isExistingMember(tenantId) && hasRole('owner');
 
-      // Financials: Restricted strictly to owners/admins
-      match /expenses/{expId} {
-        allow read, write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
+      /**
+       * @description Rules for TransactionItems. Nested under transactions.
+       * @path /tenants/{tenantId}/transactions/{transactionId}/items/{transactionItemId}
+       * @allow (get, list, create) if member of tenant.
+       * @principle Subcollection Access - Inherits tenant membership check from parent path.
+       */
+      match /items/{transactionItemId} {
+        allow get, list: if isMember(tenantId);
+        allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId && request.resource.data.transactionId == transactionId;
+        allow update, delete: if isExistingMember(tenantId) && hasRole('owner');
       }
-      match /b2bClients/{clientId} {
-        allow read, write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
-      }
-      match /reconciliations/{recId} {
-        allow read, write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
-      }
+    }
+
+    /**
+     * @description Rules for Expenses. Tracking business costs.
+     * @path /tenants/{tenantId}/expenses/{expenseId}
+     * @allow (get, list, create, update) if the user's profile tenantId matches {tenantId}.
+     * @deny (delete) if user is not an 'owner'.
+     * @principle Shared Access - All members of a tenant share financial record visibility.
+     */
+    match /tenants/{tenantId}/expenses/{expenseId} {
+      allow get, list: if isMember(tenantId);
+      allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId;
+      allow update: if isExistingMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
+      allow delete: if isExistingMember(tenantId) && hasRole('owner');
     }
   }
 }
