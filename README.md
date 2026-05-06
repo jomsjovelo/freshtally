@@ -2,9 +2,9 @@
 
 FreshTally is a high-performance, AI-powered multi-tenant business management system. It provides store owners and staff with a secure, professional "Terminal" for real-time retail operations.
 
-## 🚀 Migration to GitHub & Antigravity
+## 🚀 Migration to GitHub & App Hosting
 
-To move this project to your repository and deploy via App Hosting, run these commands in your workstation terminal:
+To deploy this project via Firebase App Hosting, run these commands in your workstation terminal:
 
 1. **Initialize Git**:
    ```bash
@@ -20,10 +20,16 @@ To move this project to your repository and deploy via App Hosting, run these co
    git push -u origin main
    ```
 
+## 🛠 Deployment Configuration
+
+- **App root directory**: `/`
+- **Live branch**: `main`
+- **Environment**: Next.js 15 (App Router)
+
 ## Technical Features
 - **Atomic Identity Handshake**: Chained Firestore listeners for secure User-Profile-Tenant resolution.
 - **AI-Driven Operations**: Intelligent expense categorization and financial auditing via Genkit.
-- **Modern Tech Stack**: Next.js 15 (App Router), Firebase (Firestore/Auth), ShadCN UI, and Tailwind.
+- **Modern Tech Stack**: Next.js 15, Firebase (Firestore/Auth), ShadCN UI, and Tailwind.
 
 ## License
-MIT License - Copyright (c) 2024 FreshTally. See LICENSE for details.
+MIT License - Copyright (c) 2024 FreshTally.

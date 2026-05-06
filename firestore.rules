@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.8.6 - Production Stabilization for fresh export
+    // Version: 1.8.7 - Stabilized for App Hosting Release
     
     function isSignedIn() {
       return request.auth != null;
