@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound, CheckCircle2, Hash, LogOut } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound, CheckCircle2, Hash, LogOut, RefreshCw } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser } from "@/firebase"
@@ -128,6 +128,7 @@ export default function AuthPage() {
     }
   }
 
+  // A zombie is a user who is logged in but their profile/tenant data is missing or broken
   const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
@@ -136,10 +137,10 @@ export default function AuthPage() {
         <div className="text-center pt-12 pb-8 bg-primary text-white px-8 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
           <div className="h-14 w-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md relative z-10 border border-white/30">
-            {isZombie ? <Store className="h-7 w-7 text-white" /> : <ShieldCheck className="h-7 w-7 text-white" />}
+            {isZombie ? <RefreshCw className="h-7 w-7 text-white animate-spin-slow" /> : <ShieldCheck className="h-7 w-7 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tighter leading-none relative z-10">
-            {isZombie ? "Store Recovery" : (authMode === "login" ? "Store Access" : "Market Entry")}
+            {isZombie ? "RE-SYNC ACCESS" : (authMode === "login" ? "Store Access" : "Market Entry")}
           </h1>
           <p className="text-[10px] font-bold text-white/70 mt-2 uppercase tracking-[0.2em] relative z-10">
             FreshTally Cloud Ledger
@@ -164,9 +165,9 @@ export default function AuthPage() {
                 <LogOut className="h-10 w-10" />
               </div>
               <div className="space-y-2">
-                <p className="font-black text-sm uppercase tracking-tight">Access Token Outdated</p>
+                <p className="font-black text-sm uppercase tracking-tight">Sync Handshake Failed</p>
                 <p className="text-[10px] font-medium text-muted-foreground uppercase leading-relaxed tracking-wider">
-                  Your store identity could not be verified. Please terminate the current session and re-authenticate.
+                  Your store identity could not be verified in the current cloud registry. Please terminate this session to reset the handshake.
                 </p>
               </div>
               <Button 

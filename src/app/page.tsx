@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2, Sparkles } from "lucide-react"
+import { ShoppingCart, Package, Megaphone, TrendingDown, Store, Loader2, Sparkles, AlertCircle } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, limit, where } from "firebase/firestore"
@@ -183,6 +183,47 @@ export default function DashboardPage() {
     return <SyncingTerminal />
   }
 
+  // Handle case where store was deleted but user is still logged in
+  if (user && profile?.tenantId && !tenant) {
+    const isOwner = profile.role === 'owner'
+    return (
+      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[80vh] gap-8 max-w-md mx-auto animate-in fade-in zoom-in duration-500">
+        <div className="h-28 w-28 bg-red-50 rounded-[40px] flex items-center justify-center text-destructive shadow-inner relative">
+           <AlertCircle className="h-14 w-14" />
+           <div className="absolute -top-2 -right-2 h-8 w-8 bg-white rounded-full flex items-center justify-center shadow-md">
+             <Store className="h-4 w-4 text-destructive" />
+           </div>
+        </div>
+        <div className="space-y-3">
+          <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground leading-tight">Store Not Found</h2>
+          <p className="text-muted-foreground text-sm font-medium px-4 leading-relaxed">
+            Your store node (ID: {profile.tenantId}) could not be located in the cloud registry. It may have been decommissioned.
+          </p>
+        </div>
+        <div className="w-full space-y-3">
+          {isOwner ? (
+            <Button 
+              className="w-full h-18 rounded-[24px] font-black uppercase text-lg shadow-xl bg-primary" 
+              onClick={() => router.push('/onboarding')}
+            >
+              INITIALIZE NEW STORE
+            </Button>
+          ) : (
+            <Button 
+              className="w-full h-18 rounded-[24px] font-black uppercase text-lg shadow-xl bg-destructive" 
+              onClick={() => router.push('/auth')}
+            >
+              TERMINATE SESSION
+            </Button>
+          )}
+          <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">
+            System Identity: {user.email}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (userError || !user || !profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
@@ -199,7 +240,7 @@ export default function DashboardPage() {
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          RE-SYNC STORE
+          STORE ACCESS
         </Button>
       </div>
     )

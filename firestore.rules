@@ -6,25 +6,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /**
-     * Strict Identity Sync: Ensures queries only fire after profile is synchronized.
-     */
+    // Helper to get user profile data safely
+    function getUserData() {
+      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
+    }
+
     function isMember(tenantId) {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tenantId == tenantId;
+      let data = getUserData();
+      return isSignedIn() && data != null && data.tenantId == tenantId;
     }
 
     function hasRole(role) {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == role;
+      let data = getUserData();
+      return isSignedIn() && data != null && data.role == role;
     }
 
     match /userProfiles/{userId} {
-      allow get, list: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow get, list, create, update: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /tenants/{tenantId} {
