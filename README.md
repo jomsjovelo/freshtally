@@ -4,19 +4,22 @@ FreshTally is a high-performance, AI-powered multi-tenant business management sy
 
 ## 🚀 Migration to GitHub & App Hosting
 
-If you see an error saying "Branch name must refer to a valid existing branch", it's because you haven't pushed your code yet. Run these commands in your project terminal:
+If you see an error saying "Branch name must refer to a valid existing branch", it's because the repository on GitHub is currently empty. 
 
-1. **Initialize & Commit**:
+### If you have an existing repository locally:
+Run these commands to link it to your new `freshtally` repo:
+
+1. **Update Remote**:
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit from FreshTally Studio"
+   git remote remove origin
+   git remote add origin https://github.com/jomsjovelo/freshtally.git
    ```
 
-2. **Push to GitHub**:
+2. **Commit & Push**:
    ```bash
    git branch -M main
-   git remote add origin https://github.com/jomsjovelo/freshtally.git
+   git add .
+   git commit -m "Migration to FreshTally GitHub"
    git push -u origin main
    ```
 
