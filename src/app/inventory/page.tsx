@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, Plus, Filter, AlertTriangle, MoreVertical, PackageOpen, Loader2 } from "lucide-react"
+import { Search, Plus, Filter, AlertTriangle, MoreVertical, PackageOpen, Loader2, ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { cn, formatCurrency } from "@/lib/utils"
@@ -77,168 +77,198 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="p-6 space-y-8 pb-32">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase leading-none text-primary">Inventory</h1>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Stock Monitoring</p>
+          <h1 className="text-4xl font-black tracking-tighter uppercase leading-none text-primary">Registry</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mt-2">Catalog Control</p>
         </div>
         
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button size="icon" className="h-14 w-14 rounded-3xl bg-accent hover:bg-accent/90 shadow-xl">
-              <Plus className="h-7 w-7" />
+            <Button size="icon" className="h-16 w-16 rounded-[28px] bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-95">
+              <Plus className="h-8 w-8 text-white" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md w-full h-[90vh] rounded-t-[40px] border-none p-0 bg-background overflow-hidden flex flex-col">
-            <DialogHeader className="p-8 pb-4 bg-accent text-white">
-              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">New Product</DialogTitle>
+          <DialogContent className="max-w-md w-full h-[90vh] rounded-t-[44px] border-none p-0 bg-white overflow-hidden flex flex-col shadow-2xl">
+            <DialogHeader className="p-10 pb-6 bg-gradient-to-br from-accent to-accent/80 text-white relative">
+              <div className="absolute top-0 right-0 p-10 opacity-10">
+                <Plus className="h-24 w-24" />
+              </div>
+              <DialogTitle className="text-3xl font-black uppercase tracking-tighter">New Product</DialogTitle>
+              <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mt-2">Initialize Store SKU</p>
             </DialogHeader>
             
-            <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto flex-1 pb-32">
-              <div className="space-y-2">
-                <Label htmlFor="inventory-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Product Name</Label>
+            <form onSubmit={handleSave} className="p-10 space-y-8 overflow-y-auto flex-1 pb-32">
+              <div className="space-y-3">
+                <Label htmlFor="inventory-name" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Product Identity</Label>
                 <Input 
                   id="inventory-name"
                   name="inventory-name"
                   required
                   placeholder="e.g. Arabica Coffee Beans"
-                  className="h-16 rounded-2xl bg-gray-100 border-none font-bold text-lg"
+                  className="h-16 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-accent/20 focus:ring-0 transition-all font-bold text-lg px-6"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  autoComplete="off"
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-sku" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">SKU / Code</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="inventory-sku" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">SKU Code</Label>
                   <Input 
                     id="inventory-sku"
                     name="inventory-sku"
                     required
                     placeholder="COF-001"
-                    className="h-16 rounded-2xl bg-gray-100 border-none font-bold"
+                    className="h-16 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-accent/20 focus:ring-0 transition-all font-bold px-6"
                     value={formData.sku}
                     onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                    autoComplete="off"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-price" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Price (₱)</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="inventory-price" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Unit Price (₱)</Label>
                   <Input 
                     id="inventory-price"
                     name="inventory-price"
                     required
                     type="number"
                     placeholder="0.00"
-                    className="h-16 rounded-2xl bg-gray-100 border-none font-bold"
+                    className="h-16 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-accent/20 focus:ring-0 transition-all font-bold px-6"
                     value={formData.price}
                     onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    autoComplete="off"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-stock" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Current Stock</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="inventory-stock" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Opening Stock</Label>
                   <Input 
                     id="inventory-stock"
                     name="inventory-stock"
                     required
                     type="number"
                     placeholder="0"
-                    className="h-16 rounded-2xl bg-gray-100 border-none font-bold"
+                    className="h-16 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-accent/20 focus:ring-0 transition-all font-bold px-6"
                     value={formData.stock}
                     onChange={(e) => setFormData({...formData, stock: e.target.value})}
+                    autoComplete="off"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-min-stock" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alert Level</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="inventory-min-stock" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Critical Level</Label>
                   <Input 
                     id="inventory-min-stock"
                     name="inventory-min-stock"
                     required
                     type="number"
-                    className="h-16 rounded-2xl bg-gray-100 border-none font-bold"
+                    className="h-16 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-accent/20 focus:ring-0 transition-all font-bold px-6"
                     value={formData.minStock}
                     onChange={(e) => setFormData({...formData, minStock: e.target.value})}
+                    autoComplete="off"
                   />
                 </div>
               </div>
 
               <Button 
                 type="submit" 
-                className="w-full h-20 rounded-[28px] bg-accent text-white font-black text-xl shadow-xl mt-4"
+                className="w-full h-20 rounded-[32px] bg-accent text-white font-black text-xl shadow-xl shadow-accent/20 mt-6 active:scale-[0.98] transition-all hover:shadow-accent/30"
                 disabled={isSaving}
               >
-                {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : "CREATE PRODUCT"}
+                {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                  <div className="flex items-center gap-3">
+                    COMMIT TO LEDGER <ArrowRight className="h-6 w-6" />
+                  </div>
+                )}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       </header>
 
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+      <div className="flex gap-3">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-40 group-focus-within:opacity-100 transition-opacity" />
           <Input 
             id="inventory-search"
             name="inventory-search"
             placeholder="Search catalog..." 
-            className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
+            className="pl-14 h-16 bg-white border-transparent shadow-soft rounded-[28px] font-bold text-lg focus:bg-white focus:border-primary/10 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            autoComplete="off"
           />
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between px-2">
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Active Stock Monitoring</p>
+          <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">Live Sync</Badge>
+        </div>
+        
         {isLoading ? (
-          <div className="p-20 text-center animate-pulse font-black text-muted-foreground uppercase tracking-widest">Scanning Registry...</div>
+          <div className="p-24 text-center animate-pulse font-black text-muted-foreground uppercase tracking-[0.2em] text-[10px]">Scanning Registry...</div>
         ) : filteredInventory.length > 0 ? (
-          filteredInventory.map((item) => {
-            const minStock = item.minStock || 10
-            const isLowStock = item.stock <= minStock
-            const stockPercent = (item.stock / (minStock * 2)) * 100
-            
-            return (
-              <div key={item.id} className="bg-card p-6 rounded-[32px] shadow-sm border-none flex flex-col gap-4 relative overflow-hidden group">
-                {isLowStock && (
-                  <div className="absolute top-4 right-4">
-                    <Badge variant="destructive" className="animate-pulse flex gap-1 items-center px-2 py-1 text-[9px] uppercase font-black rounded-lg">
-                      <AlertTriangle className="h-3 w-3" />
-                      CRITICAL
-                    </Badge>
+          <div className="grid gap-5">
+            {filteredInventory.map((item) => {
+              const minStock = item.minStock || 10
+              const isLowStock = item.stock <= minStock
+              const stockPercent = (item.stock / (minStock * 2)) * 100
+              
+              return (
+                <div key={item.id} className="bg-white p-7 rounded-[40px] shadow-soft border border-gray-50/50 flex flex-col gap-6 relative overflow-hidden group hover:border-primary/20 transition-all active:scale-[0.99]">
+                  {isLowStock && (
+                    <div className="absolute top-6 right-6">
+                      <Badge variant="destructive" className="animate-pulse flex gap-1.5 items-center px-3 py-1.5 text-[9px] uppercase font-black rounded-xl">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        CRITICAL
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0 pr-12">
+                      <h3 className="font-black text-xl uppercase tracking-tight text-foreground leading-none truncate">{item.name}</h3>
+                      <p className="text-[10px] font-black text-muted-foreground mt-3 uppercase tracking-widest flex items-center gap-2">
+                        <span className="bg-gray-100 px-2 py-0.5 rounded-md">{item.sku}</span>
+                        <span className="text-primary">{formatCurrency(item.price)} / UNIT</span>
+                      </p>
+                    </div>
                   </div>
-                )}
-                
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="font-black text-lg uppercase tracking-tight text-foreground leading-none">{item.name}</h3>
-                    <p className="text-[10px] font-black text-muted-foreground mt-2 uppercase tracking-widest">
-                      {item.sku} • {formatCurrency(item.price)}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                    <span className={isLowStock ? "text-destructive" : "text-primary"}>
-                      {item.stock} UNITS
-                    </span>
-                    <span className="text-muted-foreground opacity-60">MIN: {minStock}</span>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-[0.2em]">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-muted-foreground opacity-60">QUANTITY ON HAND</span>
+                        <span className={cn("text-lg tracking-normal", isLowStock ? "text-destructive" : "text-primary")}>
+                          {item.stock} UNITS
+                        </span>
+                      </div>
+                      <span className="text-muted-foreground opacity-40 mb-1">REORDER AT {minStock}</span>
+                    </div>
+                    <div className="h-3 w-full bg-gray-50 rounded-full overflow-hidden border border-gray-100/50">
+                      <div 
+                        className={cn("h-full transition-all duration-1000", isLowStock ? "bg-destructive" : "bg-primary")} 
+                        style={{ width: `${Math.min(stockPercent, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <Progress 
-                    value={Math.min(stockPercent, 100)} 
-                    className={cn("h-3 rounded-full", isLowStock ? "[&>div]:bg-destructive" : "[&>div]:bg-primary")} 
-                  />
                 </div>
-              </div>
-            )
-          })
+              )
+            })}
+          </div>
         ) : (
-          <div className="bg-gray-50 rounded-[40px] p-12 text-center border-2 border-dashed border-gray-200">
-            <PackageOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <h3 className="text-xl font-black text-muted-foreground uppercase tracking-tighter">Empty Catalog</h3>
+          <div className="bg-white rounded-[44px] p-20 text-center border-2 border-dashed border-gray-100 shadow-inner">
+            <div className="h-20 w-20 bg-gray-50 rounded-[32px] flex items-center justify-center mx-auto mb-6">
+              <PackageOpen className="h-10 w-10 text-muted-foreground opacity-20" />
+            </div>
+            <h3 className="text-xl font-black text-muted-foreground uppercase tracking-tighter">Registry Empty</h3>
+            <p className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest mt-2">Initialize your first product</p>
           </div>
         )}
       </div>
