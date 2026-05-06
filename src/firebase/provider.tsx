@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -95,7 +95,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            // Stability Resolution: Resolves loading state even if tenant document is missing.
             setAuthState({
               user,
               profile: profileData,
@@ -104,7 +103,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Security Resolution: Resolves as missing on permission errors (e.g. deleted store).
+            // Permission or missing error resolution
             setAuthState({
               user,
               profile: profileData,
