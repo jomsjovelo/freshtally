@@ -18,8 +18,7 @@ import { getAgingCategory, cn, formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
 /**
- * In-App Notification Center: MD3-compliant Alert Hub.
- * Optimized Structural Guard: Parent <header> is rendered unconditionally to prevent hydration mismatches.
+ * Structural Guard: Render the outer shell unconditionally to prevent hydration mismatches.
  */
 export function TopBar() {
   const { tenant, isUserLoading, profile, user } = useUser()
@@ -33,6 +32,7 @@ export function TopBar() {
 
   const overdueClientsQuery = useMemoFirebase(() => {
     if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null
+    // Security: Only fire query if identity is verified
     if (tenant.id !== profile.tenantId) return null
     
     return query(

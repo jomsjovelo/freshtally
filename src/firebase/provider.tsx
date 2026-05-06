@@ -48,8 +48,8 @@ export interface UserHookResult extends UserAuthState {}
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 /**
- * Atomic Context Synchronization: Ensures absolute loading state before UI mount.
- * Prevents race conditions during identity propagation.
+ * Atomic Identity Synchronization: Ensures zero 'zombie' session states.
+ * The chain: Auth -> Profile -> Tenant must be consistent before loading ends.
  */
 export const FirebaseProvider: React.FC<{
   children: ReactNode;
@@ -72,7 +72,7 @@ export const FirebaseProvider: React.FC<{
     let tenantUnsub: (() => void) | null = null;
 
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
-      // Clear previous listeners and reset state to prevent memory leaks and zombie updates
+      // CLEAR ALL previous state and listeners instantly on Auth change
       if (profileUnsub) { profileUnsub(); profileUnsub = null; }
       if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
 
@@ -81,7 +81,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Start fetching fresh profile
+      // Step 1: Sync User Profile
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -91,7 +91,7 @@ export const FirebaseProvider: React.FC<{
 
         const profileData = profileSnap.data() as UserProfile;
 
-        // Step 2: Sync Business Tenant Node (Multi-tenant isolation)
+        // Step 2: Sync Business Tenant Node
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
@@ -101,27 +101,15 @@ export const FirebaseProvider: React.FC<{
               user: firebaseUser,
               profile: profileData,
               tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-              isUserLoading: false, // Only end loading when entire chain is synced
+              isUserLoading: false,
               userError: null
             });
           }, (err) => {
-            setState({
-              user: firebaseUser,
-              profile: profileData,
-              tenant: null,
-              isUserLoading: false,
-              userError: err
-            });
+            setState({ user: firebaseUser, profile: profileData, tenant: null, isUserLoading: false, userError: err });
           });
         } else {
-          // Single-node profile (e.g. Super Admin)
-          setState({
-            user: firebaseUser,
-            profile: profileData,
-            tenant: null,
-            isUserLoading: false,
-            userError: null
-          });
+          // Special case: Super Admin without a tenant node
+          setState({ user: firebaseUser, profile: profileData, tenant: null, isUserLoading: false, userError: null });
         }
       }, (err) => {
         setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });

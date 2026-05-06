@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase/provider"
 
 /**
- * Structural Nav Shell: Rendered unconditionally to prevent Next.js hydration structural mismatches.
+ * Structural Shell Shell: Rendered unconditionally to prevent Next.js hydration structural mismatches.
  */
 export function BottomNav() {
   const pathname = usePathname()
