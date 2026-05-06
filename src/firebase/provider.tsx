@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Handle Unauthenticated: Strict atomic clear to prevent stale data queries
+      // 1. Handle Unauthenticated: Atomic clear
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -80,7 +80,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Maintain user but clear session context during async identity handshake
+      // 2. Start Handshake: Keep user, clear context, set loading
       setState(prev => ({ 
         ...prev, 
         user: firebaseUser, 
@@ -122,6 +122,7 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
+            // Orphaned Profile: Tenant document missing
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -132,6 +133,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
+          // Profile exists but no tenant linked
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

@@ -28,14 +28,17 @@ export function TopBar() {
   }, []);
 
   const overdueClientsQuery = useMemoFirebase(() => {
-    if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null;
+    // SECURITY: Only query B2B clients if user is owner/manager/super_admin
+    const canSeeAr = profile?.role === 'owner' || profile?.role === 'manager' || profile?.role === 'super_admin';
+    
+    if (!mounted || !db || !tenant?.id || !profile?.tenantId || !canSeeAr) return null;
     if (tenant.id !== profile.tenantId) return null;
     
     return query(
       collection(db, "tenants", tenant.id, "b2bClients"),
       where("outstandingBalance", ">", 0)
     );
-  }, [mounted, db, tenant?.id, profile?.tenantId]);
+  }, [mounted, db, tenant?.id, profile?.tenantId, profile?.role]);
 
   const { data: b2bClients } = useCollection(overdueClientsQuery);
 

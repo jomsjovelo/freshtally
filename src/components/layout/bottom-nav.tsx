@@ -24,10 +24,10 @@ export function BottomNav() {
         pathname !== '/auth' && user && !isUserLoading && (tenant || profile?.role === 'super_admin') && (
           <>
             {[
-              { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'super_admin'] },
-              { href: "/pos", label: "Terminal", icon: ShoppingCart, roles: ['staff', 'owner'] },
-              { href: "/inventory", label: "Stock", icon: Package, roles: ['staff', 'owner'] },
-              { href: "/settings", label: "Config", icon: Settings, roles: ['owner', 'staff', 'super_admin'] },
+              { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'manager', 'super_admin'] },
+              { href: "/pos", label: "Terminal", icon: ShoppingCart, roles: ['staff', 'owner', 'manager'] },
+              { href: "/inventory", label: "Stock", icon: Package, roles: ['staff', 'owner', 'manager'] },
+              { href: "/settings", label: "Config", icon: Settings, roles: ['owner', 'staff', 'manager', 'super_admin'] },
             ].filter(item => item.roles.includes(profile?.role || '')).map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
