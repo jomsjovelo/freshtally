@@ -4,7 +4,7 @@ FreshTally is a high-performance, AI-powered multi-tenant business management sy
 
 ## 🚀 Migration to GitHub & Antigravity
 
-To move this project to your new repository, run these commands in your terminal:
+To move this project to your repository and deploy via App Hosting, run these commands in your workstation terminal:
 
 1. **Initialize Git**:
    ```bash

@@ -39,9 +39,8 @@ export interface UserHookResult {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 /**
- * ATOMIC IDENTITY HANDSHAKE PROVIDER (v2.1)
- * Chained identity resolution: User -> Profile -> Tenant.
- * Hardened to immediately clear child states on parent transitions to prevent permission leaks.
+ * ATOMIC IDENTITY HANDSHAKE PROVIDER (v2.2)
+ * Hardened chained resolution with immediate cleanup to prevent session bleed.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,

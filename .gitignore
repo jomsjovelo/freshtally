@@ -1,25 +1,29 @@
 # Next.js
 /.next/
 /out/
-/build/
+/build
 
 # Production
-/node_modules/
+/node_modules
 /.env
 /.env.local
 /.env.production
-/.env.development
+/.env.development.local
+/.env.test.local
+/.env.production.local
 
 # Firebase
 .firebase/
-firestore.indexes.json
-firestore.rules
-firebase-debug.log
-ui-debug.log
+firebase-debug.log*
+firestore-debug.log*
+pubsub-debug.log*
+ui-debug.log*
+firebase-export*
 
-# Systems
+# System
 .DS_Store
+Thumbs.db
+*.swp
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.vscode/
+.idea/
