@@ -41,7 +41,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
  * Chained resolution: User -> Profile -> Tenant.
- * Ensures proper unsubscription and state synchronization.
+ * Ensures proper unsubscription and state synchronization to prevent memory leaks.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -79,14 +79,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   // 2. Listen for Profile Changes (Chained to User)
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (!user || !firestore) {
+      setProfile(null);
+      return;
+    }
 
     setIsUserLoading(true);
     const profileRef = doc(firestore, "userProfiles", user.uid);
-    const unsubscribe = onSnapshot(profileRef, (snap) => {
+    const unsubscribeProfile = onSnapshot(profileRef, (snap) => {
       if (snap.exists()) {
         const profileData = { ...snap.data(), id: snap.id };
         setProfile(profileData);
+        // If profile exists but has no tenantId, we're done loading
         if (!profileData.tenantId) {
           setTenant(null);
           setIsUserLoading(false);
@@ -101,18 +105,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       setIsUserLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeProfile();
   }, [user, firestore]);
 
   // 3. Listen for Tenant Changes (Chained to Profile)
   useEffect(() => {
     if (!profile?.tenantId || !firestore) {
-      if (profile && !profile.tenantId) setIsUserLoading(false);
+      setTenant(null);
       return;
     }
 
     const tenantRef = doc(firestore, "tenants", profile.tenantId);
-    const unsubscribe = onSnapshot(tenantRef, (snap) => {
+    const unsubscribeTenant = onSnapshot(tenantRef, (snap) => {
       if (snap.exists()) {
         setTenant({ ...snap.data(), id: snap.id });
       } else {
@@ -124,7 +128,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       setIsUserLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeTenant();
   }, [profile?.tenantId, firestore]);
 
   const contextValue = useMemo((): FirebaseContextState => {

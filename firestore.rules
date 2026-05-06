@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.7.0 - Hardened Identity Resilience
+    // Version: 1.8.0 - Resolved Deployment Conflict
     // This bump triggers a clean policy deployment to resolve 409 Conflict issues.
     
     function isSignedIn() {
