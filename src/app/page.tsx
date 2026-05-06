@@ -21,49 +21,46 @@ const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-to
   loading: () => <div className="h-40 w-full bg-muted/10 animate-pulse rounded-2xl" />
 })
 
-/**
- * Loading component for strict handshake synchronization
- */
 function SyncingTerminal() {
   return (
     <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin" />
-      Syncing Terminal Node...
+      Syncing Store Ledger...
     </div>
   )
 }
 
-/**
- * Inner component to isolate hooks from initial auth guards
- */
 function DashboardContent({ user, profile, tenant, stableNow }: { user: any, profile: any, tenant: any, stableNow: string }) {
   const db = useFirestore()
   const router = useRouter()
 
+  // STRICT KILL SWITCH: Only initiate queries if identity is perfectly synchronized
   const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id) return null;
+    if (!db || !user || !tenant?.id || !profile?.tenantId) return null;
+    if (tenant.id !== profile.tenantId) return null;
+
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
       orderBy("createdAt", "desc"),
       limit(5)
     )
-  }, [db, tenant?.id])
+  }, [db, user, tenant?.id, profile?.tenantId])
 
   const broadcastsQuery = useMemoFirebase(() => {
-    if (!db || !stableNow) return null
+    if (!db || !user || !stableNow) return null
     return query(
       collection(db, "platform_broadcasts"),
       where("activeUntil", ">=", stableNow),
       orderBy("activeUntil", "asc"),
       limit(1)
     )
-  }, [db, stableNow])
+  }, [db, user, stableNow])
 
   const { data: transactions, isLoading: isTxLoading } = useCollection(transactionsQuery)
   const { data: broadcasts } = useCollection(broadcastsQuery)
 
-  const isStaff = profile.role === 'staff'
-  const isOwner = profile.role === 'owner' || profile.role === 'super_admin'
+  const isStaff = profile?.role === 'staff'
+  const isOwner = profile?.role === 'owner' || profile?.role === 'super_admin'
 
   return (
     <div className="p-4 space-y-6 max-w-md mx-auto">
@@ -86,7 +83,7 @@ function DashboardContent({ user, profile, tenant, stableNow }: { user: any, pro
             {isStaff ? "Terminal" : "Ledger"}
           </h1>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
-            {tenant.name} • {profile.role}
+            {tenant?.name} • {profile?.role}
           </p>
         </div>
         <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10">
@@ -164,7 +161,7 @@ function DashboardContent({ user, profile, tenant, stableNow }: { user: any, pro
 }
 
 export default function DashboardPage() {
-  const { profile, tenant, isUserLoading, user } = useUser()
+  const { profile, tenant, isUserLoading, user, userError } = useUser()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [stableNow, setStableNow] = useState<string | null>(null)
@@ -182,16 +179,11 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  // 1. Wait for Provider to finish entire handshake
   if (!mounted || isUserLoading || !stableNow) {
     return <SyncingTerminal />
   }
 
-  // 2. Auth Kill Switch: Redirect if no user
-  if (!user) return null
-
-  // 3. Multi-Tenant Kill Switch: Do not render queries if context is unstable or mismatched
-  if (!profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
+  if (userError || !user || !profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
         <div className="h-24 w-24 bg-blue-50 rounded-[32px] flex items-center justify-center text-primary shadow-inner">
@@ -207,13 +199,12 @@ export default function DashboardPage() {
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          CONNECT STORE
+          RE-SYNC STORE
         </Button>
       </div>
     )
   }
 
-  // 4. Safe Zone: All context verified. Render queries.
   return (
     <DashboardContent 
       user={user} 

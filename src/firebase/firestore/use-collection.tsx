@@ -40,7 +40,7 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // Hard Kill Switch: If reference is null, undefined, or missing the memo flag, stop.
+    // KILL SWITCH: If reference is null or not memoized, stop immediately.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
@@ -63,14 +63,14 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // Defensive path resolution
+        // Defensive path resolution for error reporting
         let path = "unknown";
         try {
           path = memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
         } catch (e) {
-          console.warn("Could not resolve path for error reporting");
+          // Path resolution failed
         }
 
         const contextualError = new FirestorePermissionError({
@@ -88,7 +88,6 @@ export function useCollection<T = any>(
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]);
 
-  // Validation check (development only)
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     console.warn('useCollection: query not memoized with useMemoFirebase');
   }

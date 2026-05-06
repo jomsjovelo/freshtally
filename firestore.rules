@@ -6,13 +6,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
     /**
-     * Kill Switch Guard: Uses exists() to ensure evaluation only continues
-     * after identity document is fully synchronized.
+     * Strict Identity Sync: Ensures queries only fire after profile is synchronized.
      */
     function isMember(tenantId) {
       return isSignedIn() && 
@@ -20,64 +15,52 @@ service cloud.firestore {
              get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tenantId == tenantId;
     }
 
-    function getRole() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role;
-    }
-
     function hasRole(role) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             getRole() == role;
+             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == role;
     }
 
     match /userProfiles/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if false;
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /tenants/{tenantId} {
       allow get: if isMember(tenantId);
-      allow list: if false;
       allow create: if isSignedIn();
       allow update: if isMember(tenantId) && hasRole('owner');
-      allow delete: if false;
-    }
 
-    match /tenants/{tenantId}/products/{productId} {
-      allow get, list: if isMember(tenantId);
-      allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId;
-      allow update: if isMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if isMember(tenantId) && hasRole('owner');
-    }
-
-    match /tenants/{tenantId}/transactions/{transactionId} {
-      allow get, list: if isMember(tenantId);
-      allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId;
-      allow update: if isMember(tenantId) && (hasRole('owner') || request.resource.data.status == 'voided');
-      allow delete: if isMember(tenantId) && hasRole('owner');
-
-      match /items/{transactionItemId} {
+      match /products/{productId} {
         allow get, list: if isMember(tenantId);
-        allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId;
+        allow create, update: if isMember(tenantId);
+        allow delete: if isMember(tenantId) && hasRole('owner');
+      }
+
+      match /transactions/{transactionId} {
+        allow get, list: if isMember(tenantId);
+        allow create: if isMember(tenantId);
         allow update, delete: if isMember(tenantId) && hasRole('owner');
+
+        match /items/{itemId} {
+          allow get, list: if isMember(tenantId);
+          allow create, update, delete: if isMember(tenantId);
+        }
+      }
+
+      match /expenses/{expenseId} {
+        allow get, list: if isMember(tenantId);
+        allow create, update: if isMember(tenantId);
+        allow delete: if isMember(tenantId) && hasRole('owner');
+      }
+
+      match /b2bClients/{clientId} {
+        allow get, list: if isMember(tenantId);
+        allow create, update, delete: if isMember(tenantId) && hasRole('owner');
       }
     }
 
-    match /tenants/{tenantId}/expenses/{expenseId} {
-      allow get, list: if isMember(tenantId);
-      allow create: if isMember(tenantId) && request.resource.data.tenantId == tenantId;
-      allow update: if isMember(tenantId) && request.resource.data.tenantId == resource.data.tenantId;
-      allow delete: if isMember(tenantId) && hasRole('owner');
-    }
-    
-    match /tenants/{tenantId}/b2bClients/{clientId} {
-      allow get, list: if isMember(tenantId);
-      allow create, update, delete: if isMember(tenantId) && hasRole('owner');
-    }
-
-    // BROADCASTS: Global read for all signed in users.
     match /platform_broadcasts/{broadcastId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if hasRole('super_admin');

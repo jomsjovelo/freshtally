@@ -56,7 +56,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     if (!auth || !firestore) return;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // RESET: Clear state immediately on auth change
+      // RESET: Clear state immediately on auth change to prevent queries from firing with wrong context
       if (!user) {
         setAuthState({
           user: null,
@@ -68,8 +68,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
-      // SYNC START: User found, lock queries until identity documents are ready
-      setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
+      setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
 
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
