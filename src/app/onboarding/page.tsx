@@ -15,6 +15,10 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { useUser, useFirestore } from "@/firebase"
 
+/**
+ * STORE INITIALIZATION PAGE
+ * Finalizes store node creation with professional accessibility.
+ */
 export default function OnboardingPage() {
   const [storeName, setStoreName] = useState("")
   const [storeAddress, setStoreAddress] = useState("")
@@ -23,6 +27,8 @@ export default function OnboardingPage() {
   const { user, isUserLoading } = useUser()
   const router = useRouter()
   const { toast } = useToast()
+  
+  // Use context hook to prevent "No Firebase App" errors.
   const db = useFirestore()
 
   useEffect(() => {

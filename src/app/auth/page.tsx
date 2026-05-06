@@ -17,6 +17,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser, useAuth, useFirestore } from "@/firebase"
 
+/**
+ * IDENTITY REGISTRY PORTAL
+ * Handles user authentication with standard-compliant form accessibility.
+ * Uses atomic context hooks to prevent "No Firebase App" errors during pre-rendering.
+ */
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
   const [email, setEmail] = useState("")
@@ -30,6 +35,8 @@ export default function AuthPage() {
   
   const router = useRouter()
   const { toast } = useToast()
+  
+  // FIXED: Replaced top-level getAuth/getFirestore calls with context hooks to prevent SSR crashes.
   const auth = useAuth()
   const db = useFirestore()
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()

@@ -37,6 +37,7 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
   const router = useRouter()
 
   const transactionsQuery = useMemoFirebase(() => {
+    // KILL SWITCH: Strict guard to prevent unauthorized list queries before identity resolution.
     if (!db || !tenant?.id || !profile?.tenantId || tenant.id !== profile.tenantId) return null;
     return query(
       collection(db, "tenants", tenant.id, "transactions"),
@@ -178,6 +179,10 @@ function DashboardContent({ profile, tenant, stableNow }: { profile: any, tenant
   )
 }
 
+/**
+ * ROOT DASHBOARD PORTAL
+ * Orchestrates identity-guarded access with a recovery screen for deleted store nodes.
+ */
 export default function DashboardPage() {
   const router = useRouter()
   const { user, profile, tenant, isUserLoading } = useUser()
@@ -201,6 +206,7 @@ export default function DashboardPage() {
 
   if (isUserLoading) return <SyncingTerminal />
 
+  // RECOVERY HANDLER: Shows decomissioned screen if tenant context is missing for a logged-in user.
   if (!user || !profile || (!tenant && profile.role !== 'super_admin')) {
     if (!isUserLoading && user && profile && !tenant && profile.role !== 'super_admin') {
       return (

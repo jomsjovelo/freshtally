@@ -39,9 +39,9 @@ export interface UserHookResult {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 /**
- * ATOMIC IDENTITY HANDSHAKE
- * Ensures User -> Profile -> Tenant resolution is handled as a single unit.
- * Prevents race conditions where queries fire before roles are confirmed.
+ * ATOMIC IDENTITY HANDSHAKE PROVIDER
+ * Resolves User -> Profile -> Tenant as a single unit of work.
+ * Handles missing tenant documents (decommissioned stores) gracefully.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -61,7 +61,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     if (!auth || !firestore) return;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // 1. Exit early if no user session
+      // 1. Terminate if no session
       if (!user) {
         setAuthState({
           user: null,
@@ -75,7 +75,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
       setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
-      // 2. Fetch User Profile
+      // 2. Resolve Profile
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
@@ -91,10 +91,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         const profileData = { ...profileSnap.data(), id: profileSnap.id };
         
-        // 3. Fetch Tenant if profile links to one
+        // 3. Resolve Tenant if profile links to one
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
+            // Stability Resolution: Resolves loading state even if tenant document is missing.
             setAuthState({
               user,
               profile: profileData,
@@ -103,6 +104,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
+            // Security Resolution: Resolves as missing on permission errors (e.g. deleted store).
             setAuthState({
               user,
               profile: profileData,

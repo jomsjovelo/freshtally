@@ -2,12 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.1.0 - Defensive Rule Hardening
+    // Version: 1.1.2 - Defensive Resolution Hardening
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive check: verify tenant and profile existence to prevent evaluation errors
+    // DEFENSIVE CHECK: Uses exists() to prevent evaluation errors when stores are deleted.
     function isMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
@@ -26,10 +26,10 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Allow creation during onboarding if signed in
+      // Allow creation during onboarding
       allow create: if isSignedIn();
       
-      // Allow read/update only for verified members
+      // Strict partitioning via isMember
       allow get: if isMember(tenantId);
       allow update: if isMember(tenantId) && hasRole('owner');
 
@@ -66,7 +66,7 @@ service cloud.firestore {
       }
     }
 
-    // Explicitly allow global broadcasts for all logged-in users
+    // Global broadcasts available to all authenticated users.
     match /platform_broadcasts/{broadcastId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if hasRole('super_admin');
