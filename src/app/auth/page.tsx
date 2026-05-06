@@ -302,9 +302,8 @@ export default function AuthPage() {
                     {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (authMode === "login" ? "ENTER STORE" : (authMode === "register_owner" ? "INITIALIZE MARKET" : "JOIN STATION"))}
                   </Button>
                 </form>
-              </Tabs>
-            </>
-          )}
+              </>
+            )}
         </div>
         
         <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">

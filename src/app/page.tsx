@@ -34,6 +34,10 @@ function DashboardContent({ user, profile, tenant, stableNow }: { user: any, pro
   const db = useFirestore()
   const router = useRouter()
 
+  /**
+   * QUERY KILL SWITCH
+   * Only returns the query object if the security context is perfectly reconciled.
+   */
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !user || !tenant?.id || !profile?.tenantId) return null;
     if (tenant.id !== profile.tenantId) return null;
@@ -172,6 +176,7 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
+  // Guard: Wait for the provider to finish loading entirely
   useEffect(() => {
     if (mounted && !isUserLoading && !user) {
       router.push("/auth")
@@ -182,6 +187,10 @@ export default function DashboardPage() {
     return <SyncingTerminal />
   }
 
+  /**
+   * IDENTITY RECOVERY HANDSHAKE
+   * Handles "homeless" accounts where the store document was deleted/decommissioned.
+   */
   if (user && profile?.tenantId && !tenant) {
     const isOwner = profile.role === 'owner'
     return (
@@ -222,6 +231,7 @@ export default function DashboardPage() {
     )
   }
 
+  // Kill Switch: If security context is missing, do NOT render dashboard content containing queries
   if (userError || !user || !profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">

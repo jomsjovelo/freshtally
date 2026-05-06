@@ -38,6 +38,10 @@ export interface UserHookResult {
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
+/**
+ * ATOMIC IDENTITY HANDSHAKE PROVIDER
+ * Ensures User -> Profile -> Tenant documents are fully resolved before allowing queries.
+ */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
   firebaseApp,
@@ -67,6 +71,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
+      // Start atomic handshake
       setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
 
       const profileRef = doc(firestore, "userProfiles", user.uid);
@@ -76,7 +81,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             user,
             profile: null,
             tenant: null,
-            isUserLoading: false,
+            isUserLoading: false, // End loading even if profile missing (for setup flow)
             userError: null
           });
           return;
@@ -95,6 +100,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
+            // Handle cases where tenant document is missing/deleted
             setAuthState({
               user,
               profile: profileData,

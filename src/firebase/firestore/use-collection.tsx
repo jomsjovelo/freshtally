@@ -29,6 +29,10 @@ export interface InternalQuery extends Query<DocumentData> {
   }
 }
 
+/**
+ * SAFE COLLECTION HOOK
+ * Implements an explicit early exit to prevent unauthorized background fetch attempts.
+ */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
 ): UseCollectionResult<T> {
@@ -40,6 +44,7 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // KILL SWITCH: Exit immediately if query context is unstable
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
@@ -68,6 +73,7 @@ export function useCollection<T = any>(
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
         } catch (e) {
+          // Path resolution failed
         }
 
         const contextualError = new FirestorePermissionError({
