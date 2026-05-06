@@ -101,7 +101,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Handle cases where tenant document is missing/deleted
+            // Handle cases where tenant document is missing/deleted or permissions restricted
             setAuthState({
               user,
               profile: profileData,
