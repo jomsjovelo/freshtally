@@ -67,6 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      // 1. Handle Unauthenticated State
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -79,6 +80,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
+      // 2. Handle Authenticated State (Atomic Fetch)
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
