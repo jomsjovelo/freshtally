@@ -130,6 +130,7 @@ export default function AuthPage() {
     }
   }
 
+  // A "Zombie" is an authenticated user whose store node has been deleted or moved.
   const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (

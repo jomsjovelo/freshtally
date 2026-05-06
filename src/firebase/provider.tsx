@@ -38,6 +38,11 @@ export interface UserHookResult {
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
+/**
+ * ATOMIC IDENTITY HANDSHAKE
+ * Ensures User -> Profile -> Tenant resolution is handled as a single unit.
+ * Prevents race conditions where queries fire before roles are confirmed.
+ */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
   firebaseApp,
@@ -56,6 +61,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     if (!auth || !firestore) return;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // 1. Exit early if no user session
       if (!user) {
         setAuthState({
           user: null,
@@ -67,11 +73,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
-      setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
+      // Start loading phase for profile/tenant
+      setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
 
+      // 2. Fetch User Profile
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
+          // Case: Auth exists but no profile yet (onboarding needed)
           setAuthState({
             user,
             profile: null,
@@ -84,6 +93,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         const profileData = { ...profileSnap.data(), id: profileSnap.id };
         
+        // 3. Fetch Tenant if profile links to one
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
@@ -95,6 +105,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
+            // Handle tenant fetch failure (e.g. deleted or permissions)
             setAuthState({
               user,
               profile: profileData,
@@ -105,6 +116,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           });
           return () => unsubscribeTenant();
         } else {
+          // Profile exists but no tenantId associated
           setAuthState({
             user,
             profile: profileData,

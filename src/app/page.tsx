@@ -37,6 +37,7 @@ function DashboardContent({ user, profile, tenant, stableNow }: { user: any, pro
   /**
    * QUERY KILL SWITCH
    * Strictly blocks queries if the User-Profile-Tenant context is mismatched or incomplete.
+   * This prevents unauthorized fetch attempts that trigger Security Rules errors.
    */
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !user || !tenant?.id || !profile?.tenantId) return null;
@@ -189,6 +190,7 @@ export default function DashboardPage() {
   /**
    * IDENTITY RECOVERY HANDSHAKE
    * Detects "homeless" accounts where the tenant document has been deleted.
+   * Prevents standard queries from firing and offers a path to restart.
    */
   if (user && profile?.tenantId && !tenant) {
     const isOwner = profile.role === 'owner'
