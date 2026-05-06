@@ -101,6 +101,7 @@ export default function ExpensesPage() {
                   className="h-16 rounded-2xl bg-gray-100 border-none font-bold text-lg"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  autoComplete="off"
                 />
               </div>
               
@@ -115,6 +116,7 @@ export default function ExpensesPage() {
                   className="h-16 rounded-2xl bg-gray-100 border-none font-black text-2xl text-primary"
                   value={formData.amount}
                   onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  autoComplete="off"
                 />
               </div>
 
@@ -127,12 +129,12 @@ export default function ExpensesPage() {
                   value={formData.category}
                   onChange={(e) => setFormData({...formData, category: e.target.value})}
                 >
-                  <option>Utilities</option>
-                  <option>Inventory</option>
-                  <option>Rent</option>
-                  <option>Marketing</option>
-                  <option>Software</option>
-                  <option>Miscellaneous</option>
+                  <option value="Utilities">Utilities</option>
+                  <option value="Inventory">Inventory</option>
+                  <option value="Rent">Rent</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Software">Software</option>
+                  <option value="Miscellaneous">Miscellaneous</option>
                 </select>
               </div>
 
@@ -165,6 +167,7 @@ export default function ExpensesPage() {
             className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            autoComplete="off"
           />
         </div>
       </div>

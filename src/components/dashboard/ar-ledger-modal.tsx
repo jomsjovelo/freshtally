@@ -216,12 +216,12 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="settlement-date" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Collection Date</label>
+                  <label htmlFor="settlement-date-button" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Collection Date</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        id="settlement-date"
-                        name="settlement-date"
+                        id="settlement-date-button"
+                        name="settlement-date-button"
                         variant={"outline"}
                         className={cn(
                           "w-full h-16 justify-start text-left font-black rounded-[24px] bg-gray-50 border-none shadow-inner px-6",

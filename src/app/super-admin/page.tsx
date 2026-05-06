@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -177,6 +176,7 @@ export default function SuperAdminPage() {
               className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
             />
           </div>
 
@@ -307,6 +307,7 @@ export default function SuperAdminPage() {
                   className="h-14 rounded-xl bg-gray-50 border-none font-bold"
                   value={broadcastTitle}
                   onChange={(e) => setBroadcastTitle(e.target.value)}
+                  autoComplete="off"
                 />
               </div>
 
@@ -319,6 +320,7 @@ export default function SuperAdminPage() {
                   className="rounded-2xl bg-gray-50 border-none font-bold min-h-[120px]"
                   value={broadcastMessage}
                   onChange={(e) => setBroadcastMessage(e.target.value)}
+                  autoComplete="off"
                 />
               </div>
 
