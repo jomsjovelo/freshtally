@@ -2,12 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.0.5 - Forced Sync
+    // Version: 1.0.6 - Defensive Synchronization
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive check: only verify tenant if the userProfile document exists
+    // Defensive check: only verify tenant if the userProfile document exists and matches
     function isMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
@@ -57,6 +57,11 @@ service cloud.firestore {
       match /b2bClients/{clientId} {
         allow get, list: if isMember(tenantId);
         allow create, update, delete: if isMember(tenantId) && hasRole('owner');
+      }
+      
+      match /reconciliations/{recId} {
+        allow list, get: if isMember(tenantId);
+        allow create: if isMember(tenantId);
       }
     }
 
