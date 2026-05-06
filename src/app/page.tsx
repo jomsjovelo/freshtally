@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const transactionsQuery = useMemoFirebase(() => {
     // Only initiate queries when Auth, Profile, and Tenant are fully consistent and verified
     if (!mounted || isUserLoading || !db || !user || !profile?.tenantId || !tenant?.id) return null
+    // Ensure the tenant identity in the UI state matches the profile strictly before requesting data
     if (profile.tenantId !== tenant.id || profile.id !== user.uid) return null
     
     return query(
@@ -90,14 +91,14 @@ export default function DashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">Terminal Offline</h2>
           <p className="text-muted-foreground text-sm font-medium px-4">
-            Your business node could not be verified. Initialize your terminal or contact support.
+            Your business node could not be verified. Enter your Terminal ID or re-initialize.
           </p>
         </div>
         <Button 
           className="w-full h-16 rounded-[24px] font-black uppercase shadow-xl" 
           onClick={() => router.push('/auth')}
         >
-          ENTER TERMINAL
+          CONNECT TERMINAL
         </Button>
       </div>
     )

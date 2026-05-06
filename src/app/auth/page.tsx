@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound, CheckCircle2 } from "lucide-react"
+import { ShieldCheck, Loader2, AlertCircle, Store, KeyRound, CheckCircle2, Hash } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser } from "@/firebase"
@@ -46,7 +46,7 @@ export default function AuthPage() {
     const normalizedEmail = email.trim().toLowerCase()
     
     // Validation for registration/recovery
-    if (authMode !== "login" || (!currentUser && authMode !== "login")) {
+    if (authMode !== "login") {
       if (password !== confirmPassword) {
         setError("Passwords do not match. Please verify your entries.")
         return
@@ -60,14 +60,11 @@ export default function AuthPage() {
     setLoading(true)
     try {
       if (authMode === "login") {
+        // Standard login - Profile sync in Provider will handle the rest
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
       } else {
-        let user = currentUser;
-        if (!user) {
-          const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
-          user = res.user;
-        }
-
+        const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+        const user = res.user
         const batch = writeBatch(db)
         const profileRef = doc(db, "users", user.uid)
 
@@ -88,23 +85,23 @@ export default function AuthPage() {
 
           batch.set(profileRef, {
             id: user.uid,
-            email: user.email || normalizedEmail,
+            email: normalizedEmail,
             role: "owner",
             tenantId: tenantId,
             displayName: ownerName,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
-          }, { merge: true })
+          })
         } else {
           batch.set(profileRef, {
             id: user.uid,
-            email: user.email || normalizedEmail,
+            email: normalizedEmail,
             role: "staff",
             tenantId: tenantIdInput,
             displayName: ownerName || "Shop Staff",
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
-          }, { merge: true })
+          })
         }
 
         await batch.commit()
@@ -121,7 +118,7 @@ export default function AuthPage() {
 
   const getButtonText = () => {
     if (loading) return null
-    if (isZombie) return "SYNCHRONIZE TERMINAL"
+    if (isZombie) return "RE-SYNC TERMINAL"
     if (authMode === "login") return "ENTER TERMINAL"
     if (authMode === "register_owner") return "INITIALIZE MARKET"
     return "JOIN STATION"
@@ -139,7 +136,7 @@ export default function AuthPage() {
             {isZombie ? "Terminal Recovery" : (authMode === "login" ? "Terminal Access" : "Market Entry")}
           </h1>
           <p className="text-[10px] font-bold text-white/70 mt-2 uppercase tracking-[0.2em] relative z-10">
-            {isZombie ? "Re-syncing your business node" : "FreshTally Cloud Ledger"}
+            {isZombie ? "Re-syncing business node" : "FreshTally Cloud Ledger"}
           </p>
         </div>
 
@@ -155,107 +152,102 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs value={isZombie ? "register_owner" : authMode} onValueChange={(v: any) => {
+          <Tabs value={authMode} onValueChange={(v: any) => {
             setAuthMode(v as any);
             setError(null);
           }} className="w-full">
-            {!isZombie && (
-              <TabsList className="grid grid-cols-3 h-12 bg-gray-50 border border-gray-100 rounded-2xl p-1 mb-6">
-                <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">LOGIN</TabsTrigger>
-                <TabsTrigger value="register_owner" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">OWNER</TabsTrigger>
-                <TabsTrigger value="join_staff" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">STAFF</TabsTrigger>
-              </TabsList>
-            )}
+            <TabsList className="grid grid-cols-3 h-12 bg-gray-50 border border-gray-100 rounded-2xl p-1 mb-6">
+              <TabsTrigger value="login" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">LOGIN</TabsTrigger>
+              <TabsTrigger value="register_owner" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">OWNER</TabsTrigger>
+              <TabsTrigger value="join_staff" className="rounded-xl text-[9px] font-black uppercase tracking-wider data-[state=active]:shadow-sm">STAFF</TabsTrigger>
+            </TabsList>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {(authMode !== "login" || isZombie) && (
-                <div className="space-y-4">
-                  {(authMode === "join_staff" && !isZombie) && (
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Terminal ID</Label>
-                      <Input 
-                        placeholder="5-DIGIT CODE" 
-                        maxLength={5}
-                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                        value={tenantIdInput}
-                        onChange={(e) => setTenantIdInput(e.target.value)}
-                        required
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+              {(authMode === "login" || authMode === "join_staff") && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Terminal ID</Label>
+                  <div className="relative">
                     <Input 
-                      placeholder="e.g. Juan Dela Cruz" 
-                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                      value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value)}
+                      placeholder="5-DIGIT CODE" 
+                      maxLength={5}
+                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-black px-5 pr-12 text-center tracking-[0.3em]"
+                      value={tenantIdInput}
+                      onChange={(e) => setTenantIdInput(e.target.value)}
                       required
                     />
+                    <Hash className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                   </div>
-
-                  {(authMode === "register_owner" || isZombie) && (
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
-                      <Input 
-                        placeholder="e.g. Metro Roast" 
-                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  )}
                 </div>
               )}
 
-              {!currentUser && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
+              {authMode !== "login" && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+                  <Input 
+                    placeholder="e.g. Juan Dela Cruz" 
+                    className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              {authMode === "register_owner" && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Market Name</Label>
+                  <Input 
+                    placeholder="e.g. Metro Roast" 
+                    className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cloud ID (Email)</Label>
+                <Input 
+                  type="email" 
+                  placeholder="name@business.com" 
+                  className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
+                <div className="relative">
+                  <Input 
+                    type="password" 
+                    placeholder="Min. 6 characters" 
+                    className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
+                </div>
+              </div>
+
+              {authMode !== "login" && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
+                  <div className="relative">
                     <Input 
-                      type="email" 
-                      placeholder="name@business.com" 
-                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      type="password" 
+                      placeholder="Repeat password" 
+                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                     />
+                    <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</Label>
-                    <div className="relative">
-                      <Input 
-                        type="password" 
-                        placeholder="Min. 6 characters" 
-                        className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                      <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
-                    </div>
-                  </div>
-
-                  {authMode !== "login" && (
-                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Verify Password</Label>
-                      <div className="relative">
-                        <Input 
-                          type="password" 
-                          placeholder="Repeat password" 
-                          className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5 pr-12"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                        />
-                        <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
 
               <Button 
@@ -271,7 +263,7 @@ export default function AuthPage() {
         
         <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
           <p className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-[0.2em]">
-            Authorized Access Only • Cloud Terminal V1.2
+            Authorized Access Only • Cloud Terminal V1.4
           </p>
         </div>
       </div>

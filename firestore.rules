@@ -3,32 +3,33 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ARCHITECTURAL STABILITY V11
-     * Resilient multi-tenant isolation with atomic verification.
+     * FRESH TALLY ARCHITECTURAL STABILITY V12
+     * Hardened isolation with atomic verification and defensive existence checks.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Atomic helper to get user data directly from the source of truth
+    // Defensive helper to check user role/tenant
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
 
     function isTenantMember(tenantId) {
       let data = getUserData();
-      return isSignedIn() && data.tenantId == tenantId;
+      return isSignedIn() && data != null && data.tenantId == tenantId;
     }
 
     function isTenantOwner(tenantId) {
       let data = getUserData();
-      return isSignedIn() && data.tenantId == tenantId && data.role == 'owner';
+      return isSignedIn() && data != null && data.tenantId == tenantId && data.role == 'owner';
     }
 
     function isSuperAdmin() {
       let data = getUserData();
-      return isSignedIn() && data.role == 'super_admin';
+      return isSignedIn() && data != null && data.role == 'super_admin';
     }
 
     // --- Collection Rules ---

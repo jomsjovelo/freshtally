@@ -7,7 +7,7 @@ import { Store, Loader2, ShieldCheck } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 export function TopBar() {
-  const { tenant, isUserLoading, profile } = useUser()
+  const { tenant, isUserLoading, profile, user } = useUser()
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
@@ -20,7 +20,7 @@ export function TopBar() {
   // HYDRATION GUARD: Always render structural header shell to prevent Next.js mismatches
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
-      {mounted && pathname !== '/auth' && (
+      {mounted && pathname !== '/auth' && user && (
         <>
           <div className="flex items-center gap-3 overflow-hidden">
             {isUserLoading ? (
