@@ -2,16 +2,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.0.7 - Robust Membership Checks
+    // Version: 1.0.8 - Robust Defensive Membership Checks
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive check: only verify tenant if the userProfile document exists and matches
+    // Defensive check: only verify tenant if the userProfile document exists AND the tenant document exists
     function isMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tenantId == tenantId;
+             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tenantId == tenantId &&
+             exists(/databases/$(database)/documents/tenants/$(tenantId));
     }
 
     function hasRole(role) {
@@ -28,7 +29,7 @@ service cloud.firestore {
       // Allow creation during onboarding if signed in
       allow create: if isSignedIn();
       
-      // Allow read/update only for members
+      // Allow read/update only for verified members
       allow get: if isMember(tenantId);
       allow update: if isMember(tenantId) && hasRole('owner');
 
@@ -65,7 +66,7 @@ service cloud.firestore {
       }
     }
 
-    // Explicitly allow global broadcasts for all logged-in users regardless of tenant
+    // Explicitly allow global broadcasts for all logged-in users regardless of tenant status
     match /platform_broadcasts/{broadcastId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if hasRole('super_admin');

@@ -41,7 +41,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
  * Resolves Auth -> Profile -> Tenant documents as a single atomic sequence.
- * Ensures the app stays in a loading state until the full identity is resolved or proven missing.
+ * Ensures the app handles "homeless" accounts (deleted tenants) without hanging.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -72,7 +72,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         return;
       }
 
-      // Initial state update when user is detected
       setAuthState(prev => ({ ...prev, user, isUserLoading: true, userError: null }));
 
       // 1. Resolve Profile
@@ -103,7 +102,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Handle missing/restricted tenant document
+            // Handle restricted or missing tenant document gracefully
             setAuthState({
               user,
               profile: profileData,
