@@ -41,7 +41,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 /**
  * ATOMIC IDENTITY HANDSHAKE PROVIDER
  * Resolves User -> Profile -> Tenant as a single unit of work.
- * Handles missing tenant documents (decommissioned stores) gracefully.
+ * Fixed: Modular effects to ensure proper unsubscription of nested listeners.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -49,92 +49,75 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firestore,
   auth,
 }) => {
-  const [authState, setAuthState] = useState<UserAuthState>({
-    user: null,
-    profile: null,
-    tenant: null,
-    isUserLoading: true,
-    userError: null,
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
+  const [tenant, setTenant] = useState<any | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
+  const [userError, setUserError] = useState<Error | null>(null);
 
+  // 1. Auth Listener
   useEffect(() => {
-    if (!auth || !firestore) {
-      if (typeof window !== 'undefined') {
-        setAuthState(prev => ({ ...prev, isUserLoading: false }));
-      }
+    if (!auth) {
+      setIsUserLoading(false);
       return;
     }
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        setAuthState({
-          user: null,
-          profile: null,
-          tenant: null,
-          isUserLoading: false,
-          userError: null
-        });
-        return;
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      setUser(authUser);
+      if (!authUser) {
+        setProfile(null);
+        setTenant(null);
+        setIsUserLoading(false);
       }
-
-      setAuthState(prev => ({ ...prev, user, isUserLoading: true }));
-
-      // Resolve Profile
-      const profileRef = doc(firestore, "userProfiles", user.uid);
-      const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
-        if (!profileSnap.exists()) {
-          setAuthState({
-            user,
-            profile: null,
-            tenant: null,
-            isUserLoading: false, 
-            userError: null
-          });
-          return;
-        }
-
-        const profileData = { ...profileSnap.data(), id: profileSnap.id };
-        
-        // Resolve Tenant if it exists in profile
-        if (profileData.tenantId) {
-          const tenantRef = doc(firestore, "tenants", profileData.tenantId);
-          const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            setAuthState({
-              user,
-              profile: profileData,
-              tenant: tenantSnap.exists() ? { ...tenantSnap.data(), id: tenantSnap.id } : null,
-              isUserLoading: false,
-              userError: null
-            });
-          }, (err) => {
-            // Permission error or missing tenant handled as null
-            setAuthState({
-              user,
-              profile: profileData,
-              tenant: null,
-              isUserLoading: false,
-              userError: null
-            });
-          });
-          return () => unsubscribeTenant();
-        } else {
-          setAuthState({
-            user,
-            profile: profileData,
-            tenant: null,
-            isUserLoading: false,
-            userError: null
-          });
-        }
-      }, (err) => {
-        setAuthState(prev => ({ ...prev, isUserLoading: false, userError: err }));
-      });
-
-      return () => unsubscribeProfile();
+    }, (err) => {
+      setUserError(err);
+      setIsUserLoading(false);
     });
 
-    return () => unsubscribeAuth();
-  }, [auth, firestore]);
+    return () => unsubscribe();
+  }, [auth]);
+
+  // 2. Profile Listener
+  useEffect(() => {
+    if (!user || !firestore) return;
+
+    setIsUserLoading(true);
+    const profileRef = doc(firestore, "userProfiles", user.uid);
+    const unsubscribe = onSnapshot(profileRef, (snap) => {
+      if (snap.exists()) {
+        setProfile({ ...snap.data(), id: snap.id });
+      } else {
+        setProfile(null);
+        setTenant(null);
+        setIsUserLoading(false);
+      }
+    }, (err) => {
+      setUserError(err);
+      setIsUserLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, firestore]);
+
+  // 3. Tenant Listener
+  useEffect(() => {
+    if (!profile?.tenantId || !firestore) {
+      if (profile && !profile.tenantId) setIsUserLoading(false);
+      return;
+    }
+
+    const tenantRef = doc(firestore, "tenants", profile.tenantId);
+    const unsubscribe = onSnapshot(tenantRef, (snap) => {
+      setTenant(snap.exists() ? { ...snap.data(), id: snap.id } : null);
+      setIsUserLoading(false);
+    }, (err) => {
+      // Handle decommissioned or missing tenants as null rather than hard error
+      setTenant(null);
+      setIsUserLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [profile?.tenantId, firestore]);
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
@@ -143,9 +126,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       firebaseApp,
       firestore,
       auth,
-      ...authState,
+      user,
+      profile,
+      tenant,
+      isUserLoading,
+      userError,
     };
-  }, [firebaseApp, firestore, auth, authState]);
+  }, [firebaseApp, firestore, auth, user, profile, tenant, isUserLoading, userError]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>

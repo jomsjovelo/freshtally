@@ -19,7 +19,7 @@ import { useUser, useAuth, useFirestore } from "@/firebase"
 
 /**
  * IDENTITY REGISTRY PORTAL
- * Handles user authentication with professional accessibility and browser compatibility.
+ * Refined with professional accessibility and standardized form identifiers.
  */
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
@@ -35,7 +35,6 @@ export default function AuthPage() {
   const router = useRouter()
   const { toast } = useToast()
   
-  // SAFE SDK ACCESS via hooks
   const auth = useAuth()
   const db = useFirestore()
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
@@ -175,10 +174,12 @@ export default function AuthPage() {
               <div className="space-y-2">
                 <p className="font-black text-sm uppercase tracking-tight">Identity Mismatch</p>
                 <p className="text-[10px] font-medium text-muted-foreground uppercase leading-relaxed tracking-wider">
-                  Store node identity could not be verified. This happens if the store was decommissioned or moved.
+                  Store node identity could not be verified.
                 </p>
               </div>
               <Button 
+                id="terminate-session-btn"
+                name="terminate-session-btn"
                 onClick={handleSignOut}
                 className="w-full h-16 rounded-[24px] bg-destructive text-white font-black text-xs tracking-[0.2em] shadow-lg shadow-destructive/20 active:scale-[0.97] transition-all"
                 disabled={loading}
@@ -225,7 +226,7 @@ export default function AuthPage() {
                       <Input 
                         id="ownerName"
                         name="ownerName"
-                        placeholder="e.g. Juan Dela Cruz" 
+                        placeholder="Juan Dela Cruz" 
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5 pr-12"
                         value={ownerName}
                         onChange={(e) => setOwnerName(e.target.value)}
@@ -243,7 +244,7 @@ export default function AuthPage() {
                     <Input 
                       id="businessName"
                       name="businessName"
-                      placeholder="e.g. Metro Roast" 
+                      placeholder="Metro Roast" 
                       className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
@@ -310,6 +311,8 @@ export default function AuthPage() {
                 )}
 
                 <Button 
+                  id="auth-submit-btn"
+                  name="auth-submit-btn"
                   type="submit"
                   className="w-full h-18 rounded-[24px] bg-primary text-white font-black text-xs tracking-[0.2em] shadow-xl shadow-primary/20 mt-8 active:scale-[0.98] transition-all hover:shadow-primary/30" 
                   disabled={loading}
