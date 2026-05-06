@@ -40,8 +40,6 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // KILL SWITCH: If reference is null or not memoized, stop immediately.
-    // This prevents queries from firing before the security context is stable.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
@@ -64,14 +62,12 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // Defensive path resolution for error reporting
         let path = "unknown";
         try {
           path = memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
         } catch (e) {
-          // Path resolution failed
         }
 
         const contextualError = new FirestorePermissionError({

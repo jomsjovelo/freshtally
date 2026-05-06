@@ -31,7 +31,6 @@ export function TopBar() {
     if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null;
     if (tenant.id !== profile.tenantId) return null;
 
-    // SECURITY: Strictly gate B2B queries to owners/managers/admins
     const canSeeAr = profile.role === 'owner' || profile.role === 'manager' || profile.role === 'super_admin';
     if (!canSeeAr) return null;
     
@@ -58,7 +57,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
       {!mounted ? (
-        <div className="h-10 w-full animate-pulse bg-gray-100 rounded-xl" />
+        <div className="h-10 w-full bg-gray-100 rounded-xl" />
       ) : (
         user && pathname !== '/auth' && (
           <>

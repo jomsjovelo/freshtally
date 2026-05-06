@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -92,6 +91,7 @@ export default function AuthPage() {
             id: tenantId,
             name: businessName,
             ownerUid: user.uid,
+            ownerEmail: normalizedEmail,
             status: "active",
             subscriptionPlan: "basic",
             currency: "PHP",
@@ -193,11 +193,11 @@ export default function AuthPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {(authMode === "login" || authMode === "join_staff") && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label htmlFor="tenantId" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
+                      <Label htmlFor="tenantIdInput" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Store Code</Label>
                       <div className="relative">
                         <Input 
-                          id="tenantId"
-                          name="tenantId"
+                          id="tenantIdInput"
+                          name="tenantIdInput"
                           placeholder="STORE CODE" 
                           maxLength={5}
                           className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-black px-5 pr-12 text-center tracking-[0.3em]"
@@ -212,10 +212,10 @@ export default function AuthPage() {
 
                   {authMode !== "login" && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                      <Label htmlFor="fullName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+                      <Label htmlFor="ownerName" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
                       <Input 
-                        id="fullName"
-                        name="fullName"
+                        id="ownerName"
+                        name="ownerName"
                         placeholder="e.g. Juan Dela Cruz" 
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 transition-all font-bold px-5"
                         value={ownerName}

@@ -34,7 +34,6 @@ function DashboardContent({ user, profile, tenant, stableNow }: { user: any, pro
   const db = useFirestore()
   const router = useRouter()
 
-  // STRICT KILL SWITCH: Only initiate queries if identity is perfectly synchronized
   const transactionsQuery = useMemoFirebase(() => {
     if (!db || !user || !tenant?.id || !profile?.tenantId) return null;
     if (tenant.id !== profile.tenantId) return null;
@@ -183,7 +182,6 @@ export default function DashboardPage() {
     return <SyncingTerminal />
   }
 
-  // Handle case where store was deleted but user is still logged in
   if (user && profile?.tenantId && !tenant) {
     const isOwner = profile.role === 'owner'
     return (

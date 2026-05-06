@@ -56,7 +56,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     if (!auth || !firestore) return;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // RESET: Clear state immediately on auth change to prevent queries from firing with wrong context
       if (!user) {
         setAuthState({
           user: null,
@@ -88,7 +87,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            // ATOMIC SYNC: Only release isUserLoading when profile AND tenant documents are fully reconciled (or confirmed missing)
             setAuthState({
               user,
               profile: profileData,
@@ -97,7 +95,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            // Handle permission/fetch error for tenant (e.g. if it doesn't exist)
             setAuthState({
               user,
               profile: profileData,
