@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V20
+     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V22
      * Forensic Hardening: Role-Based Sub-collection Shielding
      */
 
