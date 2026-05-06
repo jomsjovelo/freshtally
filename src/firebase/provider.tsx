@@ -80,7 +80,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Keep isUserLoading: true while we fetch profile and tenant
+      // Maintain loading state while fetching dependencies
       setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
       try {
@@ -88,7 +88,7 @@ export const FirebaseProvider: React.FC<{
         const profileSnap = await getDoc(userRef);
 
         if (!profileSnap.exists()) {
-          // Onboarding state: Profile doesn't exist yet
+          // Onboarding state
           setState({ 
             user: firebaseUser, 
             profile: null, 
@@ -116,18 +116,18 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
-            // Tenant doc missing: Zombie session or store deleted
+            // STORE_NOT_FOUND state: Profile exists but tenant document is missing
             setState({
               user: firebaseUser,
               profile: profileData,
               tenant: null,
-              isUserLoading: false,
-              userError: null,
-              storeNotFound: true
+              isUserLoading: false, 
+              userError: null, 
+              storeNotFound: true 
             });
           }
         } else {
-          // Profile exists but no tenantId
+          // Profile exists but no tenantId assigned
           setState({ 
             user: firebaseUser, 
             profile: profileData, 
