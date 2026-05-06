@@ -81,7 +81,7 @@ export const FirebaseProvider: React.FC<{
       }
 
       // Maintain loading state while fetching dependencies
-      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
+      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true, storeNotFound: false }));
 
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
