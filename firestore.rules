@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.8.3 - Atomic Identity Handshake Hardening
+    // Version: 1.8.4 - Export Stability & Identity Hardening
     // Defensive exists() guards for all member-based access.
     // Explicit list operation scoping for multi-tenancy.
     
