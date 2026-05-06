@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getAuth, onAuthStateChanged } from "firebase/auth"
-import { doc, setDoc, getFirestore, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,38 +13,36 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { useUser, useFirestore } from "@/firebase"
 
 export default function OnboardingPage() {
   const [storeName, setStoreName] = useState("")
   const [storeAddress, setStoreAddress] = useState("")
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [loading, setLoading] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const { user, isUserLoading } = useUser()
   const router = useRouter()
   const { toast } = useToast()
-  const db = getFirestore()
-  const auth = getAuth()
+  const db = useFirestore()
 
   useEffect(() => {
     setStartDate(new Date())
   }, [])
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) router.push("/auth")
-      else setUser(u)
-    })
-    return () => unsub()
-  }, [auth, router])
+    if (!isUserLoading && !user) {
+      router.push("/auth")
+    }
+  }, [user, isUserLoading, router])
 
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !storeName.trim() || !storeAddress.trim()) return
+    if (!user || !db || !storeName.trim() || !storeAddress.trim()) return
 
     setLoading(true)
     try {
       const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
-      const normalizedEmail = user.email.toLowerCase()
+      const normalizedEmail = user.email?.toLowerCase() || ""
       
       await setDoc(doc(db, "tenants", tenantId), {
         id: tenantId,
@@ -87,7 +84,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (!user || !startDate) return null
+  if (isUserLoading || !user || !startDate) return null
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
@@ -136,6 +133,7 @@ export default function OnboardingPage() {
                 <PopoverTrigger asChild>
                   <Button
                     id="startDate"
+                    name="startDate"
                     variant={"outline"}
                     className={cn(
                       "w-full h-16 justify-start text-left font-bold rounded-2xl bg-gray-100 border-none",

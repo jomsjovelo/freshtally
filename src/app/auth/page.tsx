@@ -3,12 +3,11 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { 
-  getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut
 } from "firebase/auth"
-import { doc, getFirestore, serverTimestamp, writeBatch } from "firebase/firestore"
+import { doc, serverTimestamp, writeBatch } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,7 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ShieldCheck, Loader2, AlertCircle, RefreshCw, LogOut, KeyRound, CheckCircle2, Hash } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useUser } from "@/firebase"
+import { useUser, useAuth, useFirestore } from "@/firebase"
 
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register_owner" | "join_staff">("login")
@@ -31,8 +30,8 @@ export default function AuthPage() {
   
   const router = useRouter()
   const { toast } = useToast()
-  const auth = getAuth()
-  const db = getFirestore()
+  const auth = useAuth()
+  const db = useFirestore()
   const { user: currentUser, profile, tenant, isUserLoading } = useUser()
 
   useEffect(() => {
@@ -42,6 +41,7 @@ export default function AuthPage() {
   }, [currentUser, profile, tenant, isUserLoading, router])
 
   const handleSignOut = async () => {
+    if (!auth) return
     setLoading(true)
     try {
       await signOut(auth)
@@ -59,6 +59,7 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!auth || !db) return
     setError(null)
     const normalizedEmail = email.trim().toLowerCase()
     
@@ -130,7 +131,6 @@ export default function AuthPage() {
     }
   }
 
-  // A "Zombie" is an authenticated user whose store node has been deleted or moved.
   const isZombie = !!currentUser && (!profile?.tenantId || !tenant) && !isUserLoading
 
   return (
