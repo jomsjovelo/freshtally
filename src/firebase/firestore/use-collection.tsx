@@ -30,8 +30,9 @@ export interface InternalQuery extends Query<DocumentData> {
 }
 
 /**
- * SAFE COLLECTION HOOK
+ * SAFE COLLECTION HOOK (v2.0)
  * Implements an explicit early exit (Kill Switch) to prevent unauthorized fetches during session transitions.
+ * Hardened to immediately clear stale data if the query target becomes invalid.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,

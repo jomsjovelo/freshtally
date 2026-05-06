@@ -2,8 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Version: 1.8.2 - Atomic Identity Hardening
-    // Added defensive exists() guards for all member-based access.
+    // Version: 1.8.3 - Atomic Identity Handshake Hardening
+    // Defensive exists() guards for all member-based access.
+    // Explicit list operation scoping for multi-tenancy.
     
     function isSignedIn() {
       return request.auth != null;

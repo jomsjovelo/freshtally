@@ -33,3 +33,6 @@ To move this project to GitHub or Antigravity, follow these steps:
 - **AI Expense Registry**: Automated categorization of business outflows.
 - **AR Ledger**: Dedicated management for B2B client debts and collections.
 - **Admin Registry**: Centralized node management for platform super-admins.
+
+## License
+MIT License - Copyright (c) 2024 FreshTally. See LICENSE for details.
