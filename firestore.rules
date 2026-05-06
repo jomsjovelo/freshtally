@@ -6,7 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper to get user profile data safely
     function getUserData() {
       let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
       return exists(path) ? get(path).data : null;
@@ -49,8 +48,8 @@ service cloud.firestore {
       }
 
       match /expenses/{expenseId} {
-        allow get, list: if isMember(tenantId);
-        allow create, update: if isMember(tenantId);
+        allow get, list: if isMember(tenantId) && hasRole('owner');
+        allow create, update: if isMember(tenantId) && hasRole('owner');
         allow delete: if isMember(tenantId) && hasRole('owner');
       }
 

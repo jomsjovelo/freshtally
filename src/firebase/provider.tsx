@@ -73,7 +73,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       const profileRef = doc(firestore, "userProfiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          // No profile found, user might need onboarding
           setAuthState({
             user,
             profile: null,
@@ -89,8 +88,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, "tenants", profileData.tenantId);
           const unsubscribeTenant = onSnapshot(tenantRef, (tenantSnap) => {
-            // ATOMIC SYNC: Only release isUserLoading when profile AND tenant are in state
-            // Even if tenant doesn't exist, we set it to null and stop loading
+            // ATOMIC SYNC: Only release isUserLoading when profile AND tenant are reconciled
             setAuthState({
               user,
               profile: profileData,
@@ -99,7 +97,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               userError: null
             });
           }, (err) => {
-            setAuthState(prev => ({ ...prev, isUserLoading: false, userError: err }));
+            // If tenant fetching fails (e.g. permission denied or missing)
+            setAuthState({
+              user,
+              profile: profileData,
+              tenant: null,
+              isUserLoading: false,
+              userError: null
+            });
           });
           return () => unsubscribeTenant();
         } else {
