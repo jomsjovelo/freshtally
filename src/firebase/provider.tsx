@@ -34,6 +34,7 @@ interface UserAuthState {
   tenant: Tenant | null;
   isUserLoading: boolean;
   userError: Error | null;
+  storeNotFound: boolean;
 }
 
 export interface FirebaseContextState extends UserAuthState {
@@ -47,10 +48,6 @@ export interface UserHookResult extends UserAuthState {}
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-/**
- * Atomic Identity Synchronization: Ensures zero 'zombie' session states.
- * The chain: Auth -> Profile -> Tenant must be consistent before loading ends.
- */
 export const FirebaseProvider: React.FC<{
   children: ReactNode;
   firebaseApp: FirebaseApp;
@@ -63,6 +60,7 @@ export const FirebaseProvider: React.FC<{
     tenant: null,
     isUserLoading: true,
     userError: null,
+    storeNotFound: false
   });
 
   useEffect(() => {
@@ -72,26 +70,26 @@ export const FirebaseProvider: React.FC<{
     let tenantUnsub: (() => void) | null = null;
 
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
-      // CLEAR ALL previous state and listeners instantly on Auth change
+      // SYNC RESET: Clear state instantly to prevent zombie flashes
       if (profileUnsub) { profileUnsub(); profileUnsub = null; }
       if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
 
       if (!firebaseUser) {
-        setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null });
+        setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null, storeNotFound: false });
         return;
       }
 
-      // Step 1: Sync User Profile
+      // Step 1: Initialize profile listener
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       profileUnsub = onSnapshot(userRef, (profileSnap) => {
         if (!profileSnap.exists()) {
-          setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: null });
+          setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, profile: null }));
           return;
         }
 
         const profileData = profileSnap.data() as UserProfile;
 
-        // Step 2: Sync Business Tenant Node
+        // Step 2: Initialize tenant listener if ID exists
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
           if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
@@ -102,20 +100,19 @@ export const FirebaseProvider: React.FC<{
               profile: profileData,
               tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
               isUserLoading: false,
-              userError: null
+              userError: null,
+              storeNotFound: !tenantSnap.exists()
             });
           }, (err) => {
-            setState({ user: firebaseUser, profile: profileData, tenant: null, isUserLoading: false, userError: err });
+            setState(prev => ({ ...prev, user: firebaseUser, profile: profileData, isUserLoading: false, userError: err }));
           });
         } else {
-          // Special case: Super Admin without a tenant node
-          setState({ user: firebaseUser, profile: profileData, tenant: null, isUserLoading: false, userError: null });
+          // Special Case: Super Admin or new user without tenant
+          setState({ user: firebaseUser, profile: profileData, tenant: null, isUserLoading: false, userError: null, storeNotFound: false });
         }
       }, (err) => {
-        setState({ user: firebaseUser, profile: null, tenant: null, isUserLoading: false, userError: err });
+        setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, userError: err }));
       });
-    }, (err) => {
-      setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: err });
     });
 
     return () => {

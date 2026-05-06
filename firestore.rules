@@ -2,90 +2,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V22
-     * Forensic Hardening: Role-Based Sub-collection Shielding
-     */
-
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUserData() {
+    function getRole() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
+      return exists(path) ? get(path).data.role : null;
     }
 
     function isTenantMember(tenantId) {
-      let data = getUserData();
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             data != null && 
-             'tenantId' in data && 
-             data.tenantId == tenantId;
+             exists(userPath) && 
+             get(userPath).data.tenantId == tenantId;
     }
 
-    function isTenantOwner(tenantId) {
-      let data = getUserData();
-      return isSignedIn() && 
-             data != null && 
-             'tenantId' in data && 
-             data.tenantId == tenantId && 
-             data.role == 'owner';
-    }
-
-    function isSuperAdmin() {
-      let data = getUserData();
-      return isSignedIn() && 
-             data != null && 
-             data.role == 'super_admin';
-    }
-
-    // --- Collection Rules ---
+    // --- Core Rules ---
 
     match /platform_broadcasts/{broadcastId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow write: if getRole() == 'super_admin';
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow list: if isSuperAdmin();
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow get, update: if isSignedIn() && (request.auth.uid == userId || getRole() == 'super_admin');
+      allow create: if isSignedIn();
+      allow list: if getRole() == 'super_admin';
     }
 
     match /tenants/{tenantId} {
-      allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
-      allow list: if isSuperAdmin();
-      allow create: if isSignedIn(); 
-      allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
-      allow delete: if isSuperAdmin();
+      // Basic access for members
+      allow get: if isSignedIn() && (isTenantMember(tenantId) || getRole() == 'super_admin');
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (getRole() == 'owner' || getRole() == 'super_admin');
+      allow list, delete: if getRole() == 'super_admin';
 
-      // --- Granular Role Isolation ---
-      
-      match /products/{productId} {
-        allow read: if isTenantMember(tenantId) || isSuperAdmin();
-        allow write: if isTenantOwner(tenantId) || isSuperAdmin();
-      }
+      // --- Sub-collection Isolation ---
 
       match /transactions/{txId} {
-        allow read: if isTenantMember(tenantId) || isSuperAdmin();
-        allow create: if isTenantMember(tenantId) || isSuperAdmin();
-        allow update, delete: if isSuperAdmin();
+        // Staff and Owners can read/create sales
+        allow read, create: if isTenantMember(tenantId) || getRole() == 'super_admin';
+        allow update, delete: if getRole() == 'super_admin';
       }
 
-      // Financial sub-collections strictly shielded from 'staff'
+      match /products/{productId} {
+        // Staff can read stock, but only Owner can update catalog
+        allow read: if isTenantMember(tenantId) || getRole() == 'super_admin';
+        allow write: if (isTenantMember(tenantId) && getRole() == 'owner') || getRole() == 'super_admin';
+      }
+
+      // Financial sub-collections: STRICTLY OWNER ONLY
       match /expenses/{expenseId} {
-        allow read, write: if isTenantOwner(tenantId) || isSuperAdmin();
+        allow read, write: if (isTenantMember(tenantId) && getRole() == 'owner') || getRole() == 'super_admin';
       }
 
       match /b2bClients/{clientId} {
-        allow read: if isTenantMember(tenantId) || isSuperAdmin();
-        allow write: if isTenantOwner(tenantId) || isSuperAdmin();
+        allow read: if isTenantMember(tenantId) || getRole() == 'super_admin';
+        allow write: if (isTenantMember(tenantId) && getRole() == 'owner') || getRole() == 'super_admin';
       }
 
       match /reconciliations/{recId} {
-        allow read, write: if isTenantOwner(tenantId) || isSuperAdmin();
+        allow read, write: if (isTenantMember(tenantId) && getRole() == 'owner') || getRole() == 'super_admin';
       }
     }
   }
