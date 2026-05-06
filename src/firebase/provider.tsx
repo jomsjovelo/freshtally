@@ -2,7 +2,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot } from 'firebase/firestore';
+import { Firestore, doc, getDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
@@ -66,60 +66,72 @@ export const FirebaseProvider: React.FC<{
   useEffect(() => {
     if (!auth || !firestore) return;
 
-    let profileUnsub: (() => void) | null = null;
-    let tenantUnsub: (() => void) | null = null;
-
-    const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
-      // SYNC RESET: Clear state instantly to prevent zombie flashes
-      if (profileUnsub) { profileUnsub(); profileUnsub = null; }
-      if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
-
+    const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
-        setState({ user: null, profile: null, tenant: null, isUserLoading: false, userError: null, storeNotFound: false });
+        setState({ 
+          user: null, 
+          profile: null, 
+          tenant: null, 
+          isUserLoading: false, 
+          userError: null, 
+          storeNotFound: false 
+        });
         return;
       }
 
-      // Step 1: Initialize profile listener
-      const userRef = doc(firestore, 'users', firebaseUser.uid);
-      profileUnsub = onSnapshot(userRef, (profileSnap) => {
+      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
+
+      try {
+        const userRef = doc(firestore, 'users', firebaseUser.uid);
+        const profileSnap = await getDoc(userRef);
+
         if (!profileSnap.exists()) {
-          setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, profile: null }));
+          setState({ 
+            user: firebaseUser, 
+            profile: null, 
+            tenant: null, 
+            isUserLoading: false, 
+            userError: null, 
+            storeNotFound: false 
+          });
           return;
         }
 
         const profileData = profileSnap.data() as UserProfile;
 
-        // Step 2: Initialize tenant listener if ID exists
         if (profileData.tenantId) {
           const tenantRef = doc(firestore, 'tenants', profileData.tenantId);
-          if (tenantUnsub) { tenantUnsub(); tenantUnsub = null; }
-          
-          tenantUnsub = onSnapshot(tenantRef, (tenantSnap) => {
-            setState({
-              user: firebaseUser,
-              profile: profileData,
-              tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
-              isUserLoading: false,
-              userError: null,
-              storeNotFound: !tenantSnap.exists()
-            });
-          }, (err) => {
-            setState(prev => ({ ...prev, user: firebaseUser, profile: profileData, isUserLoading: false, userError: err }));
+          const tenantSnap = await getDoc(tenantRef);
+
+          setState({
+            user: firebaseUser,
+            profile: profileData,
+            tenant: tenantSnap.exists() ? (tenantSnap.data() as Tenant) : null,
+            isUserLoading: false,
+            userError: null,
+            storeNotFound: !tenantSnap.exists()
           });
         } else {
-          // Special Case: Super Admin or new user without tenant
-          setState({ user: firebaseUser, profile: profileData, tenant: null, isUserLoading: false, userError: null, storeNotFound: false });
+          setState({ 
+            user: firebaseUser, 
+            profile: profileData, 
+            tenant: null, 
+            isUserLoading: false, 
+            userError: null, 
+            storeNotFound: false 
+          });
         }
-      }, (err) => {
-        setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, userError: err }));
-      });
+      } catch (err: any) {
+        setState(prev => ({ 
+          ...prev, 
+          user: firebaseUser, 
+          isUserLoading: false, 
+          userError: err 
+        }));
+      }
     });
 
-    return () => {
-      authUnsub();
-      if (profileUnsub) profileUnsub();
-      if (tenantUnsub) tenantUnsub();
-    };
+    return () => authUnsub();
   }, [auth, firestore]);
 
   const contextValue = useMemo((): FirebaseContextState => ({
