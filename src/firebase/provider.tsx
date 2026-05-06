@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // 1. Handle Unauthenticated State
+      // 1. Handle Unauthenticated State: Strictly clear all states
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -81,7 +81,6 @@ export const FirebaseProvider: React.FC<{
       }
 
       // 2. Handle Authenticated State (Atomic Fetch)
-      // Ensure we don't set loading to false until profile AND tenant (if applicable) are fetched
       setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
       try {
@@ -116,7 +115,7 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
-            // Store exists in profile but not in collection (deleted)
+            // User has a tenantId in profile but the tenant document is missing
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -127,7 +126,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
-          // No tenant ID associated yet (e.g. fresh register)
+          // Profile exists but no tenantId associated yet
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

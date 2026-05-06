@@ -29,7 +29,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && getRole() == 'owner';
 
-      // Transactions: Accessible by both Staff and Owners within their tenant
+      // Transactions: Accessible by any signed-in user (as per requirement)
       match /transactions/{txId} {
         allow read, write: if isSignedIn();
       }
