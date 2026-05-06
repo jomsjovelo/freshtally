@@ -58,7 +58,7 @@ export const FirebaseProvider: React.FC<{
     user: null,
     profile: null,
     tenant: null,
-    isUserLoading: true, // Start in loading state
+    isUserLoading: true,
     userError: null,
     storeNotFound: false
   });
@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // 1. Handle Unauthenticated State: Strictly clear all states
+      // 1. Handle Unauthenticated State: Atomic clear
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -80,14 +80,12 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // 2. Handle Authenticated State: Atomic fetch sequence
-      // Do not set isUserLoading to false yet
+      // 2. Handle Authenticated State: Strict sequence
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
 
         if (!profileSnap.exists()) {
-          // Profile doesn't exist yet (e.g., brand new registration or partially completed setup)
           setState({ 
             user: firebaseUser, 
             profile: null, 
@@ -110,23 +108,23 @@ export const FirebaseProvider: React.FC<{
               user: firebaseUser,
               profile: profileData,
               tenant: tenantSnap.data() as Tenant,
-              isUserLoading: false, // Finally complete loading
+              isUserLoading: false,
               userError: null,
               storeNotFound: false
             });
           } else {
-            // User has a tenantId in profile but the tenant document is missing (Zombie Store)
+            // Tenant doc missing: Store recovery state
             setState({
               user: firebaseUser,
               profile: profileData,
               tenant: null,
               isUserLoading: false,
               userError: null,
-              storeNotFound: true // Special state for recovery UI
+              storeNotFound: true
             });
           }
         } else {
-          // Profile exists but no tenantId associated yet (Onboarding state)
+          // No tenantId: Onboarding state
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

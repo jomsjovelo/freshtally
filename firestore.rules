@@ -23,15 +23,14 @@ service cloud.firestore {
 
     // Tenant scoped data
     match /tenants/{tenantId} {
-      // Tenant document: Readable by verified members (Owner/Staff)
+      // Tenant document: Readable by members (Owner/Staff)
       allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
       // Create allowed for any authenticated user (during onboarding)
       allow create: if isSignedIn();
       // Update only by owners
       allow update: if isSignedIn() && getRole() == 'owner';
 
-      // Transactions: Readable and writable by any authenticated user in the store
-      // (Simplified to resolve permission issues while maintaining tenant scope)
+      // Transactions: Accessible to all signed-in users within the tenant node
       match /transactions/{txId} {
         allow read, write: if isSignedIn();
       }
