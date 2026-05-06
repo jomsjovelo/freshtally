@@ -61,7 +61,7 @@ export default function OnboardingPage() {
         updatedAt: serverTimestamp()
       })
 
-      await setDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(db, "userProfiles", user.uid), {
         id: user.uid,
         email: normalizedEmail,
         role: "owner",

@@ -64,7 +64,7 @@ export default function AuthPage() {
         const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
         const user = res.user
         const batch = writeBatch(db)
-        const profileRef = doc(db, "users", user.uid)
+        const profileRef = doc(db, "userProfiles", user.uid)
 
         if (authMode === "register_owner") {
           const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
@@ -103,7 +103,6 @@ export default function AuthPage() {
         }
 
         await batch.commit()
-        router.push("/")
       }
     } catch (err: any) {
       setError(err.message)
