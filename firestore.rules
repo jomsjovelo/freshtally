@@ -1,40 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper: Safely fetch the user's role from their profile
-    function getRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-
-    // Helper: Check if user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // User Profile Rules
-    match /users/{userId} {
-      allow get, update: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn();
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // Global Broadcasts
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+    }
+
     match /platform_broadcasts/{broadcastId} {
       allow read: if isSignedIn();
     }
 
-    // Tenant-Specific Rules
     match /tenants/{tenantId} {
-      // Access granted to owners and staff only
       allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
       allow create: if isSignedIn();
       allow update: if isSignedIn() && getRole() == 'owner';
 
-      // Transactions: Accessible by any signed-in user (as per requirement)
       match /transactions/{txId} {
         allow read, write: if isSignedIn();
       }
 
-      // Financials: STRICTLY Owners only (Staff MUST be denied)
       match /expenses/{expId} {
         allow read, write: if isSignedIn() && getRole() == 'owner';
       }
