@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<{
     if (!auth || !firestore) return;
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Handle Unauthenticated: Strict atomic clear per directive
+      // Handle Unauthenticated: Strict atomic clear
       if (!firebaseUser) {
         setState({ 
           user: null, 
@@ -80,15 +80,15 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // Handle Authenticated: isUserLoading stays true until final resolution
-      setState(prev => ({ ...prev, isUserLoading: true, user: firebaseUser }));
+      // Keep isUserLoading: true while we fetch profile and tenant
+      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
 
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
 
         if (!profileSnap.exists()) {
-          // Onboarding state
+          // Onboarding state: Profile doesn't exist yet
           setState({ 
             user: firebaseUser, 
             profile: null, 
@@ -116,7 +116,7 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
-            // Deleted store / Zombie session
+            // Tenant doc missing: Zombie session or store deleted
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -127,7 +127,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
-          // Profile exists but no tenant linked
+          // Profile exists but no tenantId
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

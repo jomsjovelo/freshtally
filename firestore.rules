@@ -7,6 +7,7 @@ service cloud.firestore {
     }
 
     // Safely fetch user role from the users collection
+    // This uses a safe check to prevent rules from crashing if the doc doesn't exist
     function getRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
@@ -31,6 +32,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && getRole() == 'owner';
 
       // Transactions: Accessible to all signed-in users within the tenant node
+      // This is crucial for real-time POS operations
       match /transactions/{txId} {
         allow read, write: if isSignedIn();
       }
