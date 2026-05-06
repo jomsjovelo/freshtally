@@ -18,38 +18,38 @@ import { getAgingCategory, cn, formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
 export function TopBar() {
-  const { tenant, isUserLoading, profile, user } = useUser()
-  const db = useFirestore()
-  const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(false);
+  const { tenant, isUserLoading, profile, user } = useUser();
+  const db = useFirestore();
+  const pathname = usePathname();
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   const overdueClientsQuery = useMemoFirebase(() => {
-    if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null
-    if (tenant.id !== profile.tenantId) return null
+    if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null;
+    if (tenant.id !== profile.tenantId) return null;
     
     return query(
       collection(db, "tenants", tenant.id, "b2bClients"),
       where("outstandingBalance", ">", 0)
-    )
-  }, [mounted, db, tenant?.id, profile?.tenantId])
+    );
+  }, [mounted, db, tenant?.id, profile?.tenantId]);
 
-  const { data: b2bClients } = useCollection(overdueClientsQuery)
+  const { data: b2bClients } = useCollection(overdueClientsQuery);
 
   const alerts = useMemo(() => {
-    if (!b2bClients) return []
+    if (!b2bClients) return [];
     return b2bClients
       .map(client => ({
         ...client,
         category: getAgingCategory(client.oldestUnpaidAt)
       }))
-      .filter(c => c.category !== 'current')
-  }, [b2bClients])
+      .filter(c => c.category !== 'current');
+  }, [b2bClients]);
 
-  const isSuperAdmin = profile?.role === 'super_admin'
+  const isSuperAdmin = profile?.role === 'super_admin';
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">

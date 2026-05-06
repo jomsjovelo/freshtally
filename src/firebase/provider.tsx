@@ -81,6 +81,9 @@ export const FirebaseProvider: React.FC<{
       }
 
       // 2. Handle Authenticated State (Atomic Fetch)
+      // Ensure we don't set loading to false until profile AND tenant (if applicable) are fetched
+      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
+
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
@@ -113,6 +116,7 @@ export const FirebaseProvider: React.FC<{
               storeNotFound: false
             });
           } else {
+            // Store exists in profile but not in collection (deleted)
             setState({
               user: firebaseUser,
               profile: profileData,
@@ -123,6 +127,7 @@ export const FirebaseProvider: React.FC<{
             });
           }
         } else {
+          // No tenant ID associated yet (e.g. fresh register)
           setState({ 
             user: firebaseUser, 
             profile: profileData, 

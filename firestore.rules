@@ -24,21 +24,17 @@ service cloud.firestore {
 
     // Tenant-Specific Rules
     match /tenants/{tenantId} {
-      allow read: if isSignedIn();
+      // Access granted to owners and staff only
+      allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
       allow create: if isSignedIn();
       allow update: if isSignedIn() && getRole() == 'owner';
 
-      // Transactions: Accessible by both Staff and Owners
+      // Transactions: Accessible by both Staff and Owners within their tenant
       match /transactions/{txId} {
         allow read, write: if isSignedIn();
       }
 
-      // Products: Accessible by both Staff and Owners
-      match /products/{productId} {
-        allow read, write: if isSignedIn();
-      }
-
-      // Financials: STICKLY Owners only (Staff MUST be denied)
+      // Financials: STRICTLY Owners only (Staff MUST be denied)
       match /expenses/{expId} {
         allow read, write: if isSignedIn() && getRole() == 'owner';
       }
