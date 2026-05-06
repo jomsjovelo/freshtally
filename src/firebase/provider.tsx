@@ -58,7 +58,7 @@ export const FirebaseProvider: React.FC<{
     user: null,
     profile: null,
     tenant: null,
-    isUserLoading: true,
+    isUserLoading: true, // Start in loading state
     userError: null,
     storeNotFound: false
   });
@@ -80,14 +80,14 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      // 2. Handle Authenticated State (Atomic Fetch)
-      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
-
+      // 2. Handle Authenticated State: Atomic fetch sequence
+      // Do not set isUserLoading to false yet
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
 
         if (!profileSnap.exists()) {
+          // Profile doesn't exist yet (e.g., brand new registration or partially completed setup)
           setState({ 
             user: firebaseUser, 
             profile: null, 
@@ -110,23 +110,23 @@ export const FirebaseProvider: React.FC<{
               user: firebaseUser,
               profile: profileData,
               tenant: tenantSnap.data() as Tenant,
-              isUserLoading: false,
+              isUserLoading: false, // Finally complete loading
               userError: null,
               storeNotFound: false
             });
           } else {
-            // User has a tenantId in profile but the tenant document is missing
+            // User has a tenantId in profile but the tenant document is missing (Zombie Store)
             setState({
               user: firebaseUser,
               profile: profileData,
               tenant: null,
               isUserLoading: false,
               userError: null,
-              storeNotFound: true
+              storeNotFound: true // Special state for recovery UI
             });
           }
         } else {
-          // Profile exists but no tenantId associated yet
+          // Profile exists but no tenantId associated yet (Onboarding state)
           setState({ 
             user: firebaseUser, 
             profile: profileData, 
