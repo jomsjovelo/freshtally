@@ -51,7 +51,7 @@ export function BottomNav() {
           </>
         )
       ) : (
-        <div className="h-12 w-full animate-pulse bg-gray-50 rounded-2xl mx-4" />
+        <div className="h-12 w-full animate-pulse bg-gray-100 rounded-2xl mx-4" />
       )}
     </nav>
   )

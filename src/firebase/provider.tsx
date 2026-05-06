@@ -68,6 +68,7 @@ export const FirebaseProvider: React.FC<{
 
     const authUnsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
+        // Atomic reset for unauthenticated state
         setState({ 
           user: null, 
           profile: null, 
@@ -79,8 +80,7 @@ export const FirebaseProvider: React.FC<{
         return;
       }
 
-      setState(prev => ({ ...prev, user: firebaseUser, isUserLoading: true }));
-
+      // Keep loading until profile and tenant are checked
       try {
         const userRef = doc(firestore, 'users', firebaseUser.uid);
         const profileSnap = await getDoc(userRef);
@@ -122,12 +122,14 @@ export const FirebaseProvider: React.FC<{
           });
         }
       } catch (err: any) {
-        setState(prev => ({ 
-          ...prev, 
+        setState({ 
           user: firebaseUser, 
+          profile: null,
+          tenant: null,
           isUserLoading: false, 
-          userError: err 
-        }));
+          userError: err,
+          storeNotFound: false
+        });
       }
     });
 
