@@ -21,9 +21,6 @@ const ExpenseAITool = dynamic(() => import("@/components/dashboard/expense-ai-to
   loading: () => <div className="h-40 w-full bg-muted/10 animate-pulse rounded-2xl" />
 })
 
-/**
- * FreshTally Retail OS: Multi-tenant isolated dashboard
- */
 export default function DashboardPage() {
   const { profile, tenant, isUserLoading, user } = useUser()
   const router = useRouter()
@@ -38,8 +35,7 @@ export default function DashboardPage() {
     setStableNow(d.toISOString())
   }, [])
 
-  // Intelligence Guard: Sub-collection queries strictly blocked until Tenant Node is verified
-  // This is the "Kill Switch" - if any part of the security context is missing, return null.
+  // Intelligence Guard: Kill switch query until all security context documents are verified.
   const transactionsQuery = useMemoFirebase(() => {
     if (!mounted || isUserLoading || !db || !user || !profile || !tenant || !profile.tenantId || !tenant.id) return null;
     if (profile.tenantId !== tenant.id) return null;
@@ -70,9 +66,8 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router, mounted])
 
-  if (!mounted) return <div className="min-h-screen bg-background max-w-md mx-auto" />
-
-  if (isUserLoading || !stableNow) {
+  // GLOBAL KILL SWITCH: Do not execute component logic until provider finishes syncing.
+  if (!mounted || isUserLoading || !stableNow) {
     return (
       <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin" />
@@ -83,7 +78,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Zombie Session Protection: Handle auth without business node
+  // MULTI-TENANT GUARD: Block rendering if session profile is missing or mismatched.
   if (!profile || !profile.tenantId || !tenant || profile.tenantId !== tenant.id) {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center min-h-[70vh] gap-6 max-w-md mx-auto">
@@ -106,8 +101,8 @@ export default function DashboardPage() {
     )
   }
 
-  const isStaff = profile?.role === 'staff'
-  const isOwner = profile?.role === 'owner' || profile?.role === 'super_admin'
+  const isStaff = profile.role === 'staff'
+  const isOwner = profile.role === 'owner' || profile.role === 'super_admin'
 
   return (
     <div className="p-4 space-y-6 max-w-md mx-auto">

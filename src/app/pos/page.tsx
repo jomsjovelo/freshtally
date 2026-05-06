@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useMemo, useCallback, memo } from "react"
+import { useState, useMemo, useCallback, memo, useEffect } from "react"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote, UserCheck, PackageOpen, Zap } from "lucide-react"
+import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote, UserCheck, PackageOpen, Zap, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
@@ -18,7 +18,6 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 
-// Memoized Product Item to prevent re-renders when cart changes
 const ProductCard = memo(({ product, onAdd }: { product: any, onAdd: (p: any) => void }) => (
   <button 
     onClick={() => onAdd(product)}
@@ -36,24 +35,29 @@ const ProductCard = memo(({ product, onAdd }: { product: any, onAdd: (p: any) =>
 ProductCard.displayName = "ProductCard"
 
 export default function POSPage() {
-  const { tenant } = useUser()
+  const { tenant, profile, isUserLoading, user } = useUser()
   const db = useFirestore()
   const [cart, setCart] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [paymentType, setPaymentType] = useState<'cash' | 'card' | 'credit'>('cash')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { toast } = useToast()
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const productsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id) return null
+    if (!mounted || isUserLoading || !db || !tenant?.id || !profile?.tenantId || tenant.id !== profile.tenantId) return null
     return query(collection(db, "tenants", tenant.id, "products"), orderBy("name", "asc"), limit(100))
-  }, [db, tenant?.id])
+  }, [mounted, isUserLoading, db, tenant?.id, profile?.tenantId])
 
   const clientsQuery = useMemoFirebase(() => {
-    if (!db || !tenant?.id) return null
+    if (!mounted || isUserLoading || !db || !tenant?.id || !profile?.tenantId || tenant.id !== profile.tenantId) return null
     return query(collection(db, "tenants", tenant.id, "b2bClients"), orderBy("name", "asc"), limit(50))
-  }, [db, tenant?.id])
+  }, [mounted, isUserLoading, db, tenant?.id, profile?.tenantId])
 
   const { data: products, isLoading: isProductsLoading } = useCollection(productsQuery)
   const { data: clients } = useCollection(clientsQuery)
@@ -148,6 +152,19 @@ export default function POSPage() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  if (!mounted || isUserLoading) {
+    return (
+      <div className="p-8 text-center animate-pulse font-bold text-primary uppercase text-xs tracking-widest mt-24 flex flex-col items-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin" />
+        Initializing Terminal...
+      </div>
+    )
+  }
+
+  if (!user || !profile || !tenant || profile.tenantId !== tenant.id) {
+    return null;
   }
 
   return (

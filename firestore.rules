@@ -7,12 +7,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper: Get user profile data (cached per request)
+    // Helper: Get user profile data safely
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Helper: Check if user profile exists and belongs to a specific tenant
+    // Helper: Robust multi-tenant membership check
+    // Uses exists() to prevent evaluation crashes before the user profile is written or synced.
     function isTenantMember(tenantId) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -36,17 +37,16 @@ service cloud.firestore {
 
     // Multi-tenant Root and Sub-collections
     match /tenants/{tenantId} {
-      // Basic tenant identification
       allow read: if isTenantMember(tenantId);
       allow create: if isSignedIn();
       allow update: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'super_admin');
 
-      // Transactions: Operational data shared by all tenant staff/owners
+      // Transactions: Shared by all tenant members
       match /transactions/{txId} {
         allow read, write: if isTenantMember(tenantId);
       }
 
-      // Products: Read by staff, managed by owners/managers
+      // Products: Read by members, managed by admins
       match /products/{productId} {
         allow read: if isTenantMember(tenantId);
         allow write: if isTenantMember(tenantId) && (getRole() == 'owner' || getRole() == 'manager' || getRole() == 'super_admin');
