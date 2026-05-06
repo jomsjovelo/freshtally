@@ -1,22 +1,18 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V16
-     * Hardened isolation with defensive exists() guards and atomic verification.
-     * Prevents race conditions during document propagation.
+     * FRESH TALLY ATOMIC SECURITY ARCHITECTURE V17
+     * Hardened Role-Based Access Control (RBAC) with sub-collection shielding.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Defensive helper to check user role/tenant membership
     function getUserData() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      // exists() is critical to prevent rule evaluation errors during latency
       return exists(path) ? get(path).data : null;
     }
 
@@ -59,16 +55,36 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      // Direct tenant access requires membership or superadmin
       allow get: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
       allow update: if isSignedIn() && (isTenantOwner(tenantId) || isSuperAdmin());
       allow delete: if isSuperAdmin();
 
-      // Deep sub-collection scoping
-      match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && (isTenantMember(tenantId) || isSuperAdmin());
+      // Granular Sub-collection Shielding
+      
+      match /products/{productId} {
+        allow read: if isTenantMember(tenantId) || isSuperAdmin();
+        allow write: if isTenantOwner(tenantId) || isSuperAdmin();
+      }
+
+      match /transactions/{txId} {
+        allow read: if isTenantMember(tenantId) || isSuperAdmin();
+        allow create: if isTenantMember(tenantId) || isSuperAdmin();
+        allow update, delete: if isSuperAdmin();
+      }
+
+      match /expenses/{expenseId} {
+        allow read, write: if isTenantOwner(tenantId) || isSuperAdmin();
+      }
+
+      match /b2bClients/{clientId} {
+        allow read: if isTenantMember(tenantId) || isSuperAdmin();
+        allow write: if isTenantOwner(tenantId) || isSuperAdmin();
+      }
+
+      match /reconciliations/{recId} {
+        allow read, write: if isTenantOwner(tenantId) || isSuperAdmin();
       }
     }
   }

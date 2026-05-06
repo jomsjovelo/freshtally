@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from "react"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Store, Loader2, ShieldCheck, Bell, AlertTriangle } from "lucide-react"
+import { Store, Loader2, ShieldCheck, Bell } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { 
   DropdownMenu, 
@@ -19,8 +18,8 @@ import { getAgingCategory, cn, formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
 /**
- * In-App Notification Center: MD3-compliant Alert Hub for B2B Receivables.
- * MD3 Glass Design: Synchronized with server to prevent hydration mismatches.
+ * In-App Notification Center: MD3-compliant Alert Hub.
+ * Optimized Structural Guard: Parent <header> is rendered unconditionally to prevent hydration mismatches.
  */
 export function TopBar() {
   const { tenant, isUserLoading, profile, user } = useUser()
@@ -32,8 +31,6 @@ export function TopBar() {
     setMounted(true)
   }, [])
 
-  // AR Aging Engine: Fetch all clients with balances to calculate global health.
-  // STRICT GUARD: Only fetch if we have a verified tenant identity.
   const overdueClientsQuery = useMemoFirebase(() => {
     if (!mounted || !db || !tenant?.id || !profile?.tenantId) return null
     if (tenant.id !== profile.tenantId) return null
@@ -46,7 +43,6 @@ export function TopBar() {
 
   const { data: b2bClients } = useCollection(overdueClientsQuery)
 
-  // Categorize alerts into Overdue and Critical buckets
   const alerts = useMemo(() => {
     if (!b2bClients) return []
     return b2bClients
@@ -100,7 +96,7 @@ export function TopBar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72 rounded-[24px] border-none shadow-2xl p-2 mt-2">
                 <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground p-3">
-                  In-App Alert Center
+                  Alert Center
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {alerts.length > 0 ? (
@@ -112,7 +108,7 @@ export function TopBar() {
                           {alert.category}
                         </Badge>
                       </div>
-                      <p className="text-[9px] font-bold text-muted-foreground">Aging: {formatCurrency(alert.outstandingBalance)}</p>
+                      <p className="text-[9px] font-bold text-muted-foreground">Owed: {formatCurrency(alert.outstandingBalance)}</p>
                     </DropdownMenuItem>
                   ))
                 ) : (
