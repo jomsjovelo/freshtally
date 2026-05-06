@@ -53,8 +53,10 @@ export function TopBar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
-      {mounted ? (
-        pathname !== '/auth' && user && (
+      {!mounted ? (
+        <div className="h-10 w-full animate-pulse bg-gray-100 rounded-xl" />
+      ) : (
+        user && pathname !== '/auth' && (
           <>
             <div className="flex items-center gap-3 overflow-hidden">
               {isUserLoading ? (
@@ -122,8 +124,6 @@ export function TopBar() {
             </div>
           </>
         )
-      ) : (
-        <div className="h-10 w-full animate-pulse bg-gray-100 rounded-xl" />
       )}
     </header>
   )

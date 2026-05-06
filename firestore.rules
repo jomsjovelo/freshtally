@@ -14,13 +14,17 @@ service cloud.firestore {
       allow create: if isSignedIn();
     }
 
+    match /platform_broadcasts/{broadcastId} {
+      allow read: if isSignedIn();
+    }
+
     match /tenants/{tenantId} {
       allow read: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
       allow create: if isSignedIn();
       allow update: if isSignedIn() && getRole() == 'owner';
 
       match /transactions/{txId} {
-        allow read, write: if isSignedIn();
+        allow read, write: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
       }
 
       match /expenses/{expId} {
@@ -34,10 +38,10 @@ service cloud.firestore {
       match /reconciliations/{recId} {
         allow read, write: if isSignedIn() && getRole() == 'owner';
       }
-    }
-
-    match /platform_broadcasts/{broadcastId} {
-      allow read: if isSignedIn();
+      
+      match /products/{productId} {
+        allow read, write: if isSignedIn() && (getRole() == 'owner' || getRole() == 'staff');
+      }
     }
   }
 }
