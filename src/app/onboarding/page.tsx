@@ -28,7 +28,7 @@ export default function OnboardingPage() {
   
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isUserLoading } = useUser()
+  const { user, profile, isUserLoading } = useUser()
   const db = useFirestore()
 
   useEffect(() => {
@@ -37,10 +37,14 @@ export default function OnboardingPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !isUserLoading && !user) {
-      router.push("/auth")
+    if (mounted && !isUserLoading) {
+      if (!user) {
+        router.push("/auth")
+      } else if (profile?.tenantId) {
+        router.push("/")
+      }
     }
-  }, [user, isUserLoading, router, mounted])
+  }, [user, isUserLoading, router, mounted, profile?.tenantId])
 
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +65,15 @@ export default function OnboardingPage() {
         ownerUid: user.uid,
         ownerEmail: normalizedEmail,
         currency: "PHP",
+        categories: [
+          { id: "cat-1", name: "Vegetables", icon: "🥦" },
+          { id: "cat-2", name: "Fruits", icon: "🍎" },
+          { id: "cat-3", name: "Meat", icon: "🥩" },
+          { id: "cat-4", name: "Fish/Seafood", icon: "🐟" },
+          { id: "cat-5", name: "Dairy & Eggs", icon: "🥚" },
+          { id: "cat-6", name: "Dry Goods", icon: "📦" },
+          { id: "cat-7", name: "Other", icon: "✨" }
+        ],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
@@ -107,7 +120,7 @@ export default function OnboardingPage() {
             <Store className="h-10 w-10 text-white" />
           </div>
           <CardTitle className="text-2xl font-black uppercase tracking-tighter">Your Store Profile</CardTitle>
-          <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-2">Initialize your SaaS workspace</p>
+          <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-2">Set up your business workspace</p>
         </CardHeader>
         <CardContent className="p-8 space-y-6">
           <form onSubmit={handleOnboarding} className="space-y-6">

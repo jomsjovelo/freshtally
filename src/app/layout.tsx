@@ -23,7 +23,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-gray-100">
         <FirebaseClientProvider>
-          <div className="max-w-md mx-auto min-h-screen bg-background relative flex flex-col shadow-xl">
+          <div className="max-w-screen-xl mx-auto min-h-screen bg-background relative flex flex-col shadow-2xl">
             <TopBar />
             <main className="flex-1 pb-20">
               {children}

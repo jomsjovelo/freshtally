@@ -89,9 +89,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const profileRef = doc(firestore, "userProfiles", user.uid);
     const unsubscribeProfile = onSnapshot(profileRef, (snap) => {
       if (snap.exists()) {
-        const profileData = { ...snap.data(), id: snap.id };
+        const data = snap.data();
+        const profileData = { ...data, id: snap.id };
         setProfile(profileData);
-        if (!profileData.tenantId) {
+        if (!data?.tenantId) {
           setTenant(null);
           setIsUserLoading(false);
         }

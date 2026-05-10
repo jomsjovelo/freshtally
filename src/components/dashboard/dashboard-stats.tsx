@@ -2,7 +2,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, Loader2, CreditCard } from "lucide-react"
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, Loader2, CreditCard, Sparkles } from "lucide-react"
 import { cn, formatCurrency } from "@/lib/utils"
 import { ARLedgerModal } from "./ar-ledger-modal"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
@@ -25,10 +25,12 @@ export function DashboardStats() {
     return clients.reduce((sum, client) => sum + (client.outstandingBalance || 0), 0)
   }, [clients])
 
-  // 2. Today's Sales
-  const startOfToday = new Date()
-  startOfToday.setHours(0, 0, 0, 0)
-  const todayTimestamp = Timestamp.fromDate(startOfToday)
+  // 2. Today's Sales - Stable for the current hour to prevent constant re-queries
+  const todayTimestamp = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return Timestamp.fromDate(d)
+  }, []) 
 
   const todaySalesQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id) return null
@@ -37,20 +39,24 @@ export function DashboardStats() {
       where("type", "==", "Sale"),
       where("createdAt", ">=", todayTimestamp)
     )
-  }, [db, tenant?.id])
+  }, [db, tenant?.id, todayTimestamp])
 
   const { data: todayTxs, isLoading: isTxsLoading } = useCollection(todaySalesQuery)
 
-  const totalTodaySales = useMemo(() => {
-    if (!todayTxs) return 0
-    return todayTxs.reduce((sum, tx) => sum + (tx.totalAmount || 0), 0)
+  const { totalTodaySales, totalTodayProfit } = useMemo(() => {
+    if (!todayTxs) return { totalTodaySales: 0, totalTodayProfit: 0 }
+    const sales = todayTxs.reduce((sum, tx) => sum + (tx.totalAmount || 0), 0)
+    const costs = todayTxs.reduce((sum, tx) => sum + (tx.totalCost || 0), 0)
+    return { totalTodaySales: sales, totalTodayProfit: sales - costs }
   }, [todayTxs])
 
-  // 3. Monthly Expenses
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0,0,0,0)
-  const monthTimestamp = Timestamp.fromDate(startOfMonth)
+  // 3. Monthly Expenses - Stable for the session
+  const monthTimestamp = useMemo(() => {
+    const d = new Date()
+    d.setDate(1)
+    d.setHours(0, 0, 0, 0)
+    return Timestamp.fromDate(d)
+  }, [])
 
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id) return null
@@ -58,7 +64,7 @@ export function DashboardStats() {
       collection(db, "tenants", tenant.id, "expenses"),
       where("createdAt", ">=", monthTimestamp)
     )
-  }, [db, tenant?.id])
+  }, [db, tenant?.id, monthTimestamp])
 
   const { data: expenses, isLoading: isExpLoading } = useCollection(expensesQuery)
 
@@ -76,7 +82,7 @@ export function DashboardStats() {
           <div className="absolute top-0 right-0 p-4 opacity-20">
             <Wallet className="h-10 w-10" />
           </div>
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Sales Today</p>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Revenue Today</p>
           <p className="text-2xl font-black mt-2 tracking-tighter">
             {isLoading ? "..." : formatCurrency(totalTodaySales)}
           </p>
@@ -85,33 +91,49 @@ export function DashboardStats() {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm">
-          <div className="h-10 w-10 bg-destructive/5 text-destructive rounded-2xl flex items-center justify-center mb-3">
-            <CreditCard className="h-5 w-5" />
+        <div className="bg-accent p-5 rounded-[32px] text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-20">
+            <Sparkles className="h-10 w-10" />
           </div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Month Burn</p>
-          <p className="text-xl font-black mt-1 tracking-tighter">
-            {isLoading ? "..." : formatCurrency(totalExpenses)}
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Gross Profit</p>
+          <p className="text-2xl font-black mt-2 tracking-tighter">
+            {isLoading ? "..." : formatCurrency(totalTodayProfit)}
           </p>
+          <div className="flex items-center gap-1 text-[8px] font-black mt-3 uppercase tracking-widest">
+            <ArrowUpRight className="h-3 w-3" /> Net Margin
+          </div>
         </div>
       </div>
 
-      <ARLedgerModal>
-        <button className="w-full bg-accent/5 border-2 border-accent/10 p-6 rounded-[32px] flex items-center justify-between active:scale-[0.98] transition-all">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-accent rounded-2xl flex items-center justify-center text-white">
-              <ArrowUpRight className="h-6 w-6" />
-            </div>
-            <div className="text-left">
-              <p className="text-[10px] font-black text-accent uppercase tracking-widest leading-none">Total Receivables</p>
-              <p className="text-xl font-black mt-1 tracking-tighter text-foreground">{formatCurrency(totalReceivables)}</p>
-            </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm">
+          <div className="h-10 w-10 bg-destructive/5 text-destructive rounded-2xl flex items-center justify-center mb-3">
+            <TrendingDown className="h-5 w-5" />
           </div>
-          <div className="h-10 px-4 bg-accent/10 rounded-full flex items-center justify-center">
-            <span className="text-[10px] font-black text-accent uppercase tracking-widest">Ledger</span>
-          </div>
-        </button>
-      </ARLedgerModal>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Expenses</p>
+          <p className="text-xl font-black mt-1 tracking-tighter">
+            {isLoading ? "..." : formatCurrency(totalExpenses)}
+          </p>
+          <p className="text-[8px] font-black text-muted-foreground/60 uppercase mt-2 tracking-widest">Monthly Total</p>
+        </div>
+
+        <ARLedgerModal>
+          <button 
+            id="receivables-ledger-btn"
+            name="receivables-ledger-btn"
+            className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm text-left h-full w-full"
+          >
+            <div className="h-10 w-10 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-3">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Receivables</p>
+            <p className="text-xl font-black mt-1 tracking-tighter">
+              {isLoading ? "..." : formatCurrency(totalReceivables)}
+            </p>
+            <p className="text-[8px] font-black text-purple-600/60 uppercase mt-2 tracking-widest">Ledger Balance</p>
+          </button>
+        </ARLedgerModal>
+      </div>
     </div>
   )
 }

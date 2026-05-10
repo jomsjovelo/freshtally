@@ -4,15 +4,24 @@
       "collectionGroup": "platform_broadcasts",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "priority", "order": "ASCENDING" },
         { "fieldPath": "activeUntil", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "platform_broadcasts",
-      "queryScope": "COLLECTION",
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "priority", "order": "ASCENDING" },
-        { "fieldPath": "activeUntil", "order": "ASCENDING" }
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     },
     {
@@ -20,12 +29,12 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "type", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "products",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "category", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
@@ -33,10 +42,26 @@
     },
     {
       "collectionGroup": "b2bClients",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "outstandingBalance", "order": "DESCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "clientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reconciliations",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "clientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],

@@ -68,24 +68,32 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        let path = "unknown";
-        try {
-          path = memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
-        } catch (e) {
-          // Path resolution failed
-        }
-
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path,
-        });
-
-        setError(contextualError);
-        setData(null);
         setIsLoading(false);
-        errorEmitter.emit('permission-error', contextualError);
+        
+        // Only emit global error for actual Security Rules violations
+        if (err.code === 'permission-denied') {
+          let path = "unknown";
+          try {
+            path = memoizedTargetRefOrQuery.type === 'collection'
+              ? (memoizedTargetRefOrQuery as CollectionReference).path
+              : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
+          } catch (e) {
+            // Path resolution failed
+          }
+
+          const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path,
+          });
+
+          setError(contextualError);
+          setData(null);
+          errorEmitter.emit('permission-error', contextualError);
+        } else {
+          // Network errors, quota issues, etc. are handled locally
+          setError(err);
+          console.warn(`Firestore collection error [${err.code}]:`, err.message);
+        }
       }
     );
 

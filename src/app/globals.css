@@ -10,23 +10,23 @@
     --card-foreground: 200 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 200 50% 10%;
-    --primary: 200 60% 40%;
+    --primary: 172 60% 36%;          /* Rich Teal — trustworthy, retail-fresh */
     --primary-foreground: 0 0% 100%;
-    --secondary: 200 20% 92%;
-    --secondary-foreground: 200 60% 30%;
+    --secondary: 172 20% 92%;
+    --secondary-foreground: 172 60% 30%;
     --muted: 200 10% 94%;
     --muted-foreground: 200 20% 45%;
-    --accent: 260 50% 50%;
+    --accent: 262 52% 54%;           /* Violet — premium AI indicator */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --border: 200 20% 90%;
     --input: 200 20% 90%;
-    --ring: 200 60% 40%;
-    --radius: 1rem;
-    --chart-1: 200 60% 40%;
-    --chart-2: 260 50% 50%;
-    --chart-3: 180 50% 40%;
+    --ring: 172 60% 36%;
+    --radius: 1.5rem;
+    --chart-1: 172 60% 36%;
+    --chart-2: 262 52% 54%;
+    --chart-3: 38 92% 55%;           /* Amber — alerts, revenue highlight */
     --chart-4: 40 80% 50%;
     --chart-5: 10 70% 50%;
   }
@@ -38,19 +38,19 @@
     --card-foreground: 200 10% 98%;
     --popover: 200 50% 8%;
     --popover-foreground: 200 10% 98%;
-    --primary: 200 60% 40%;
+    --primary: 172 60% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 200 30% 15%;
     --secondary-foreground: 200 10% 98%;
     --muted: 200 30% 15%;
     --muted-foreground: 200 10% 60%;
-    --accent: 260 50% 50%;
+    --accent: 262 52% 64%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 30%;
+    --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 98%;
     --border: 200 30% 15%;
     --input: 200 30% 15%;
-    --ring: 200 60% 40%;
+    --ring: 172 60% 45%;
   }
 }
 
@@ -59,11 +59,24 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-sans;
   }
   input, button, select, textarea {
     @apply min-h-[48px];
   }
+}
+
+/* Typography Tiers */
+.title-tier {
+  @apply uppercase font-black tracking-tighter;
+}
+
+.label-tier {
+  @apply uppercase font-bold tracking-widest text-muted-foreground;
+}
+
+.body-tier {
+  @apply font-medium;
 }
 
 /* Custom UI Utilities */
@@ -71,6 +84,14 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
 }
 
-.rounded-3xl-plus {
-  border-radius: 32px;
+.card-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
+
+.text-gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

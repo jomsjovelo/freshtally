@@ -9,7 +9,9 @@ service cloud.firestore {
     }
 
     function getUserProfile() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
+      return exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) 
+        ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data 
+        : { tenantId: null, role: null };
     }
 
     function isMember(tenantId) {
@@ -26,7 +28,10 @@ service cloud.firestore {
     }
 
     match /userProfiles/{userId} {
-      allow get, list, create, update: if isSignedIn() && request.auth.uid == userId;
+      allow get: if isSignedIn() && (request.auth.uid == userId || isMember(resource.data.tenantId) || hasRole('super_admin'));
+      allow list: if isSignedIn() && resource.data.tenantId == (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tenantId : null);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (request.auth.uid == userId || (isMember(resource.data.tenantId) && (hasRole('owner') || hasRole('super_admin'))));
     }
 
     match /tenants/{tenantId} {
@@ -58,7 +63,14 @@ service cloud.firestore {
 
       match /b2bClients/{clientId} {
         allow get, list: if isMember(tenantId);
-        allow create, update, delete: if isMember(tenantId) && (hasRole('owner') || hasRole('super_admin'));
+        allow create: if isMember(tenantId);
+        allow update, delete: if isMember(tenantId) && (hasRole('owner') || hasRole('super_admin'));
+      }
+
+      match /reconciliations/{reconciliationId} {
+        allow get, list: if isMember(tenantId);
+        allow create: if isMember(tenantId);
+        allow update, delete: if isMember(tenantId) && (hasRole('owner') || hasRole('super_admin'));
       }
     }
 

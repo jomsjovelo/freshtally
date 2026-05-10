@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Store, Loader2, ShieldCheck, Bell } from "lucide-react"
+import { Store, Loader2, ShieldCheck, Bell, Share2, AlertCircle } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { 
   DropdownMenu, 
@@ -16,15 +16,30 @@ import {
 import { collection, query, where } from "firebase/firestore"
 import { getAgingCategory, cn, formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 
 export function TopBar() {
   const [mounted, setMounted] = useState(false);
   const { tenant, isUserLoading, profile, user } = useUser();
   const db = useFirestore();
   const pathname = usePathname();
+  const { toast } = useToast();
 
+  const [isOnline, setIsOnline] = useState(true);
+  
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
   }, []);
 
   const overdueClientsQuery = useMemoFirebase(() => {
@@ -53,6 +68,34 @@ export function TopBar() {
   }, [b2bClients]);
 
   const isSuperAdmin = profile?.role === 'super_admin';
+
+  const isSubscriptionExpiring = useMemo(() => {
+    if (!tenant?.expiryDate) return false;
+    const expiry = new Date(tenant.expiryDate);
+    const diff = expiry.getTime() - Date.now();
+    return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000;
+  }, [tenant?.expiryDate]);
+
+  const hasAlerts = alerts.length > 0 || isSubscriptionExpiring;
+
+  const handleShareReminder = async (client: any) => {
+    const message = `Hello ${client.name}, this is a friendly reminder from ${tenant?.name} regarding your outstanding balance of ${formatCurrency(client.outstandingBalance)}. Please let us know when we can expect settlement. Thank you!`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Payment Reminder',
+          text: message,
+        });
+      } catch (err) {
+        await navigator.clipboard.writeText(message)
+        toast({ title: "Reminder Copied", description: "Message saved to clipboard." })
+      }
+    } else {
+      await navigator.clipboard.writeText(message)
+      toast({ title: "Reminder Copied", description: "System doesn't support native share. Message saved to clipboard." })
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-4 flex items-center justify-between">
@@ -90,8 +133,8 @@ export function TopBar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="relative h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                    <Bell className={cn("h-5 w-5", alerts.length > 0 ? "text-destructive animate-pulse" : "text-muted-foreground")} />
-                    {alerts.length > 0 && (
+                    <Bell className={cn("h-5 w-5", hasAlerts ? "text-destructive animate-pulse" : "text-muted-foreground")} />
+                    {hasAlerts && (
                       <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 bg-destructive rounded-full border-2 border-white" />
                     )}
                   </button>
@@ -101,28 +144,54 @@ export function TopBar() {
                     Alert Center
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {isSubscriptionExpiring && (
+                    <DropdownMenuItem className="p-3 m-2 rounded-xl bg-amber-50 text-amber-800 focus:bg-amber-100 cursor-default flex flex-col items-start gap-1">
+                      <span className="font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3" /> Subscription Warning
+                      </span>
+                      <p className="text-[9px] font-bold">Your subscription expires within 7 days. Renew to avoid interruption.</p>
+                    </DropdownMenuItem>
+                  )}
                   {alerts.length > 0 ? (
                     alerts.map(alert => (
                       <DropdownMenuItem key={alert.id} className="p-3 rounded-xl focus:bg-gray-50 cursor-pointer flex flex-col items-start gap-1">
                         <div className="flex items-center justify-between w-full">
-                          <span className="font-black text-[11px] uppercase truncate">{alert.name}</span>
-                          <Badge variant={alert.category === 'critical' ? 'destructive' : 'default'} className="text-[7px] uppercase px-1.5 h-4 font-black">
-                            {alert.category}
-                          </Badge>
+                          <div className="flex flex-col">
+                            <span className="font-black text-[11px] uppercase truncate">{alert.name}</span>
+                            <p className="text-[9px] font-bold text-muted-foreground">Owed: {formatCurrency(alert.outstandingBalance)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={alert.category === 'critical' ? 'destructive' : 'default'} className="text-[7px] uppercase px-1.5 h-4 font-black">
+                              {alert.category}
+                            </Badge>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareReminder(alert);
+                              }}
+                              className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-[9px] font-bold text-muted-foreground">Owed: {formatCurrency(alert.outstandingBalance)}</p>
                       </DropdownMenuItem>
                     ))
                   ) : (
                     <div className="p-8 text-center">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">Ledger Healthy</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">No urgent alerts</p>
                     </div>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="h-8 px-3 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-[9px] font-black text-primary uppercase tracking-widest">ONLINE</span>
+              <div className={cn(
+                "h-8 px-4 rounded-full flex items-center justify-center transition-all",
+                isOnline ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700 animate-pulse"
+              )}>
+                <span className="text-[9px] font-black uppercase tracking-widest">
+                  {isOnline ? "Online" : "Connection Lost"}
+                </span>
               </div>
             </div>
           </>

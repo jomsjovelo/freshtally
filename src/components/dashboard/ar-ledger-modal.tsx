@@ -4,13 +4,22 @@ import { useState } from "react"
 import { 
   Dialog, 
   DialogContent, 
+  DialogDescription,
   DialogHeader, 
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { 
@@ -27,7 +36,7 @@ import {
 import { formatCurrency, cn, getAgingCategory, getAgingColor } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, doc, increment, writeBatch, query, orderBy, serverTimestamp } from "firebase/firestore"
+import { collection, doc, increment, writeBatch, query, orderBy, serverTimestamp, setDoc } from "firebase/firestore"
 
 export function ARLedgerModal({ children }: { children: React.ReactNode }) {
   const { tenant } = useUser()
@@ -37,6 +46,12 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState<Date>(new Date())
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isNewClientOpen, setIsNewClientOpen] = useState(false)
+  const [newClientName, setNewClientName] = useState("")
+  const [newClientContact, setNewClientContact] = useState("")
+  const [newClientType, setNewClientType] = useState("Restaurant")
+  const [newClientAddress, setNewClientAddress] = useState("")
+  const [newClientNotes, setNewClientNotes] = useState("")
   const { toast } = useToast()
 
   const clientsQuery = useMemoFirebase(() => {
@@ -47,7 +62,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
   const { data: clients, isLoading } = useCollection(clientsQuery)
 
   const handleSettle = async () => {
-    if (!amount || isNaN(Number(amount)) || !tenant?.id || !selectedClient || isProcessing) return
+    if (!db || !amount || isNaN(Number(amount)) || !tenant?.id || !selectedClient || isProcessing) return
     
     setIsProcessing(true)
     try {
@@ -88,6 +103,37 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const handleCreateClient = async () => {
+    if (!db || !tenant?.id || !newClientName.trim() || isProcessing) return
+    setIsProcessing(true)
+    try {
+      const clientRef = doc(collection(db, "tenants", tenant.id, "b2bClients"))
+      await setDoc(clientRef, {
+        id: clientRef.id,
+        name: newClientName,
+        contact: newClientContact,
+        type: newClientType,
+        address: newClientAddress,
+        notes: newClientNotes,
+        outstandingBalance: 0,
+        tenantId: tenant.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: "Account Created", description: `${newClientName} added to registry.` })
+      setNewClientName("")
+      setNewClientContact("")
+      setNewClientType("Restaurant")
+      setNewClientAddress("")
+      setNewClientNotes("")
+      setIsNewClientOpen(false)
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const handleShareReminder = async (client: any) => {
     const category = getAgingCategory(client.oldestUnpaidAt)
     if (category === 'current' && client.outstandingBalance <= 0) return
@@ -102,11 +148,11 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
         });
       } catch (err) {
         await navigator.clipboard.writeText(message)
-        toast({ title: "Reminder Copied", description: "Native share aborted. Message saved to clipboard." })
+        toast({ title: "Reminder Copied", description: "Message saved to clipboard." })
       }
     } else {
       await navigator.clipboard.writeText(message)
-      toast({ title: "Reminder Copied", description: "System doesn't support native share. Message saved to clipboard." })
+      toast({ title: "Reminder Copied", description: "Message saved to clipboard." })
     }
   }
 
@@ -119,17 +165,21 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
         <DialogHeader className="p-8 pb-4 bg-primary text-white">
           <DialogTitle className="text-2xl font-black flex items-center gap-3 uppercase tracking-tighter">
             <Receipt className="h-7 w-7" />
-            AR Ledger Profile
+            Business Accounts
           </DialogTitle>
-          <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Store Charge Monitoring</p>
+          <DialogDescription className="text-white/60 text-[10px] font-black uppercase tracking-widest">Store Charge Monitoring</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
           {!selectedClient ? (
             <div className="space-y-4">
               <div className="flex justify-between items-center px-1">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Receivables List</p>
-                <Button variant="ghost" className="h-8 text-[10px] font-black uppercase text-primary">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Client List</p>
+                <Button 
+                  variant="ghost" 
+                  className="h-8 text-[10px] font-black uppercase text-primary"
+                  onClick={() => setIsNewClientOpen(true)}
+                >
                   <UserPlus className="h-3 w-3 mr-1" /> New Account
                 </Button>
               </div>
@@ -193,7 +243,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                   <History className="h-20 w-20" />
                 </div>
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Active Obligation</p>
+                <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Outstanding Balance</p>
                 <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedClient.name}</h3>
                 <p className={cn("text-4xl font-black mt-4 tracking-tighter", getAgingColor(getAgingCategory(selectedClient.oldestUnpaidAt)))}>
                   {formatCurrency(selectedClient.outstandingBalance)}
@@ -202,7 +252,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label htmlFor="settlement-amount" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Received (₱)</label>
+                  <Label htmlFor="settlement-amount" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Payment Received (₱)</Label>
                   <Input 
                     id="settlement-amount"
                     name="settlement-amount"
@@ -216,7 +266,7 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="settlement-date-button" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Collection Date</label>
+                  <Label htmlFor="settlement-date-button" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Collection Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -256,6 +306,86 @@ export function ARLedgerModal({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </DialogContent>
+
+      <Dialog open={isNewClientOpen} onOpenChange={setIsNewClientOpen}>
+        <DialogContent className="max-w-md w-full rounded-[40px] border-none p-8 space-y-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase tracking-tighter">New B2B Account</DialogTitle>
+            <DialogDescription className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Register a new client ledger</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-client-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Client Name</Label>
+              <Input 
+                id="new-client-name"
+                name="new-client-name"
+                placeholder="e.g. Metro Roast" 
+                className="h-16 rounded-2xl bg-gray-50 border-none px-6 font-bold"
+                value={newClientName}
+                onChange={(e) => setNewClientName(e.target.value)}
+                autoComplete="name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-contact" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Contact Number</Label>
+              <Input 
+                id="new-client-contact"
+                name="new-client-contact"
+                placeholder="e.g. 0917 XXX XXXX" 
+                className="h-16 rounded-2xl bg-gray-50 border-none px-6 font-bold"
+                value={newClientContact}
+                onChange={(e) => setNewClientContact(e.target.value)}
+                autoComplete="tel"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-type-trigger" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Establishment Type</Label>
+              <Select value={newClientType} onValueChange={setNewClientType}>
+                <SelectTrigger id="new-client-type-trigger" name="new-client-type-trigger" className="h-16 rounded-2xl bg-gray-50 border-none px-6 font-bold uppercase text-[10px] tracking-widest">
+                  <SelectValue placeholder="TYPE" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                  <SelectItem value="Restaurant" className="font-bold uppercase text-[10px]">Restaurant</SelectItem>
+                  <SelectItem value="Hotel" className="font-bold uppercase text-[10px]">Hotel</SelectItem>
+                  <SelectItem value="Catering" className="font-bold uppercase text-[10px]">Catering</SelectItem>
+                  <SelectItem value="Other" className="font-bold uppercase text-[10px]">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-address" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Address</Label>
+              <Input 
+                id="new-client-address"
+                name="new-client-address"
+                placeholder="Full delivery address" 
+                className="h-16 rounded-2xl bg-gray-50 border-none px-6 font-bold"
+                value={newClientAddress}
+                onChange={(e) => setNewClientAddress(e.target.value)}
+                autoComplete="street-address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-notes" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Notes</Label>
+              <Input 
+                id="new-client-notes"
+                name="new-client-notes"
+                placeholder="Payment terms, special requests..." 
+                className="h-16 rounded-2xl bg-gray-50 border-none px-6 font-bold"
+                value={newClientNotes}
+                onChange={(e) => setNewClientNotes(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <Button 
+              className="w-full h-16 rounded-[24px] bg-primary font-black uppercase tracking-widest text-xs mt-4 shadow-xl"
+              onClick={handleCreateClient}
+              disabled={isProcessing}
+            >
+              INITIALIZE ACCOUNT
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

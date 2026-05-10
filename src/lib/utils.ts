@@ -23,10 +23,13 @@ export type AgingCategory = 'current' | 'overdue' | 'critical';
 /**
  * AR Aging Logic: Calculates bucket based on oldest unpaid transaction
  */
-export function getAgingCategory(oldestUnpaidAt: string | null): AgingCategory {
+export function getAgingCategory(oldestUnpaidAt: any): AgingCategory {
   if (!oldestUnpaidAt) return 'current';
   
-  const days = differenceInDays(new Date(), new Date(oldestUnpaidAt));
+  const date = oldestUnpaidAt.toDate ? oldestUnpaidAt.toDate() : new Date(oldestUnpaidAt);
+  if (isNaN(date.getTime())) return 'current';
+
+  const days = differenceInDays(new Date(), date);
   
   if (days >= 60) return 'critical';
   if (days >= 30) return 'overdue';

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingCart, Package, Settings } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Package, Settings, HandCoins } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase/provider"
 
@@ -12,8 +12,19 @@ export function BottomNav() {
   const pathname = usePathname();
   const { profile, tenant, isUserLoading, user } = useUser();
 
+  const [isOnline, setIsOnline] = useState(true);
+
   useEffect(() => {
     setMounted(true);
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   return (
@@ -25,9 +36,10 @@ export function BottomNav() {
           <>
             {[
               { href: "/", label: "Home", icon: LayoutDashboard, roles: ['owner', 'staff', 'manager', 'super_admin'] },
-              { href: "/pos", label: "Terminal", icon: ShoppingCart, roles: ['staff', 'owner', 'manager'] },
-              { href: "/inventory", label: "Stock", icon: Package, roles: ['staff', 'owner', 'manager'] },
-              { href: "/settings", label: "Config", icon: Settings, roles: ['owner', 'staff', 'manager', 'super_admin'] },
+              { href: "/pos", label: "Sell", icon: ShoppingCart, roles: ['staff', 'owner', 'manager'] },
+              { href: "/inventory", label: "Items", icon: Package, roles: ['staff', 'owner', 'manager'] },
+              { href: "/accounts", label: "Accounts", icon: HandCoins, roles: ['owner', 'manager'] },
+              { href: "/settings", label: "Settings", icon: Settings, roles: ['owner', 'staff', 'manager', 'super_admin'] },
             ].filter(item => item.roles.includes(profile?.role || '')).map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
@@ -50,6 +62,12 @@ export function BottomNav() {
                 </Link>
               )
             })}
+            <div className="absolute -top-10 right-4 px-3 py-1 bg-white/90 backdrop-blur rounded-full shadow-soft border border-gray-100 flex items-center gap-2 animate-in slide-in-from-bottom-2">
+              <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", isOnline ? "bg-green-500" : "bg-red-500")} />
+              <span className="text-[8px] font-black uppercase tracking-[0.1em] text-muted-foreground">
+                {isOnline ? "Online" : "Offline Mode"}
+              </span>
+            </div>
           </>
         )
       )}

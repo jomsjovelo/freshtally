@@ -8,11 +8,14 @@ import { Plus, Search, Filter, Receipt, TrendingDown, Sparkles } from "lucide-re
 import { Card, CardContent } from "@/components/ui/card"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, limit, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, query, orderBy, limit, addDoc, serverTimestamp, where, Timestamp } from "firebase/firestore"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { autoCategorizeExpense } from "@/ai/flows/auto-categorize-expense-flow"
+import { ExpenseSchema } from "@/lib/schemas"
+import { Loader2 } from "lucide-react"
 
 export default function ExpensesPage() {
   const [search, setSearch] = useState("")
@@ -20,6 +23,7 @@ export default function ExpensesPage() {
   const { tenant } = useUser()
   const db = useFirestore()
   const { toast } = useToast()
+  const [isAiLoading, setIsAiLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     description: "",
@@ -28,14 +32,22 @@ export default function ExpensesPage() {
     notes: ""
   })
 
+  const monthTimestamp = useMemo(() => {
+    const d = new Date()
+    d.setDate(1)
+    d.setHours(0, 0, 0, 0)
+    return Timestamp.fromDate(d)
+  }, [])
+
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !tenant?.id) return null
     return query(
       collection(db, "tenants", tenant.id, "expenses"),
+      where("createdAt", ">=", monthTimestamp),
       orderBy("createdAt", "desc"),
       limit(100)
     )
-  }, [db, tenant?.id])
+  }, [db, tenant?.id, monthTimestamp])
 
   const { data: expenses, isLoading } = useCollection(expensesQuery)
 
@@ -51,14 +63,22 @@ export default function ExpensesPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tenant?.id) return
+    if (!db || !tenant?.id) return
     
+    const validation = ExpenseSchema.safeParse({
+      ...formData,
+      tenantId: tenant.id,
+      expenseDate: new Date().toISOString()
+    })
+
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: validation.error.errors[0].message, variant: "destructive" })
+      return
+    }
+
     try {
       await addDoc(collection(db, "tenants", tenant.id, "expenses"), {
-        ...formData,
-        amount: Number(formData.amount),
-        tenantId: tenant.id,
-        expenseDate: new Date().toISOString(),
+        ...validation.data,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
@@ -71,12 +91,32 @@ export default function ExpensesPage() {
     }
   }
 
+  const handleAiCategorize = async () => {
+    if (!formData.description) {
+      toast({ title: "No Description", description: "Provide a description for AI to analyze.", variant: "destructive" })
+      return
+    }
+
+    setIsAiLoading(true)
+    try {
+      const result = await autoCategorizeExpense({ expenseDetails: formData.description })
+      if (result) {
+        setFormData(prev => ({ ...prev, category: result.category }))
+        toast({ title: "AI Categorized", description: result.explanation })
+      }
+    } catch (err: any) {
+      toast({ title: "AI Error", description: "Could not categorize expense automatically.", variant: "destructive" })
+    } finally {
+      setIsAiLoading(false)
+    }
+  }
+
   return (
     <div className="p-4 space-y-6 pb-24">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tighter uppercase leading-none text-primary">Expenses</h1>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Outflow Registry</p>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Expense Registry</p>
         </div>
         
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -87,7 +127,7 @@ export default function ExpensesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-md w-full h-[90vh] rounded-t-[40px] border-none p-0 bg-background overflow-hidden flex flex-col">
             <DialogHeader className="p-8 pb-4 bg-accent text-white">
-              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Record Outflow</DialogTitle>
+              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Record Expense</DialogTitle>
             </DialogHeader>
             
             <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto flex-1 pb-32">
@@ -121,7 +161,20 @@ export default function ExpensesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expense-cat" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
+                <div className="flex items-center justify-between ml-1">
+                  <Label htmlFor="expense-cat" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Category</Label>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-[8px] font-black uppercase text-accent hover:bg-accent/10"
+                    onClick={handleAiCategorize}
+                    disabled={isAiLoading}
+                  >
+                    {isAiLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                    Magic Categorize
+                  </Button>
+                </div>
                 <select 
                   id="expense-cat"
                   name="expense-cat"
@@ -134,6 +187,10 @@ export default function ExpensesPage() {
                   <option value="Rent">Rent</option>
                   <option value="Marketing">Marketing</option>
                   <option value="Software">Software</option>
+                  <option value="Salary">Salary</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Meals">Meals</option>
+                  <option value="Professional Fees">Professional Fees</option>
                   <option value="Miscellaneous">Miscellaneous</option>
                 </select>
               </div>
@@ -142,7 +199,7 @@ export default function ExpensesPage() {
                 type="submit" 
                 className="w-full h-20 rounded-[28px] bg-accent text-white font-black text-xl shadow-xl mt-4"
               >
-                LOG EXPENSE
+                SAVE EXPENSE
               </Button>
             </form>
           </DialogContent>
@@ -150,7 +207,7 @@ export default function ExpensesPage() {
       </header>
 
       <Card className="border-none shadow-sm bg-primary p-6 rounded-[32px] text-white overflow-hidden relative">
-        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Month Burn</p>
+        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Monthly Expenses</p>
         <h2 className="text-4xl font-black mt-2 tracking-tighter">{formatCurrency(totalMonthly)}</h2>
         <div className="flex items-center gap-2 text-[10px] font-black mt-4 uppercase tracking-widest bg-white/10 w-fit px-3 py-1 rounded-full">
           <TrendingDown className="h-3 w-3" /> Ledger Active
@@ -163,7 +220,7 @@ export default function ExpensesPage() {
           <Input 
             id="expense-search"
             name="expense-search"
-            placeholder="Search outflows..." 
+            placeholder="Search expenses..." 
             className="pl-12 h-14 bg-gray-100 border-none shadow-sm rounded-2xl font-bold"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

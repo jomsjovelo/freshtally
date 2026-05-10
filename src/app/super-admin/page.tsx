@@ -17,12 +17,17 @@ import {
   Users,
   CheckCircle2,
   CreditCard,
-  Zap
+  Zap,
+  Activity,
+  DollarSign,
+  TrendingUp,
+  ShieldAlert
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { 
   Sheet, 
   SheetContent, 
+  SheetDescription,
   SheetHeader, 
   SheetTitle, 
   SheetTrigger 
@@ -79,6 +84,19 @@ export default function SuperAdminPage() {
     )
   }, [tenants, searchQuery])
 
+  const stats = useMemo(() => {
+    if (!tenants) return { total: 0, active: 0, pro: 0, revenue: 0 }
+    return tenants.reduce((acc, t) => {
+      acc.total++
+      if (t.status === 'active') acc.active++
+      if (t.subscriptionPlan === 'pro' || t.subscriptionPlan === 'enterprise') acc.pro++
+      if (t.subscriptionPlan === 'basic') acc.revenue += 20
+      if (t.subscriptionPlan === 'pro') acc.revenue += 50
+      if (t.subscriptionPlan === 'enterprise') acc.revenue += 100
+      return acc
+    }, { total: 0, active: 0, pro: 0, revenue: 0 })
+  }, [tenants])
+
   if (isUserLoading || !expiryDate || !broadcastExpiry) return <div className="p-20 text-center animate-pulse font-black text-primary uppercase text-xs tracking-widest">Verifying...</div>
 
   if (profile?.role !== 'super_admin') {
@@ -92,7 +110,7 @@ export default function SuperAdminPage() {
   }
 
   const handleCreateBroadcast = async () => {
-    if (!broadcastTitle || !broadcastMessage || !broadcastExpiry) return
+    if (!db || !broadcastTitle || !broadcastMessage || !broadcastExpiry) return
     setIsProcessing(true)
     try {
       await addDoc(collection(db, "platform_broadcasts"), {
@@ -113,7 +131,7 @@ export default function SuperAdminPage() {
   }
 
   const handleTenantAction = async (action: 'status' | 'verify' | 'expiry' | 'plan') => {
-    if (!selectedTenant) return
+    if (!db || !selectedTenant) return
     setIsProcessing(true)
     try {
       const tenantRef = doc(db, "tenants", selectedTenant.id)
@@ -159,6 +177,23 @@ export default function SuperAdminPage() {
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">Node management</p>
         </div>
       </header>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="bg-primary p-5 rounded-[28px] border-none text-white shadow-xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <TrendingUp className="h-12 w-12" />
+          </div>
+          <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-60">System MRR</p>
+          <p className="text-2xl font-black mt-1 tracking-tighter">${stats.revenue}</p>
+        </Card>
+        <Card className="bg-accent p-5 rounded-[28px] border-none text-white shadow-xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Activity className="h-12 w-12" />
+          </div>
+          <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-60">Active Nodes</p>
+          <p className="text-2xl font-black mt-1 tracking-tighter">{stats.active} / {stats.total}</p>
+        </Card>
+      </div>
 
       <Tabs defaultValue="registry" className="w-full">
         <TabsList className="grid grid-cols-2 h-14 bg-gray-100 rounded-2xl p-1">
@@ -219,6 +254,7 @@ export default function SuperAdminPage() {
                     <SheetContent side="bottom" className="h-[90vh] rounded-t-[40px] border-none p-0 overflow-hidden bg-background">
                       <SheetHeader className="p-8 bg-primary text-white text-left">
                         <SheetTitle className="text-2xl font-black uppercase tracking-tighter text-white">Management</SheetTitle>
+                        <SheetDescription className="text-white/60 font-black uppercase text-[10px] tracking-widest mt-1">Tenant subscription & settings</SheetDescription>
                       </SheetHeader>
                       
                       <div className="p-8 space-y-8 overflow-y-auto h-full pb-32">
@@ -231,18 +267,28 @@ export default function SuperAdminPage() {
                           />
                         </div>
 
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-2">
-                            {['free', 'basic', 'pro', 'enterprise'].map((plan) => (
+                        <div className="space-y-4">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subscription Tier</Label>
+                          <div className="grid grid-cols-1 gap-3">
+                            {[
+                              { id: 'free', label: 'Free Tier', desc: 'Basic POS only' },
+                              { id: 'basic', label: 'Business Core', desc: 'Inventory + Basic AR' },
+                              { id: 'pro', label: 'Enterprise Pro', desc: 'AI Analytics + Multi-staff' },
+                              { id: 'enterprise', label: 'Global Scale', desc: 'Unlimited everything' }
+                            ].map((plan) => (
                               <button
-                                key={plan}
-                                onClick={() => setSelectedPlan(plan)}
+                                key={plan.id}
+                                onClick={() => setSelectedPlan(plan.id)}
                                 className={cn(
-                                  "h-14 rounded-2xl border-2 transition-all font-black uppercase text-[10px]",
-                                  selectedPlan === plan ? "border-primary bg-primary/5" : "border-gray-100"
+                                  "flex items-center justify-between p-5 rounded-2xl border-2 transition-all text-left",
+                                  selectedPlan === plan.id ? "border-primary bg-primary/5 shadow-md" : "border-gray-100 bg-gray-50/30"
                                 )}
                               >
-                                {plan}
+                                <div>
+                                  <p className="font-black uppercase text-[10px] tracking-tight">{plan.label}</p>
+                                  <p className="text-[8px] text-muted-foreground mt-1">{plan.desc}</p>
+                                </div>
+                                {selectedPlan === plan.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
                               </button>
                             ))}
                           </div>
@@ -287,7 +333,7 @@ export default function SuperAdminPage() {
               <div className="space-y-2">
                 <Label htmlFor="broadcastPriority" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Priority</Label>
                 <Select value={broadcastPriority} onValueChange={setBroadcastPriority}>
-                  <SelectTrigger id="broadcastPriority" className="h-14 rounded-xl border-none bg-gray-50 font-black uppercase text-[10px]">
+                  <SelectTrigger id="broadcastPriority" name="broadcastPriority" className="h-14 rounded-xl border-none bg-gray-50 font-black uppercase text-[10px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl border-none">

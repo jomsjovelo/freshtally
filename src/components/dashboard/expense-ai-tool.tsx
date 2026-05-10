@@ -5,6 +5,7 @@ import { Sparkles, Loader2, CheckCircle2 } from "lucide-react"
 import { autoCategorizeExpense } from "@/ai/flows/auto-categorize-expense-flow"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 
@@ -48,16 +49,19 @@ export function ExpenseAITool() {
       
       {!result ? (
         <div className="space-y-3">
+          <Label htmlFor="ai-expense-description" className="text-[10px] font-black uppercase tracking-widest text-accent opacity-70 ml-1">Expense Details</Label>
           <Textarea 
             id="ai-expense-description"
             name="ai-expense-description"
             placeholder="E.g. Purchased 10 packs of high-quality printing paper from Staples for $55"
-            className="bg-background/80 border-none shadow-inner resize-none min-h-[100px]"
+            className="bg-background/80 border-none shadow-inner resize-none min-h-[100px] font-medium"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             autoComplete="off"
           />
           <Button 
+            id="categorize-btn"
+            name="categorize-btn"
             className="w-full bg-accent hover:bg-accent/90 text-white font-semibold"
             disabled={loading}
             onClick={handleCategorize}

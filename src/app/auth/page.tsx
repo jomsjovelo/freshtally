@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation"
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signOut
+  signOut,
+  sendPasswordResetEmail
 } from "firebase/auth"
-import { doc, serverTimestamp, writeBatch } from "firebase/firestore"
+import { doc, serverTimestamp, writeBatch, getDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,6 +32,7 @@ export default function AuthPage() {
   const [tenantIdInput, setTenantIdInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isResetting, setIsResetting] = useState(false)
   
   const router = useRouter()
   const { toast } = useToast()
@@ -62,6 +64,22 @@ export default function AuthPage() {
     }
   }
 
+  const handleForgotPassword = async () => {
+    if (!auth || !email) {
+      setError("Please enter your email first.")
+      return
+    }
+    setLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, email)
+      toast({ title: "Reset Email Sent", description: "Check your inbox for the link." })
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!auth || !db) return
@@ -83,51 +101,49 @@ export default function AuthPage() {
     try {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
-      } else {
+      } else if (authMode === "join_staff") {
+        // Validate Tenant First
+        const tenantRef = doc(db, "tenants", tenantIdInput)
+        const tenantSnap = await getDoc(tenantRef)
+        
+        if (!tenantSnap.exists()) {
+          setError("Store Code not found. Please verify with your owner.")
+          setLoading(false)
+          return
+        }
+
         const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
         const user = res.user
         const batch = writeBatch(db)
         const profileRef = doc(db, "userProfiles", user.uid)
 
-        if (authMode === "register_owner") {
-          const tenantId = Math.floor(10000 + Math.random() * 90000).toString()
-          const tenantRef = doc(db, "tenants", tenantId)
-
-          batch.set(tenantRef, {
-            id: tenantId,
-            name: businessName,
-            ownerUid: user.uid,
-            ownerEmail: normalizedEmail,
-            status: "active",
-            subscriptionPlan: "basic",
-            currency: "PHP",
-            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          })
-
-          batch.set(profileRef, {
-            id: user.uid,
-            email: normalizedEmail,
-            role: "owner",
-            tenantId: tenantId,
-            displayName: ownerName,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          })
-        } else {
-          batch.set(profileRef, {
-            id: user.uid,
-            email: normalizedEmail,
-            role: "staff",
-            tenantId: tenantIdInput,
-            displayName: ownerName || "Shop Staff",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          })
-        }
-
+        batch.set(profileRef, {
+          id: user.uid,
+          email: normalizedEmail,
+          role: "staff",
+          tenantId: tenantIdInput,
+          displayName: ownerName || "Shop Staff",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        })
         await batch.commit()
+      } else if (authMode === "register_owner") {
+        const res = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+        const user = res.user
+        const batch = writeBatch(db)
+        const profileRef = doc(db, "userProfiles", user.uid)
+
+        batch.set(profileRef, {
+          id: user.uid,
+          email: normalizedEmail,
+          role: "owner",
+          tenantId: null, // Will be set during onboarding
+          displayName: ownerName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        })
+        await batch.commit()
+        router.push("/onboarding")
       }
     } catch (err: any) {
       setError(err.message)
@@ -147,10 +163,10 @@ export default function AuthPage() {
             {isZombie ? <RefreshCw className="h-8 w-8 text-white animate-spin" /> : <ShieldCheck className="h-8 w-8 text-white" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tight leading-none relative z-10">
-            {isZombie ? "RE-SYNC ACCESS" : (authMode === "login" ? "Store Access" : "Market Entry")}
+            {isZombie ? "RE-SYNC ACCESS" : (authMode === "login" ? "Welcome Back" : (authMode === "register_owner" ? "Register Store" : "Join Your Team"))}
           </h1>
           <p className="text-[10px] font-bold text-white/60 mt-2.5 uppercase tracking-[0.25em] relative z-10">
-            FreshTally Cloud Ledger
+            {authMode === "login" ? "Enter your store credentials" : "Start your digital journey"}
           </p>
         </div>
 
@@ -172,9 +188,9 @@ export default function AuthPage() {
                 <LogOut className="h-12 w-12" />
               </div>
               <div className="space-y-2">
-                <p className="font-black text-sm uppercase tracking-tight">Identity Mismatch</p>
+                <p className="font-black text-sm uppercase tracking-tight">Account Error</p>
                 <p className="text-[10px] font-medium text-muted-foreground uppercase leading-relaxed tracking-wider">
-                  Store node identity could not be verified.
+                  Store profile could not be verified.
                 </p>
               </div>
               <Button 
@@ -184,7 +200,7 @@ export default function AuthPage() {
                 className="w-full h-16 rounded-[24px] bg-destructive text-white font-black text-xs tracking-[0.2em] shadow-lg shadow-destructive/20 active:scale-[0.97] transition-all"
                 disabled={loading}
               >
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "TERMINATE & RE-SYNC"}
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "SIGN IN AGAIN"}
               </Button>
             </div>
           ) : (
@@ -199,9 +215,12 @@ export default function AuthPage() {
               </TabsList>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {(authMode === "login" || authMode === "join_staff") && (
+                {authMode === "join_staff" && (
                   <div className="space-y-2">
-                    <Label htmlFor="tenantIdInput" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Store Code</Label>
+                    <div className="flex justify-between items-center ml-1">
+                      <Label htmlFor="tenantIdInput" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Store Code</Label>
+                      <span className="text-[8px] font-bold text-primary/60 uppercase tracking-widest">From your owner</span>
+                    </div>
                     <div className="relative group">
                       <Input 
                         id="tenantIdInput"
@@ -211,7 +230,7 @@ export default function AuthPage() {
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-black px-5 pr-12 text-center tracking-[0.4em] text-lg"
                         value={tenantIdInput}
                         onChange={(e) => setTenantIdInput(e.target.value)}
-                        required={authMode !== "register_owner"}
+                        required
                         autoComplete="off"
                       />
                       <Hash className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30 group-focus-within:opacity-100 transition-opacity" />
@@ -230,7 +249,7 @@ export default function AuthPage() {
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5 pr-12"
                         value={ownerName}
                         onChange={(e) => setOwnerName(e.target.value)}
-                        required={authMode !== "login"}
+                        required
                         autoComplete="name"
                       />
                       <User className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30 group-focus-within:opacity-100 transition-opacity" />
@@ -238,24 +257,9 @@ export default function AuthPage() {
                   </div>
                 )}
 
-                {authMode === "register_owner" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="businessName" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Market Name</Label>
-                    <Input 
-                      id="businessName"
-                      name="businessName"
-                      placeholder="Metro Roast" 
-                      className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5"
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      required={authMode === "register_owner"}
-                      autoComplete="organization"
-                    />
-                  </div>
-                )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Cloud ID (Email)</Label>
+                  <Label htmlFor="email" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Account Email</Label>
                   <div className="relative group">
                     <Input 
                       id="email"
@@ -273,7 +277,18 @@ export default function AuthPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Access Password</Label>
+                  <div className="flex justify-between items-center ml-1">
+                    <Label htmlFor="password" className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Access Password</Label>
+                    {authMode === "login" && (
+                      <button 
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-[8px] font-black text-primary uppercase tracking-widest hover:underline"
+                      >
+                        Forgot?
+                      </button>
+                    )}
+                  </div>
                   <div className="relative group">
                     <Input 
                       id="password"
@@ -302,7 +317,7 @@ export default function AuthPage() {
                         className="h-14 rounded-2xl border-2 border-transparent bg-gray-50 focus:bg-white focus:border-primary/20 focus:ring-0 transition-all font-bold px-5 pr-12"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        required={authMode !== "login"}
+                        required
                         autoComplete="new-password"
                       />
                       <CheckCircle2 className={`absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all ${password && password === confirmPassword ? "text-green-500 opacity-100" : "text-muted-foreground opacity-30"}`} />
@@ -317,7 +332,7 @@ export default function AuthPage() {
                   className="w-full h-18 rounded-[24px] bg-primary text-white font-black text-xs tracking-[0.2em] shadow-xl shadow-primary/20 mt-8 active:scale-[0.98] transition-all hover:shadow-primary/30" 
                   disabled={loading}
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (authMode === "login" ? "ENTER STORE" : (authMode === "register_owner" ? "INITIALIZE MARKET" : "JOIN STATION"))}
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (authMode === "login" ? "SIGN IN" : (authMode === "register_owner" ? "CREATE ACCOUNT" : "JOIN STORE"))}
                 </Button>
               </form>
             </Tabs>
@@ -326,7 +341,7 @@ export default function AuthPage() {
         
         <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
           <p className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">
-            Authorized Access Only • Cloud Store V1.5
+            Authorized Access Only • FreshTally V1.5
           </p>
         </div>
       </div>

@@ -2,8 +2,13 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from 'firebase/firestore'
 
 /**
  * INITIALIZATION ENGINE
@@ -20,14 +25,37 @@ export function initializeFirebase() {
     firebaseApp = getApp();
   }
 
-  return getSdks(firebaseApp);
+  const sdks = getSdks(firebaseApp);
+  
+  // Persistence is now managed via initializeFirestore cache settings in getSdks
+
+  return sdks;
 }
 
+let firestoreInstance: any = null;
+let authInstance: any = null;
+
 export function getSdks(firebaseApp: FirebaseApp) {
+  if (!firestoreInstance && typeof window !== 'undefined') {
+    firestoreInstance = initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  }
+
+  if (!authInstance) {
+    authInstance = getAuth(firebaseApp);
+    // Ensure persistence is set to LOCAL so user stays logged in after tab close
+    if (typeof window !== 'undefined') {
+      setPersistence(authInstance, browserLocalPersistence);
+    }
+  }
+
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    auth: authInstance,
+    firestore: firestoreInstance || getFirestore(firebaseApp)
   };
 }
 
