@@ -5,8 +5,32 @@ import { FirebaseClientProvider } from "@/firebase/client-provider"
 import { TopBar } from "@/components/layout/top-bar"
 
 export const metadata: Metadata = {
-  title: 'FreshTally - Business Management',
-  description: 'Fast, secure, and intuitive business management for store owners.',
+  title: 'FreshTally - Smart Wet Market Management',
+  description: 'The fastest POS and inventory system optimized for wet markets and perishable goods.',
+  openGraph: {
+    title: 'FreshTally - Smart Wet Market Management',
+    description: 'The fastest POS and inventory system optimized for wet markets.',
+    url: 'https://storesolution-3bee5.web.app',
+    siteName: 'FreshTally',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'FreshTally Dashboard Preview',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FreshTally - Smart Wet Market Management',
+    description: 'Optimized for wet market operations.',
+    images: ['/og-image.png'],
+  },
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
+  themeColor: '#16a34a', // primary green
 };
 
 export default function RootLayout({
