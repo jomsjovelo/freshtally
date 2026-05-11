@@ -111,10 +111,10 @@ export function TopBar() {
                 </div>
               ) : (
                 <>
-                  <Avatar className="h-9 w-9 rounded-xl border border-gray-200 shadow-sm">
-                    <AvatarImage src={isSuperAdmin ? undefined : tenant?.logoUrl} alt={tenant?.name || 'User'} />
+                  <Avatar className="h-9 w-9 rounded-xl border border-gray-200 shadow-sm bg-white p-1.5">
+                    <AvatarImage src={isSuperAdmin ? undefined : (tenant?.logoUrl || "/logo.png")} alt={tenant?.name || 'User'} className="object-contain" />
                     <AvatarFallback className={isSuperAdmin ? "bg-accent text-white" : "bg-primary/5 text-primary"}>
-                      {isSuperAdmin ? <ShieldCheck className="h-5 w-5" /> : <Store className="h-5 w-5" />}
+                      {isSuperAdmin ? <ShieldCheck className="h-5 w-5" /> : <img src="/logo.png" alt="Logo" className="h-5 w-5 object-contain" />}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

@@ -159,8 +159,8 @@ export default function AuthPage() {
       <div className="w-full max-w-sm bg-white rounded-[40px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col max-h-[95vh] border border-gray-100">
         <div className="text-center pt-14 pb-10 bg-gradient-to-br from-primary to-primary/80 text-white px-8 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-          <div className="h-16 w-16 bg-white/10 rounded-[22px] flex items-center justify-center mx-auto mb-5 backdrop-blur-xl relative z-10 border border-white/20 shadow-xl">
-            {isZombie ? <RefreshCw className="h-8 w-8 text-white animate-spin" /> : <ShieldCheck className="h-8 w-8 text-white" />}
+          <div className="h-16 w-16 bg-white/10 rounded-[22px] flex items-center justify-center mx-auto mb-5 backdrop-blur-xl relative z-10 border border-white/20 shadow-xl p-3">
+            {isZombie ? <RefreshCw className="h-8 w-8 text-white animate-spin" /> : <img src="/logo.png" alt="FreshTally Logo" className="h-full w-full object-contain brightness-0 invert" />}
           </div>
           <h1 className="text-2xl font-black uppercase tracking-tight leading-none relative z-10">
             {isZombie ? "RE-SYNC ACCESS" : (authMode === "login" ? "Welcome Back" : (authMode === "register_owner" ? "Register Store" : "Join Your Team"))}
